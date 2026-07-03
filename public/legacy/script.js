@@ -3762,25 +3762,14 @@ function bootWithWelcome() {
   function check() {
     try {
       if (!document.body.classList.contains("auth-mode")) return; // sudah masuk dashboard
-      var hasSession = !!localStorage.getItem("playly-user") ||
-        !!localStorage.getItem("playly-current-email") ||
-        Object.keys(localStorage).some(function (k) { return /sb-.*auth-token/.test(k); });
-      if (!hasSession) return;                                   // memang di landing (belum login)
-      // FIX 2026-07-03: JANGAN paksa reload kalau user sedang MENGISI form login.
-      // Watchdog ini untuk "boot nyangkut" (sudah login tapi dashboard tak muncul).
-      // Bug: saat user di HALAMAN LOGIN + ada token sisa (sb-*-auth-token / email
-      // lama), watchdog salah kira "nyangkut" lalu reload (?_r=...) → menghapus
-      // email/password yang sudah diketik. Pembeda andal (TAK bergantung letak DOM —
-      // form login bisa di dalam modal, bukan hanya #authScreen):
-      //   (a) user sedang fokus/mengetik di input/textarea APA PUN, ATAU
-      //   (b) field login (email/password/username) sudah terisi di mana pun.
-      var ae = document.activeElement;
-      if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)) return;
-      var loginFilled = Array.prototype.some.call(
-        document.querySelectorAll('input[name="email"], input[name="password"], input[name="username"]'),
-        function (el) { return el.value && String(el.value).trim(); }
-      );
-      if (loginFilled) return;                                   // user sedang isi form login → jangan reload
+      // FIX 2026-07-03: watchdog ini HANYA untuk "boot nyangkut" — user SUDAH login
+      // (tryAutoBoot berhasil → variabel `user` ter-set) tapi dashboard tak muncul.
+      // Bug lama: syaratnya cukup "ada token sisa" (playly-user / playly-current-email
+      // / sb-*-auth-token di localStorage) → padahal user di HALAMAN LOGIN dengan
+      // token Supabase sisa akan lolos → watchdog salah reload (?_r=...) & menghapus
+      // isian form login. `user` = kebenaran runtime: null = memang di landing / belum
+      // login (JANGAN reload); ter-set = benar login (boot mestinya sudah jalan).
+      if (!user || !(user.email || user.username)) return;      // belum login → jangan reload
       if (sessionStorage.getItem("playly-boot-recovered")) return; // sudah coba sekali → stop
       sessionStorage.setItem("playly-boot-recovered", "1");
       var u = new URL(location.href);
