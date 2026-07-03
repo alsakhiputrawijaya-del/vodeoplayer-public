@@ -25408,9 +25408,10 @@ async function generateRecoveryOtp(requestId) {
 }
 
 // v568: combined generate + send dalam 1 step. Super admin click 1 button,
-// sistem auto-generate OTP + transition status ke WAITING_INPUT (= sent via
-// email). Return plain OTP untuk display ke super admin (simulasi konten
-// email yang dikirim ke user).
+// sistem auto-generate OTP + transition status ke WAITING_INPUT (= OTP siap
+// diberikan ke user). Return plain OTP untuk ditampilkan ke super admin, yang
+// lalu MENYALIN + memberikannya langsung ke user (email di app fiktif — tak
+// ada email/SMS sungguhan yang terkirim; OTP diteruskan manual oleh admin).
 async function generateAndSendRecoveryOtp(requestId) {
   const gen = await generateRecoveryOtp(requestId);
   if (!gen.ok) {
@@ -25431,7 +25432,7 @@ async function generateAndSendRecoveryOtp(requestId) {
     }
     return gen;
   }
-  // Transition status ke WAITING_INPUT (= email terkirim ke user)
+  // Transition status ke WAITING_INPUT (= OTP siap diberikan admin ke user)
   const arr = getAdminRecoveryRequests();
   const req = arr.find(r => r.id === requestId);
   if (req && req.status === AR_STATUS.OTP_GENERATED) {
@@ -25607,13 +25608,13 @@ function openAdminRecoveryChoiceModal(prefillId = "") {
       <div class="ar-choice-grid">
         <button type="button" class="ar-choice-card" data-ar-choice="email">
           <div class="ar-choice-ico">✉️</div>
-          <strong>Reset via Email</strong>
-          <small>Pakai email akun untuk set password baru. Cepat kalau kamu masih akses email.</small>
+          <strong>Reset Sendiri</strong>
+          <small>Atur kata sandi baru langsung tanpa perlu email.</small>
         </button>
         <button type="button" class="ar-choice-card" data-ar-choice="otp">
           <div class="ar-choice-ico">🔐</div>
           <strong>Minta OTP ke Super Admin</strong>
-          <small>Super admin akan kirim 4 digit OTP via WA/SMS untuk verify identitasmu.</small>
+          <small>Super admin akan membuat OTP 4-digit lalu memberikannya ke kamu langsung untuk verifikasi identitas.</small>
         </button>
       </div>
     </div>
@@ -25636,7 +25637,7 @@ function openAdminRecoveryChoiceModal(prefillId = "") {
 // choice). Opts: { fromChoice: bool }
 function openAdminRecoveryOtpRequestModal(prefillId = "", opts = {}) {
   _arRemoveOpenModals();
-  // v568: context-aware copy + via email (bukan WA/SMS)
+  // v569: context-aware copy — OTP diberikan admin LANGSUNG ke user (email di app fiktif, jadi bukan lewat email/WA/SMS)
   const _isAdminCtx = document.body.dataset.role === "admin";
   const _approverLabel = _isAdminCtx ? "Super Admin" : "Super Admin atau Admin";
   const _approverDesc = _isAdminCtx ? "Super admin" : "Super admin atau admin";
@@ -25648,7 +25649,7 @@ function openAdminRecoveryOtpRequestModal(prefillId = "", opts = {}) {
     <div class="modal-backdrop" data-ar-back></div>
     <div class="modal-panel ar-panel-narrow" data-no-i18n>
       <h3 class="ar-text-center" data-no-i18n>🔐 Minta OTP ke ${_arEscapeHtml(_approverLabel)}</h3>
-      <p class="muted ar-text-center" data-no-i18n>Masukkan email/username akunmu. ${_arEscapeHtml(_approverDesc)} akan membuat OTP dan mengirim OTP 4-digit ke email kamu.</p>
+      <p class="muted ar-text-center" data-no-i18n>Masukkan email/username akunmu. ${_arEscapeHtml(_approverDesc)} akan membuat OTP 4-digit lalu memberikannya ke kamu langsung.</p>
       <form class="ar-form" id="arOtpRequestForm">
         <label class="ar-label" data-no-i18n>Email atau Username</label>
         <input type="text" name="id" placeholder="kamu@email.com atau username" value="${_arEscapeHtml(prefillId)}" autocomplete="off" required />
@@ -25720,15 +25721,15 @@ function openAdminRecoveryWaitModal(requestId) {
     if (req.status === AR_STATUS.PENDING || req.status === AR_STATUS.OTP_GENERATED) {
       body.innerHTML = `
         <h3 class="ar-text-center" data-no-i18n>🆕 Permintaan terkirim</h3>
-        <p class="muted ar-text-center" data-no-i18n>Tunggu ${_arEscapeHtml(_approverLabel)} kirim OTP. Kamu bakal terima 4-digit OTP via email.</p>
+        <p class="muted ar-text-center" data-no-i18n>Tunggu ${_arEscapeHtml(_approverLabel)} membuat OTP. Kamu bakal menerima 4-digit OTP langsung dari mereka.</p>
         <div class="ar-status-pill ar-pill-pending">${_arEscapeHtml(_arStatusLabel(req.status))}</div>
         <div class="ar-ttl">Berlaku ${remainingMin} menit lagi</div>
         <div class="ar-form-actions-compact"><button type="button" class="btn ghost btn-compact" data-close>Tutup (request tetap aktif)</button></div>
       `;
     } else if (req.status === AR_STATUS.WAITING_INPUT) {
       body.innerHTML = `
-        <h3 class="ar-text-center" data-no-i18n>📨 Masukkan OTP dari email</h3>
-        <p class="muted ar-text-center" data-no-i18n>Cek email kamu, ketik 4-digit OTP yang ${_arEscapeHtml(_approverLabel)} kirim.</p>
+        <h3 class="ar-text-center" data-no-i18n>📨 Masukkan OTP</h3>
+        <p class="muted ar-text-center" data-no-i18n>Ketik 4-digit OTP yang diberikan ${_arEscapeHtml(_approverLabel)} ke kamu.</p>
         <div class="ar-otp-grid" data-ar-otp-grid>
           <input type="text" inputmode="numeric" maxlength="1" data-ar-otp-cell="0" />
           <input type="text" inputmode="numeric" maxlength="1" data-ar-otp-cell="1" />
@@ -25981,11 +25982,11 @@ function openSuperAdminRecoveryListModal() {
   return m;
 }
 
-// Modal: super admin lihat OTP yang baru terkirim ke email user.
-// v568: gabungan dari generate + verify modal lama. Status sudah ter-update
-// ke WAITING_INPUT saat modal ini terbuka (via generateAndSendRecoveryOtp).
-// Super admin lihat OTP plain untuk verifikasi konten email yang sudah
-// terkirim. Tutup modal = balik ke list super admin.
+// Modal: super admin lihat OTP yang baru dibuat untuk user, lalu menyalin +
+// memberikannya langsung ke user. v568: gabungan dari generate + verify modal
+// lama. Status sudah ter-update ke WAITING_INPUT saat modal ini terbuka (via
+// generateAndSendRecoveryOtp). Super admin lihat OTP plain untuk disalin +
+// diteruskan ke user. Tutup modal = balik ke list super admin.
 function openSuperAdminSendOtpModal(requestId, otpPlain) {
   _arRemoveOpenModals();
   const m = document.createElement("div");
@@ -25998,8 +25999,8 @@ function openSuperAdminSendOtpModal(requestId, otpPlain) {
   m.innerHTML = `
     <div class="modal-backdrop" data-ar-back-list></div>
     <div class="modal-panel ar-panel-narrow" data-no-i18n>
-      <h3 class="ar-text-center" data-no-i18n>📨 OTP terkirim ke email</h3>
-      <p class="muted ar-text-center" data-no-i18n>OTP 4-digit di bawah sudah dikirim ke <b>${_arEscapeHtml(userEmail)}</b>. User sekarang akan diminta input OTP ini di layar mereka.</p>
+      <h3 class="ar-text-center" data-no-i18n>📨 OTP siap — berikan ke user</h3>
+      <p class="muted ar-text-center" data-no-i18n>Salin OTP 4-digit di bawah, lalu berikan langsung ke <b>${_arEscapeHtml(userEmail)}</b> (lewat kontak yang kamu punya — chat/telepon). User akan diminta mengetik OTP ini di layar mereka.</p>
       <div class="ar-otp-display">${otpDigits}</div>
       <button type="button" class="btn ghost ar-copy-btn btn-compact" data-ar-copy="${_arEscapeHtml(otpPlain)}">📋 Copy OTP</button>
       <div class="ar-divider"></div>
@@ -26312,7 +26313,7 @@ function openUniversalRecoveryChoiceModal(prefillId = "") {
         <button type="button" class="ar-choice-card" data-ar-choice="otp">
           <div class="ar-choice-ico">📨</div>
           <strong data-no-i18n>Minta OTP via ${_arEscapeHtml(_approverLabel)}</strong>
-          <small data-no-i18n>${_arEscapeHtml(_approverDesc.charAt(0).toUpperCase() + _approverDesc.slice(1))} akan kirim OTP 4-digit ke email kamu. Cocok kalau lupa PIN 2FA atau belum mengaktifkannya.</small>
+          <small data-no-i18n>${_arEscapeHtml(_approverDesc.charAt(0).toUpperCase() + _approverDesc.slice(1))} akan membuat OTP 4-digit lalu memberikannya ke kamu langsung. Cocok kalau lupa PIN 2FA atau belum mengaktifkannya.</small>
         </button>
       </div>
     </div>
