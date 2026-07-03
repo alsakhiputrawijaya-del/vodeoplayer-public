@@ -19219,6 +19219,35 @@ document.getElementById("setTierModal")?.addEventListener("change", e => {
   if (ps) ps.hidden = e.target.value !== "premium";
 });
 
+// FIX 2026-07-03: daftarkan akun buatan admin ke Supabase Auth (auth.users) supaya
+// bisa login di perangkat LAIN — bukan cuma di perangkat tempat dibuat. Tanpa ini,
+// login di device lain gagal "Email belum terdaftar" (cloud recovery lewat Supabase
+// Auth tak menemukannya). Endpoint: app/api/admin/create-user (pakai Admin API
+// service-role, TIDAK membajak sesi admin). Dipanggil SETELAH akun ditulis lokal;
+// pembuatan lokal tetap jalan walau ini gagal, tapi admin diberi tahu.
+async function registerAdminCreatedAccount(payload) {
+  try {
+    const r = await fetch("/api/admin/create-user", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json().catch(() => null);
+    if (r.ok && d && d.ok) return true;
+    const reason = (d && (d.message || d.error)) || ("HTTP " + r.status);
+    console.warn("[admin-create] registrasi Supabase Auth gagal:", reason);
+    if (typeof toast === "function")
+      toast("⚠️ Akun dibuat, tapi BELUM terdaftar di server login (" + reason + "). Login di perangkat lain mungkin gagal.", "warning");
+    return false;
+  } catch (err) {
+    console.warn("[admin-create] registrasi Supabase Auth error:", err);
+    if (typeof toast === "function")
+      toast("⚠️ Akun dibuat lokal, tapi gagal daftar ke server login. Login lintas-perangkat mungkin gagal.", "warning");
+    return false;
+  }
+}
+
 document.getElementById("createUserForm")?.addEventListener("submit", async e => {
   e.preventDefault();
   const modal = document.getElementById("createUserModal");
@@ -19318,6 +19347,9 @@ document.getElementById("createUserForm")?.addEventListener("submit", async e =>
     // Pengaturan setelah login pertama. Tidak ada side-effect saat create.
   }
 
+  // Daftarkan ke Supabase Auth supaya akun bisa login lintas-perangkat (lihat helper di atas).
+  await registerAdminCreatedAccount({ email, password, name, username, tier, asAdmin: isAdminMode });
+
   const tl = isAdminMode
     ? "Admin"
     : (tier === "premium" ? `Premium · ${plan.charAt(0).toUpperCase() + plan.slice(1)}` : "Free");
@@ -19411,6 +19443,9 @@ document.getElementById("createUserForm")?.addEventListener("submit", async e =>
     try { localStorage.removeItem(`playly-prefs-${email}`); } catch {}
     localStorage.setItem(`playly-account-${email}`, JSON.stringify(acc));
 
+    // Daftarkan ke Supabase Auth supaya akun bisa login lintas-perangkat (form inline = user saja).
+    await registerAdminCreatedAccount({ email, password, name, username, tier, asAdmin: false });
+
     const tl = tier === "premium"
       ? `Premium · ${plan.charAt(0).toUpperCase() + plan.slice(1)}`
       : "Free";
@@ -19429,6 +19464,45 @@ document.getElementById("createUserForm")?.addEventListener("submit", async e =>
     toast(`${t("admin.toast.account.created")} <b>@${escapeHtml(username)}</b> ${t("admin.toast.created.suffix")} · ${tl}`, "success");
   });
 })();
+
+// FIX 2026-07-03: form Admin "Reset Password User" (super-admin only). Set password
+// user LANGSUNG via /api/admin/reset-password (Supabase Auth Admin API, service-role) —
+// tanpa email pemulihan (aplikasi pakai email fiktif, jadi pemulihan-email tak jalan).
+document.getElementById("resetUserPwForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!user || (typeof isSuperAdmin === "function" && !isSuperAdmin(user))) {
+    return toast("🔒 Hanya super-admin yang bisa reset password user", "warning");
+  }
+  const fd = new FormData(e.target);
+  const email = String(fd.get("email") || "").trim().toLowerCase();
+  const newPassword = String(fd.get("newPassword") || "");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast("⚠ Format email tidak valid", "warning");
+  if (newPassword.length < 6) return toast("⚠ Password minimal 6 karakter", "warning");
+  const btn = e.target.querySelector('button[type="submit"]');
+  const orig = btn ? btn.innerHTML : "";
+  if (btn) { btn.disabled = true; btn.textContent = "Mereset…"; }
+  try {
+    const r = await fetch("/api/admin/reset-password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ email, newPassword }),
+    });
+    const d = await r.json().catch(() => null);
+    if (r.ok && d && d.ok) {
+      toast(`✅ Password untuk ${escapeHtml(email)} berhasil di-reset — user bisa login pakai password baru`, "success");
+      if (typeof pushAdminEvent === "function") pushAdminEvent("🔑", `Password akun <b>${escapeHtml(email)}</b> di-reset admin`);
+      e.target.reset();
+    } else {
+      const reason = (d && (d.message || d.error)) || ("HTTP " + r.status);
+      toast(`❌ Gagal reset password: ${reason}`, "error");
+    }
+  } catch (err) {
+    toast("❌ Gagal reset password (koneksi bermasalah?)", "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+  }
+});
 
 document.getElementById("setTierForm")?.addEventListener("submit", e => {
   e.preventDefault();
@@ -31336,38 +31410,57 @@ $("#audDeactivateBtn")?.addEventListener("click", () => {
   }
 });
 
-$("#audResetPwBtn")?.addEventListener("click", () => {
+$("#audResetPwBtn")?.addEventListener("click", async () => {
   if (!currentUserDetail) return;
   if (isAllowedAdminEmail(currentUserDetail.email)) {
     return toast("🔒 Password Admin tidak bisa di-reset dari sini", "warning");
   }
-  openConfirm({
-    icon: "🔑", iconClass: "warn",
-    title: "Reset Password User?",
-    desc: `Password <b>@${currentUserDetail.username}</b> akan di-reset ke <code>playly1234</code>. User harus login ulang.`,
-    btnText: "Reset Password", btnClass: "primary",
-    onConfirm: () => {
-      const accKey = `playly-account-${currentUserDetail.email}`;
-      const acc = JSON.parse(localStorage.getItem(accKey) || "null");
-      if (!acc) return toast("❌ Akun tidak ditemukan", "error");
-      acc.password = DEFAULT_RESET_PASSWORD_HASH;
-      // C-4 U-L3 fix (2026-05-21): set mustChangePassword flag supaya user
-      // dipaksa ganti password saat login pertama setelah reset.
-      // Sebelumnya: default "playly1234" hash dipasang tanpa flag → user
-      // bisa terus pakai default forever (publicly known credential).
-      acc.mustChangePassword = true;
-      acc.passwordResetByAdminAt = Date.now();
-      acc.passwordResetBy = (typeof user === "object" && user?.username) || "admin";
-      localStorage.setItem(accKey, JSON.stringify(acc));
-      pushAdminEvent("🔑", `Reset password <b>@${escapeHtml(currentUserDetail.username)}</b>`, {
-        action: "password-reset",
-        target: currentUserDetail.username,
-        reason: "admin-initiated",
-      });
-      renderAdminLiveFeed();
-      toast(`✓ Password <b>@${escapeHtml(currentUserDetail.username)}</b> di-reset ke <code>playly1234</code>. User wajib ganti saat login pertama.`, "success");
-    }
+  // FIX 2026-07-03: admin PILIH password baru sendiri (dulu hardcode "playly1234").
+  const newPassword = window.prompt(
+    `Password BARU untuk @${currentUserDetail.username} (min. 6 karakter):`,
+    ""
+  );
+  if (newPassword === null) return;                          // admin batal
+  if (String(newPassword).length < 6) return toast("⚠ Password minimal 6 karakter", "warning");
+
+  const accKey = `playly-account-${currentUserDetail.email}`;
+  const acc = JSON.parse(localStorage.getItem(accKey) || "null");
+  if (!acc) return toast("❌ Akun tidak ditemukan", "error");
+
+  // 1) Set password LOKAL (device ini) — hash password pilihan admin.
+  try { acc.password = await hashPassword(newPassword); } catch (_) {}
+  delete acc.mustChangePassword;                             // admin sengaja set → jangan paksa ganti
+  acc.passwordResetByAdminAt = Date.now();
+  acc.passwordResetBy = (typeof user === "object" && user?.username) || "admin";
+  localStorage.setItem(accKey, JSON.stringify(acc));
+
+  // 2) Set password di SUPABASE AUTH (server) — supaya login LINTAS-PERANGKAT pakai
+  //    password baru (dulu reset ini cuma lokal → di device lain password lama tetap).
+  let cloudOk = false, cloudReason = "";
+  try {
+    const r = await fetch("/api/admin/reset-password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ email: currentUserDetail.email, newPassword }),
+    });
+    const d = await r.json().catch(() => null);
+    cloudOk = !!(r.ok && d && d.ok);
+    if (!cloudOk) cloudReason = (d && (d.message || d.error)) || ("HTTP " + r.status);
+  } catch (_) { cloudReason = "koneksi"; }
+
+  pushAdminEvent("🔑", `Reset password <b>@${escapeHtml(currentUserDetail.username)}</b>`, {
+    action: "password-reset",
+    target: currentUserDetail.username,
+    reason: "admin-initiated",
   });
+  if (typeof renderAdminLiveFeed === "function") renderAdminLiveFeed();
+
+  if (cloudOk) {
+    toast(`✅ Password @${escapeHtml(currentUserDetail.username)} di-reset — bisa login di SEMUA perangkat.`, "success");
+  } else {
+    toast(`⚠️ Password lokal diganti, TAPI gagal ke server (${escapeHtml(cloudReason)}) — login perangkat lain mungkin belum berubah.`, "warning");
+  }
 });
 
 $("#audViewVideosBtn")?.addEventListener("click", () => {
