@@ -3167,7 +3167,7 @@ async function openAdminPlayer(id) {
 
   if (titleEl) titleEl.textContent = v.title || "(no title)";
   const creator = v.creator || v._owner || "—";
-  if (creatorAvEl) creatorAvEl.textContent = (creator[0] || "A").toUpperCase();
+  if (creatorAvEl) creatorAvEl.textContent = avatarInitial(creator);
   if (creatorNameEl) creatorNameEl.textContent = "@" + creator;
   if (creatorMetaEl) {
     // Count creator's other videos
@@ -4071,8 +4071,14 @@ function avatarInitial(src) {
   let s = "";
   if (src && typeof src === "object") s = src.username || src.name || "";
   else s = (src == null) ? "" : src;
-  const ch = String(s).trim().replace(/[^A-Za-z0-9]/g, "").charAt(0);
-  return (ch || "U").toUpperCase();
+  s = String(s).trim();
+  // Utamakan HURUF ABJAD pertama — lewati simbol/angka di depan (mis. "_bintangp"
+  // → "B", "!07john" → "J"). Kalau tak ada huruf sama sekali, pakai alfanumerik
+  // pertama; kalau tetap kosong, "U". (req user 2026-07-03: avatar jangan pernah
+  // menampilkan simbol seperti "_"/"!" di depan.)
+  const letter = s.replace(/[^A-Za-z]/g, "").charAt(0);
+  const alnum = s.replace(/[^A-Za-z0-9]/g, "").charAt(0);
+  return (letter || alnum || "U").toUpperCase();
 }
 
 function applyUserToUI() {
@@ -34748,7 +34754,7 @@ function openInboxDetailModal({ kind, item }) {
       ${replies.map(r => `
         <div class="ticket-thread-item">
           <div class="ticket-thread-head">
-            <span class="ticket-thread-avatar">${escapeHtml((r.fromName || "Admin").slice(0,1).toUpperCase())}</span>
+            <span class="ticket-thread-avatar">${escapeHtml(avatarInitial(r.fromName || "Admin"))}</span>
             <div class="ticket-thread-meta">
               <strong>${escapeHtml(r.fromName || "Super Admin")}</strong>
               <span>&lt;${escapeHtml(r.fromEmail || OFFICIAL_ADMIN_EMAIL)}&gt;</span>
@@ -38061,7 +38067,7 @@ function renderPremiumInsightsView() {
             <div class="pi-hero5-avatar" aria-hidden="true">
               ${user?.avatar
                 ? `<img src="${escapeHtml(user.avatar)}" alt=""/>`
-                : `<span class="pi-hero5-avatar-fb">${escapeHtml((user?.name || user?.username || "U").charAt(0).toUpperCase())}</span>`}
+                : `<span class="pi-hero5-avatar-fb">${escapeHtml(avatarInitial(user?.name || user?.username))}</span>`}
             </div>
             <span class="pi-hero5-star" aria-hidden="true">${_icoStar}</span>
           </div>
@@ -39533,7 +39539,7 @@ function renderHomeSuggestCard() {
   wrap.innerHTML = `
     <div class="hsg-list">
       ${candidates.map(c => {
-        const init = escapeHtml(c.init || (c.name || "?").slice(0, 1).toUpperCase());
+        const init = escapeHtml(avatarInitial(c.name || c.username || c.init));
         const name = escapeHtml(c.name);
         const subs = escapeHtml(c.subs || `${c.followers || 0} followers`);
         return `
@@ -43357,7 +43363,7 @@ function renderActivityList() {
   const bucketOf = (ts) => ts >= startToday ? t("activity.group.today")
     : ts >= startYest ? t("activity.group.yesterday")
     : ts >= startWeek ? t("activity.group.week") : t("activity.group.older");
-  const myInit = (((user && (user.name || user.username)) || "U") + "").trim().charAt(0).toUpperCase();
+  const myInit = avatarInitial((user && (user.name || user.username)) || "U");
   const iconHtml = (a) => typeof emojiToIcon === "function" ? emojiToIcon(a.icon) : (a.icon || "");
   // Pelaku (avatar) + sisa kalimat (kunci agregasi) dari entri masuk "@x <verb> ...".
   const parseIn = (a) => {
@@ -43408,13 +43414,13 @@ function renderActivityList() {
       const textHtml = handles.length > 1
         ? `<b>@${escapeHtml(handles[0])}</b> & ${handles.length - 1} ${t("activity.others")} ${escapeHtml(pa.rest)}`
         : buildActText(a);
-      html += row(a, textHtml, handles[0].charAt(0).toUpperCase(), unread);
+      html += row(a, textHtml, avatarInitial(handles[0]), unread);
       i = j;
       continue;
     }
 
     // Keluar (avatar = kamu) atau legacy tanpa pelaku (avatar polos = ikon tipe)
-    const initial = a.dir === "out" ? myInit : (parseIn(a) ? parseIn(a).handle.charAt(0).toUpperCase() : "");
+    const initial = a.dir === "out" ? myInit : (parseIn(a) ? avatarInitial(parseIn(a).handle) : "");
     html += row(a, buildActText(a), initial, ts > seen);
     i++;
   }
@@ -44336,7 +44342,7 @@ function fypCardHTML(v) {
   // didefinisikan di fungsi aktivitas lain) → ReferenceError tiap kartu feed
   // punya video → renderFYP throw → initDashboard halt → dashboard nyangkut
   // "Memuat..." & tak route ke admin-dashboard. Ekspresi robust (user null → "U").
-  const myInit = (((user && (user.name || user.username)) || "U") + "").trim().charAt(0).toUpperCase();
+  const myInit = avatarInitial((user && (user.name || user.username)) || "U");
   const commentCount = state?.comments?.[v.id]?.length || 0;
   const shareCount = getShareCount(v.id);
   // Real-time relative timestamp — pakai _fypTime (publishedAt/uploadedAt/
@@ -48051,7 +48057,7 @@ function renderDmOverview() {
 // Build single thread preview row buat overview card. Compact: avatar +
 // name (admin badge kalau perlu) + time + last msg preview.
 function buildOvThreadRow(m, idx) {
-  var init = escapeHtml(m.init || (m.name || "U").slice(0, 1).toUpperCase());
+  var init = escapeHtml(avatarInitial(m.name || m.username || m.init));
   var name = escapeHtml(m.name || "User");
   var time = m.ts && typeof chatRelTime === "function" ? chatRelTime(m.ts) : "";
   var adminBadge = (m.isAdmin || m.isBroadcast) ? '<span class="dm-ov-badge-admin">Admin</span>' : "";
@@ -53338,7 +53344,7 @@ function renderUserEmail() {
 
     // Icon — admin = shield, user-out = sent, user-in = inbox
     const icon = e.kind === "admin-out" ? "🛡️" : (e.kind === "user-in" ? "📥" : "📤");
-    const peerInit = (String(e.peerUsername || "?").trim().charAt(0) || "?").toUpperCase();
+    const peerInit = avatarInitial(e.peerUsername);
 
     // Preview body — kalau inbox dan punya reply, pakai body reply terakhir
     const previewSrc = (userEmailState.filter === "inbox" && lastReply?.body) ? lastReply.body : (e.body || "");
@@ -56958,7 +56964,7 @@ function _gsRender(query, videoMatches, creatorMatches, hashtagMatches, pageMatc
       <div class="ss-section-title">Video</div>
       ${videoMatches.slice(0, 5).map(v => {
         const thumb = v.thumb || v.thumbnail || "";
-        const init = String(v.creator || v.username || "?")[0].toUpperCase();
+        const init = avatarInitial(v.creator || v.username);
         return `<button type="button" class="ss-item" data-ss-video="${escapeHtml(String(v.id))}">
           <div class="ss-thumb">${thumb ? `<img src="${escapeHtml(thumb)}" alt=""/>` : init}</div>
           <div class="ss-info">
@@ -56973,7 +56979,7 @@ function _gsRender(query, videoMatches, creatorMatches, hashtagMatches, pageMatc
     html += `<div class="ss-section">
       <div class="ss-section-title">Kreator</div>
       ${creatorMatches.slice(0, 4).map(a => {
-        const init = String(a.name || a.username || "?")[0].toUpperCase();
+        const init = avatarInitial(a.name || a.username);
         return `<button type="button" class="ss-item" data-ss-user="${escapeHtml(a.username || "")}">
           <div class="ss-avatar">${escapeHtml(init)}</div>
           <div class="ss-info">
@@ -57080,7 +57086,7 @@ function _renderSearchResultsOverlay() {
             <section class="sr-section">
               <h3 class="sr-section-title">Kreator <span class="sr-sec-count">${creators.length}</span></h3>
               <div class="sr-creators-grid">
-                ${creators.map(a => { var init = String(a.name || a.username || "?")[0].toUpperCase(); return `<button type="button" class="sr-creator-card" translate="no" data-ss-user="${escapeHtml(a.username || "")}"><span class="sr-creator-avatar">${escapeHtml(init)}</span><span class="sr-creator-info"><strong translate="no">${_gsHighlight(a.name || a.username, query)}</strong><small translate="no">@${escapeHtml(a.username || "")}</small></span><span class="sr-creator-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></button>`; }).join("")}
+                ${creators.map(a => { var init = avatarInitial(a.name || a.username); return `<button type="button" class="sr-creator-card" translate="no" data-ss-user="${escapeHtml(a.username || "")}"><span class="sr-creator-avatar">${escapeHtml(init)}</span><span class="sr-creator-info"><strong translate="no">${_gsHighlight(a.name || a.username, query)}</strong><small translate="no">@${escapeHtml(a.username || "")}</small></span><span class="sr-creator-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></button>`; }).join("")}
               </div>
             </section>
           ` : ""}
@@ -57088,7 +57094,7 @@ function _renderSearchResultsOverlay() {
             <section class="sr-section">
               <h3 class="sr-section-title">Video <span class="sr-sec-count">${videos.length}</span></h3>
               <div class="sr-videos-grid">
-                ${videos.map(v => { var thumb = v.thumb || v.thumbnail || ""; var init = String(v.creator || v.username || "?")[0].toUpperCase(); return `<button type="button" class="sr-video-card" translate="no" data-ss-video="${escapeHtml(String(v.id))}"><span class="sr-video-thumb">${thumb ? `<img src="${escapeHtml(thumb)}" alt="" loading="lazy"/>` : `<span class="sr-thumb-fb">${init}</span>`}${v.duration ? `<span class="sr-video-dur" translate="no">${escapeHtml(String(v.duration))}</span>` : ""}</span><span class="sr-video-info"><strong class="sr-video-title" translate="no">${_gsHighlight(v.title || "(tanpa judul)", query)}</strong><span class="sr-video-by"><span class="sr-by-ava">${init}</span><span class="sr-by-name" translate="no">@${escapeHtml(v.creator || v.username || "anon")}</span></span><span class="sr-video-stats">${fmtNum(v.viewsNum || 0)} tontonan · ❤ ${fmtNum(v.likes || 0)}</span></span></button>`; }).join("")}
+                ${videos.map(v => { var thumb = v.thumb || v.thumbnail || ""; var init = avatarInitial(v.creator || v.username); return `<button type="button" class="sr-video-card" translate="no" data-ss-video="${escapeHtml(String(v.id))}"><span class="sr-video-thumb">${thumb ? `<img src="${escapeHtml(thumb)}" alt="" loading="lazy"/>` : `<span class="sr-thumb-fb">${init}</span>`}${v.duration ? `<span class="sr-video-dur" translate="no">${escapeHtml(String(v.duration))}</span>` : ""}</span><span class="sr-video-info"><strong class="sr-video-title" translate="no">${_gsHighlight(v.title || "(tanpa judul)", query)}</strong><span class="sr-video-by"><span class="sr-by-ava">${init}</span><span class="sr-by-name" translate="no">@${escapeHtml(v.creator || v.username || "anon")}</span></span><span class="sr-video-stats">${fmtNum(v.viewsNum || 0)} tontonan · ❤ ${fmtNum(v.likes || 0)}</span></span></button>`; }).join("")}
               </div>
             </section>
           ` : ""}
