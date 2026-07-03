@@ -3762,10 +3762,14 @@ function bootWithWelcome() {
   function check() {
     try {
       if (!document.body.classList.contains("auth-mode")) return; // sudah masuk dashboard
-      var hasSession = !!localStorage.getItem("playly-user") ||
-        !!localStorage.getItem("playly-current-email") ||
-        Object.keys(localStorage).some(function (k) { return /sb-.*auth-token/.test(k); });
-      if (!hasSession) return;                                   // memang di landing (belum login)
+      // FIX 2026-07-03: watchdog ini HANYA untuk "boot nyangkut" — user SUDAH login
+      // (tryAutoBoot berhasil → variabel `user` ter-set) tapi dashboard tak muncul.
+      // Bug lama: syaratnya cukup "ada token sisa" (playly-user / playly-current-email
+      // / sb-*-auth-token di localStorage) → padahal user di HALAMAN LOGIN dengan
+      // token Supabase sisa akan lolos → watchdog salah reload (?_r=...) & menghapus
+      // isian form login. `user` = kebenaran runtime: null = memang di landing / belum
+      // login (JANGAN reload); ter-set = benar login (boot mestinya sudah jalan).
+      if (!user || !(user.email || user.username)) return;      // belum login → jangan reload
       if (sessionStorage.getItem("playly-boot-recovered")) return; // sudah coba sekali → stop
       sessionStorage.setItem("playly-boot-recovered", "1");
       var u = new URL(location.href);
