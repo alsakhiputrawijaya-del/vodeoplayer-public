@@ -31405,38 +31405,57 @@ $("#audDeactivateBtn")?.addEventListener("click", () => {
   }
 });
 
-$("#audResetPwBtn")?.addEventListener("click", () => {
+$("#audResetPwBtn")?.addEventListener("click", async () => {
   if (!currentUserDetail) return;
   if (isAllowedAdminEmail(currentUserDetail.email)) {
     return toast("🔒 Password Admin tidak bisa di-reset dari sini", "warning");
   }
-  openConfirm({
-    icon: "🔑", iconClass: "warn",
-    title: "Reset Password User?",
-    desc: `Password <b>@${currentUserDetail.username}</b> akan di-reset ke <code>playly1234</code>. User harus login ulang.`,
-    btnText: "Reset Password", btnClass: "primary",
-    onConfirm: () => {
-      const accKey = `playly-account-${currentUserDetail.email}`;
-      const acc = JSON.parse(localStorage.getItem(accKey) || "null");
-      if (!acc) return toast("❌ Akun tidak ditemukan", "error");
-      acc.password = DEFAULT_RESET_PASSWORD_HASH;
-      // C-4 U-L3 fix (2026-05-21): set mustChangePassword flag supaya user
-      // dipaksa ganti password saat login pertama setelah reset.
-      // Sebelumnya: default "playly1234" hash dipasang tanpa flag → user
-      // bisa terus pakai default forever (publicly known credential).
-      acc.mustChangePassword = true;
-      acc.passwordResetByAdminAt = Date.now();
-      acc.passwordResetBy = (typeof user === "object" && user?.username) || "admin";
-      localStorage.setItem(accKey, JSON.stringify(acc));
-      pushAdminEvent("🔑", `Reset password <b>@${escapeHtml(currentUserDetail.username)}</b>`, {
-        action: "password-reset",
-        target: currentUserDetail.username,
-        reason: "admin-initiated",
-      });
-      renderAdminLiveFeed();
-      toast(`✓ Password <b>@${escapeHtml(currentUserDetail.username)}</b> di-reset ke <code>playly1234</code>. User wajib ganti saat login pertama.`, "success");
-    }
+  // FIX 2026-07-03: admin PILIH password baru sendiri (dulu hardcode "playly1234").
+  const newPassword = window.prompt(
+    `Password BARU untuk @${currentUserDetail.username} (min. 6 karakter):`,
+    ""
+  );
+  if (newPassword === null) return;                          // admin batal
+  if (String(newPassword).length < 6) return toast("⚠ Password minimal 6 karakter", "warning");
+
+  const accKey = `playly-account-${currentUserDetail.email}`;
+  const acc = JSON.parse(localStorage.getItem(accKey) || "null");
+  if (!acc) return toast("❌ Akun tidak ditemukan", "error");
+
+  // 1) Set password LOKAL (device ini) — hash password pilihan admin.
+  try { acc.password = await hashPassword(newPassword); } catch (_) {}
+  delete acc.mustChangePassword;                             // admin sengaja set → jangan paksa ganti
+  acc.passwordResetByAdminAt = Date.now();
+  acc.passwordResetBy = (typeof user === "object" && user?.username) || "admin";
+  localStorage.setItem(accKey, JSON.stringify(acc));
+
+  // 2) Set password di SUPABASE AUTH (server) — supaya login LINTAS-PERANGKAT pakai
+  //    password baru (dulu reset ini cuma lokal → di device lain password lama tetap).
+  let cloudOk = false, cloudReason = "";
+  try {
+    const r = await fetch("/api/admin/reset-password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ email: currentUserDetail.email, newPassword }),
+    });
+    const d = await r.json().catch(() => null);
+    cloudOk = !!(r.ok && d && d.ok);
+    if (!cloudOk) cloudReason = (d && (d.message || d.error)) || ("HTTP " + r.status);
+  } catch (_) { cloudReason = "koneksi"; }
+
+  pushAdminEvent("🔑", `Reset password <b>@${escapeHtml(currentUserDetail.username)}</b>`, {
+    action: "password-reset",
+    target: currentUserDetail.username,
+    reason: "admin-initiated",
   });
+  if (typeof renderAdminLiveFeed === "function") renderAdminLiveFeed();
+
+  if (cloudOk) {
+    toast(`✅ Password @${escapeHtml(currentUserDetail.username)} di-reset — bisa login di SEMUA perangkat.`, "success");
+  } else {
+    toast(`⚠️ Password lokal diganti, TAPI gagal ke server (${escapeHtml(cloudReason)}) — login perangkat lain mungkin belum berubah.`, "warning");
+  }
 });
 
 $("#audViewVideosBtn")?.addEventListener("click", () => {
