@@ -3770,17 +3770,17 @@ function bootWithWelcome() {
       // Watchdog ini untuk "boot nyangkut" (sudah login tapi dashboard tak muncul).
       // Bug: saat user di HALAMAN LOGIN + ada token sisa (sb-*-auth-token / email
       // lama), watchdog salah kira "nyangkut" lalu reload (?_r=...) → menghapus
-      // email/password yang sudah diketik. Pembeda andal: user login = sedang
-      // mengetik / fokus di form; boot-nyangkut = tidak menyentuh form login.
-      var authEl = document.getElementById("authScreen");
-      if (authEl) {
-        var focusedInAuth = document.activeElement && authEl.contains(document.activeElement);
-        var typedInAuth = Array.prototype.some.call(
-          authEl.querySelectorAll("input"),
-          function (el) { return el.value && String(el.value).trim(); }
-        );
-        if (focusedInAuth || typedInAuth) return;                // user sedang login → jangan reload
-      }
+      // email/password yang sudah diketik. Pembeda andal (TAK bergantung letak DOM —
+      // form login bisa di dalam modal, bukan hanya #authScreen):
+      //   (a) user sedang fokus/mengetik di input/textarea APA PUN, ATAU
+      //   (b) field login (email/password/username) sudah terisi di mana pun.
+      var ae = document.activeElement;
+      if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)) return;
+      var loginFilled = Array.prototype.some.call(
+        document.querySelectorAll('input[name="email"], input[name="password"], input[name="username"]'),
+        function (el) { return el.value && String(el.value).trim(); }
+      );
+      if (loginFilled) return;                                   // user sedang isi form login → jangan reload
       if (sessionStorage.getItem("playly-boot-recovered")) return; // sudah coba sekali → stop
       sessionStorage.setItem("playly-boot-recovered", "1");
       var u = new URL(location.href);
