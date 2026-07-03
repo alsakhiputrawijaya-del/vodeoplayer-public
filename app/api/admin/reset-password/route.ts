@@ -1,9 +1,13 @@
 // Admin reset-password endpoint — super-admin set password user LANGSUNG (tanpa email).
+// Sekaligus "daftarkan-jika-belum-ada": kalau akun ada di panel admin tapi belum di
+// Supabase Auth, endpoint ini MEMBUATNYA (lihat langkah 3) — jadi alat perbaikan
+// untuk akun yang terlanjur cuma tersimpan lokal.
 //
 // KENAPA ADA: aplikasi membolehkan daftar pakai email bebas/fiktif ("Confirm email"
 // OFF), jadi pemulihan password lewat email TIDAK pernah bisa. Maka admin butuh cara
 // mengatur ulang password user langsung. Endpoint ini pakai Supabase Auth Admin API
-// (service-role) `updateUserById` untuk mengganti password di auth.users.
+// (service-role) `updateUserById` untuk mengganti password di auth.users (atau
+// `createUser` kalau akunnya belum ada).
 //
 // Setelah reset, user bisa login lintas-perangkat dgn password baru: login flow
 // memverifikasi via Supabase Auth (verifyStrict) → cocok → masuk (hash lokal lama di
@@ -78,18 +82,58 @@ export async function POST(req: Request) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return jsonError('invalid_email', 400);
   if (newPassword.length < 6) return jsonError('weak_password', 400);
 
-  // 3. Cari user di Supabase Auth + set password baru.
-  const uid = await findAuthUidByEmail(admin, email);
+  // 3. Cari user di Supabase Auth. Kalau BELUM ada, DAFTARKAN sekarang dengan
+  //    password ini (email_confirm:true = langsung bisa login). Ini menutup
+  //    lubang: akun yang dibuat admin sebelum fitur auto-registrasi (PR #13) —
+  //    atau yang registrasinya gagal saat itu — cuma tersimpan lokal, tak ada
+  //    di Supabase, sehingga tak bisa login DAN tak bisa diperbaiki (Buat User
+  //    menolak "sudah ada", reset lama gagal "tak ditemukan"). Kini "Reset
+  //    Password User" sekaligus jadi "daftarkan + set password".
+  let uid = await findAuthUidByEmail(admin, email);
+  let registered = false;
   if (!uid) {
-    return jsonError('user_not_found', 404, {
-      message: 'Akun tidak ditemukan di Supabase Auth.',
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email,
+      password: newPassword,
+      email_confirm: true,
     });
+    if (createErr) {
+      // Balapan: mungkin baru terbuat di request lain → cari ulang.
+      const msg = (createErr.message || '').toLowerCase();
+      if (msg.includes('already') || msg.includes('exist') || msg.includes('registered')) {
+        uid = await findAuthUidByEmail(admin, email);
+      }
+    } else {
+      uid = created?.user?.id || null;
+      registered = true;
+    }
+    if (!uid) {
+      return jsonError('create_failed', 500, {
+        message: createErr?.message || 'Gagal mendaftarkan akun ke Supabase Auth.',
+      });
+    }
+    if (registered) {
+      // Upsert profil minimal supaya akun muncul di daftar user cloud.
+      // Non-fatal — auth.users sudah cukup untuk login.
+      try {
+        await admin.from('profiles').upsert({ id: uid, email, tier: 'free' }, { onConflict: 'id' });
+      } catch {
+        /* profil non-fatal */
+      }
+    }
   }
 
-  const { error } = await admin.auth.admin.updateUserById(uid, { password: newPassword });
-  if (error) {
-    return jsonError('reset_failed', 500, { message: error.message });
+  // Akun baru dibuat → password sudah di-set saat createUser. Akun sudah ada →
+  // set password barunya.
+  if (!registered) {
+    if (!uid) {
+      return jsonError('user_not_found', 404, { message: 'Akun tidak ditemukan di Supabase Auth.' });
+    }
+    const { error } = await admin.auth.admin.updateUserById(uid, { password: newPassword });
+    if (error) {
+      return jsonError('reset_failed', 500, { message: error.message });
+    }
   }
 
-  return jsonOk({ reset: true });
+  return jsonOk({ reset: true, registered });
 }
