@@ -1,10 +1,17 @@
 # .github/workflows/ai-review.yml
 # Senior AI Reviewer — auto-review PR pakai Claude
 #
-# Cara pakai:
-# 1. Tambahkan secret `ANTHROPIC_API_KEY` di GitHub repo settings.
-# 2. Pastikan file `docs/_PATTERNS.md` & `docs/architecture.md` ada (dibaca jadi context).
-# 3. Buka PR ke `main` → action otomatis jalan & posting review comment.
+# STATUS: NONAKTIF sampai diaktifkan manual (2 langkah di bawah). Dulu robot ini
+# jalan di TIAP PR dan selalu GAGAL (merah) karena secret ANTHROPIC_API_KEY belum
+# dipasang — tanda merah palsu itu berbahaya untuk tim: lama-lama semua orang
+# terbiasa mengabaikan tanda merah, termasuk yang asli. Sekarang: kalau belum
+# diaktifkan, robot ini DILEWATI (abu-abu "skipped", bukan merah).
+#
+# Cara MENGAKTIFKAN (lihat langkah di bawah — sekali saja, oleh owner):
+# 1. Settings → Secrets and variables → Actions → Secrets → tambah `ANTHROPIC_API_KEY`.
+# 2. Settings → Secrets and variables → Actions → Variables → tambah `ENABLE_AI_REVIEW` = `true`.
+# 3. Pastikan file `docs/_PATTERNS.md` & `docs/architecture.md` ada (dibaca jadi context).
+# Buka PR ke `main` → action otomatis jalan & posting review comment.
 
 name: Senior AI Reviewer (Otomatis)
 
@@ -24,7 +31,9 @@ jobs:
     name: Senior AI Reviewer
     runs-on: ubuntu-latest
     # Jangan jalan untuk PR dari fork (secret tidak tersedia + risiko keamanan).
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # + Hanya jalan kalau sudah diaktifkan via Variable ENABLE_AI_REVIEW=true
+    #   (lihat header file) — mencegah tanda merah palsu saat secret belum ada.
+    if: github.event.pull_request.head.repo.full_name == github.repository && vars.ENABLE_AI_REVIEW == 'true'
 
     steps:
       - name: Checkout kode PR

@@ -1,0 +1,70 @@
+# .github/workflows/ci.yml
+# Robot pemeriksa "ci" — WAJIB HIJAU sebelum PR boleh digabung ke main.
+#
+# Kenapa ada: 5-10 orang kerja bareng di repo ini (termasuk file raksasa
+# public/legacy/script.js). Robot ini mencegah kode rusak masuk ke versi live:
+#   1. Cek sintaks script.js (salah ketik 1 kurung = seluruh dashboard mati).
+#   2. Cek tipe TypeScript seluruh proyek (endpoint API dll).
+#   3. Jaga file hasil-build (script.min.js) tidak ikut ter-commit.
+#
+# Nama job SENGAJA "ci" — dipakai sebagai syarat wajib di pagar branch main
+# (branch protection required status check). Jangan di-rename tanpa update
+# pagar di Settings GitHub (atau .github/scripts/setup-branch-protection.ps1).
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Hak akses minimum: cuma baca kode.
+permissions:
+  contents: read
+
+# Hemat antrean: push baru di PR yang sama membatalkan run lama yang belum
+# selesai (untuk push ke main tetap dibiarkan selesai).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Pasang dependensi (persis sesuai lockfile)
+        run: npm ci --no-audit --no-fund
+
+      - name: Cek sintaks script.js (file legacy raksasa — titik konflik utama tim)
+        run: node --check public/legacy/script.js
+
+      - name: Cek tipe TypeScript (endpoint API + lib)
+        run: npx tsc --noEmit
+
+      - name: Jaga file hasil-build tidak ter-commit
+        shell: bash
+        run: |
+          set -u
+          fail=0
+          # script.min.js auto-generate saat build (prebuild → minify-legacy.mjs).
+          # Kalau ter-commit: tiap PR bakal konflik di file ini + isinya pasti basi.
+          if git ls-files --error-unmatch public/legacy/script.min.js >/dev/null 2>&1; then
+            echo "::error::public/legacy/script.min.js tidak boleh di-commit — file ini dibuat otomatis saat build. Hapus dari commit (git rm --cached public/legacy/script.min.js)."
+            fail=1
+          fi
+          if git ls-files --error-unmatch .next >/dev/null 2>&1; then
+            echo "::error::folder .next (hasil build) tidak boleh di-commit."
+            fail=1
+          fi
+          exit $fail

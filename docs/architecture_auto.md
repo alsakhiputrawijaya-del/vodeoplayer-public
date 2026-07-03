@@ -30,7 +30,7 @@ Contoh:
 <!-- AI tambah baris baru di sini tiap LAZY-GENERATE / BOOTSTRAP -->
 <!-- Format: - [<filename>](<path>) - <summary> -->
 
-*(Belum ada `.md` pendamping. Kalau buat file kode CRITICAL, AI akan tawarkan LAZY-GENERATE - terima dengan "y" → entri muncul di sini otomatis.)*
+- [PANDUAN_KERJA_KELOMPOK.md](PANDUAN_KERJA_KELOMPOK.md) - Aturan tim 5-10 orang: 1 tugas=1 branch, pull main harian, pagar main, anti-konflik script.js
 
 ---
 
@@ -57,5 +57,6 @@ Contoh:
 | Tanggal | Aksi | Catatan |
 |---|---|---|
 | 2026-05-31 | Inisialisasi | Skeleton (registry TOC kosong, AI auto-update saat ada `.md` baru). |
+| 2026-07-03 | Tambah entri | PANDUAN_KERJA_KELOMPOK.md (pola kerja tim + pagar branch main). |
 
 <!-- AI tambah baris baru tiap update registry (file baru / rename / hapus). -->
