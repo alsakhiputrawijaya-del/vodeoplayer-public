@@ -47,4 +47,4 @@
 <!-- Drag & drop gambar di sini. Hapus section ini kalau bukan perubahan UI. -->
 
 ---
-<sub>Senior AI Reviewer akan otomatis posting review di PR ini. Tetap tunggu review manusia untuk perubahan kritis (auth, payment, migrasi DB).</sub>
+<sub>Robot "ci" wajib hijau + minimal 1 persetujuan teman sebelum PR bisa digabung (lihat `docs/PANDUAN_KERJA_KELOMPOK.md`). Perubahan area sensitif (API, database, config) otomatis minta persetujuan owner. Senior AI Reviewer posting review otomatis hanya kalau diaktifkan owner.</sub>

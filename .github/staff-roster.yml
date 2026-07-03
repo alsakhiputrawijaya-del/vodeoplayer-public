@@ -15,8 +15,15 @@
 
 staff:
   - email: scarfacescarlxrd@gmail.com
-    name: <Owner Name>
-    github: <owner-github-handle>
+    name: Cantika Amaharani
+    github: cantikaamaharaniptr-cloud
     role: owner
-    added_at: <YYYY-MM-DD>
+    added_at: 2026-07-03
     notes: Project owner. Real contact via Signal/Telegram untuk hal sensitif.
+  # Tambah anggota tim (5-10 orang) di bawah ini sebelum onboarding — samakan
+  # handle github dengan yang diundang di Settings > Collaborators (role Write).
+  # - email: <email-anggota>
+  #   name: <nama>
+  #   github: <handle-github>
+  #   role: frontend-developer
+  #   added_at: <YYYY-MM-DD>

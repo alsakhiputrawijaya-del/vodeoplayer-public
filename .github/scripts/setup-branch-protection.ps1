@@ -55,7 +55,7 @@
 param(
     [string]$Repo = '',
     [string]$Branch = 'main',
-    [string]$RequiredCheck = 'ci',
+    [string[]]$RequiredCheck = @('ci', 'Penjaga Kebocoran Rahasia'),
     [switch]$Apply
 )
 
@@ -122,10 +122,17 @@ $payload = @{
         strict   = $true
         contexts = @($RequiredCheck)
     }
-    enforce_admins                = $true
+    # $false = owner/admin DIKECUALIKAN dari pagar (jalan darurat + bisa merge
+    # sendiri di repo yang kolaboratornya masih sedikit). Keputusan tim 2026-07-03
+    # — selaras docs/PANDUAN_KERJA_KELOMPOK.md Bagian 5. Ubah ke $true kalau tim
+    # sudah besar dan owner juga mau ikut terikat pagar.
+    enforce_admins                = $false
     required_pull_request_reviews = @{
         required_approving_review_count = 1
         require_code_owner_reviews      = $true
+        # Approval gugur otomatis kalau ada commit baru setelah disetujui
+        # (yang disetujui = versi yang benar-benar digabung).
+        dismiss_stale_reviews           = $true
     }
     restrictions                  = $null
     allow_force_pushes            = $false
