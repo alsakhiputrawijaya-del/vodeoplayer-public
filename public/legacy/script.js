@@ -19461,6 +19461,45 @@ document.getElementById("createUserForm")?.addEventListener("submit", async e =>
   });
 })();
 
+// FIX 2026-07-03: form Admin "Reset Password User" (super-admin only). Set password
+// user LANGSUNG via /api/admin/reset-password (Supabase Auth Admin API, service-role) —
+// tanpa email pemulihan (aplikasi pakai email fiktif, jadi pemulihan-email tak jalan).
+document.getElementById("resetUserPwForm")?.addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!user || (typeof isSuperAdmin === "function" && !isSuperAdmin(user))) {
+    return toast("🔒 Hanya super-admin yang bisa reset password user", "warning");
+  }
+  const fd = new FormData(e.target);
+  const email = String(fd.get("email") || "").trim().toLowerCase();
+  const newPassword = String(fd.get("newPassword") || "");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast("⚠ Format email tidak valid", "warning");
+  if (newPassword.length < 6) return toast("⚠ Password minimal 6 karakter", "warning");
+  const btn = e.target.querySelector('button[type="submit"]');
+  const orig = btn ? btn.innerHTML : "";
+  if (btn) { btn.disabled = true; btn.textContent = "Mereset…"; }
+  try {
+    const r = await fetch("/api/admin/reset-password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ email, newPassword }),
+    });
+    const d = await r.json().catch(() => null);
+    if (r.ok && d && d.ok) {
+      toast(`✅ Password untuk ${escapeHtml(email)} berhasil di-reset — user bisa login pakai password baru`, "success");
+      if (typeof pushAdminEvent === "function") pushAdminEvent("🔑", `Password akun <b>${escapeHtml(email)}</b> di-reset admin`);
+      e.target.reset();
+    } else {
+      const reason = (d && (d.message || d.error)) || ("HTTP " + r.status);
+      toast(`❌ Gagal reset password: ${reason}`, "error");
+    }
+  } catch (err) {
+    toast("❌ Gagal reset password (koneksi bermasalah?)", "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+  }
+});
+
 document.getElementById("setTierForm")?.addEventListener("submit", e => {
   e.preventDefault();
   const fd       = new FormData(e.target);
