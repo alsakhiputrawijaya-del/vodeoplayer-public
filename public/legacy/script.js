@@ -25607,12 +25607,12 @@ function openAdminRecoveryChoiceModal(prefillId = "") {
       <p class="muted">Akun admin cadangan punya 2 cara recovery. Pilih salah satu.</p>
       <div class="ar-choice-grid">
         <button type="button" class="ar-choice-card" data-ar-choice="email">
-          <div class="ar-choice-ico">✉️</div>
+          <div class="ar-choice-ico">🔐</div>
           <strong>Reset Sendiri</strong>
           <small>Atur kata sandi baru langsung tanpa perlu email.</small>
         </button>
         <button type="button" class="ar-choice-card" data-ar-choice="otp">
-          <div class="ar-choice-ico">🔐</div>
+          <div class="ar-choice-ico">🔑</div>
           <strong>Minta OTP ke Super Admin</strong>
           <small>Super admin akan membuat OTP 4-digit lalu memberikannya ke kamu langsung untuk verifikasi identitas.</small>
         </button>
@@ -26311,7 +26311,7 @@ function openUniversalRecoveryChoiceModal(prefillId = "") {
           <small data-no-i18n>Atur kata sandi baru langsung. Kalau akunmu aktif 2FA, perlu masukkan PIN 6-digit untuk verifikasi.</small>
         </button>
         <button type="button" class="ar-choice-card" data-ar-choice="otp">
-          <div class="ar-choice-ico">📨</div>
+          <div class="ar-choice-ico">🔑</div>
           <strong data-no-i18n>Minta OTP via ${_arEscapeHtml(_approverLabel)}</strong>
           <small data-no-i18n>${_arEscapeHtml(_approverDesc.charAt(0).toUpperCase() + _approverDesc.slice(1))} akan membuat OTP 4-digit lalu memberikannya ke kamu langsung. Cocok kalau lupa PIN 2FA atau belum mengaktifkannya.</small>
         </button>
