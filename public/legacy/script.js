@@ -23821,10 +23821,12 @@ $("#signinForm").addEventListener("submit", async e => {
       try { window.cloudSync && window.cloudSync.softResync && window.cloudSync.softResync({ force: true }); } catch (_) {}
     }, 12000);
   } catch (_) {}
+  let cloudVerify = null; // hasil verifyStrict ke Supabase Auth → untuk pesan error akurat
   if (!existing && identifier.includes("@") &&
       window.supabaseAuthBridge && window.cloudSync && window.cloudSync.enabled) {
     try {
       const vr = await window.supabaseAuthBridge.verifyStrict(email, password);
+      cloudVerify = vr;
       if (vr && vr.ok && vr.verified) {
         const rec = await window.supabaseAuthBridge.syncSignin(email, password);
         if (rec && rec.synced) {
@@ -23856,6 +23858,19 @@ $("#signinForm").addEventListener("submit", async e => {
   // Akun harus sudah terdaftar — tidak ada auto-create dari email asing.
   // Login gagal (email belum terdaftar, & tak ada di cloud) → catat kegagalan.
   if (!existing) {
+    // FIX 2026-07-03: tampilkan SEBAB asli — jangan samaratakan jadi "belum terdaftar".
+    // cloudVerify = hasil verifyStrict ke Supabase Auth (kalau pemulihan-cloud dicoba).
+    if (cloudVerify && cloudVerify.reason === "email_unconfirmed") {
+      return onFail("email", "Email belum dikonfirmasi — cek kotak masuk untuk verifikasi", "❌ Email belum dikonfirmasi — cek email untuk verifikasi");
+    }
+    if (cloudVerify && cloudVerify.networkOk === false) {
+      return onFail("email", "Server login sedang bermasalah — coba lagi sebentar", "⚠️ Server login sedang bermasalah — coba lagi sebentar");
+    }
+    if (cloudVerify && cloudVerify.reason === "wrong_or_missing") {
+      // Supabase menyamarkan "password salah" & "akun tak ada" jadi satu pesan.
+      // Kalau akun sebenarnya ADA di cloud (mis. daftar sendiri), ini = password beda.
+      return onFail("password", "Email atau password salah", "❌ Email atau password salah");
+    }
     return onFail("email", "Email belum terdaftar — silakan Daftar dulu", "❌ Email belum terdaftar — silakan Daftar dulu");
   }
 
@@ -24917,7 +24932,25 @@ $("#signupForm").addEventListener("submit", async e => {
     // dari user_state). Edge case: re-signup dgn email yg sama setelah cache
     // wipe → bridge route POST jalankan signin internal, cookie ter-set, tapi
     // state tidak ter-restore di sesi ini. Workaround: logout + login ulang.
-    try { window.supabaseAuthBridge?.syncSignup?.(email, password, user); } catch (_) {}
+    // FIX 2026-07-03: registrasi ke Supabase Auth kini DI-RETRY kalau gagal. Dulu
+    // "asal-tembak" (sekali gagal → akun tak terdaftar di cloud → login lintas-
+    // perangkat gagal "Email belum terdaftar"). Non-blocking (tak di-await) supaya
+    // TIDAK mengubah timing defaultState()/saveState() di bawah (sensitif utk sesi).
+    (function registerToSupabase(em, pw, profile, tries) {
+      try {
+        var p = window.supabaseAuthBridge?.syncSignup?.(em, pw, profile);
+        if (p && typeof p.then === "function") {
+          p.then(function (r) {
+            if (r && r.synced) return;                              // sukses
+            if (tries < 2) setTimeout(function () { registerToSupabase(em, pw, profile, tries + 1); }, 2000);
+            else console.warn("[signup] registrasi Supabase Auth gagal setelah retry:", r && r.reason);
+          }).catch(function (err) {
+            if (tries < 2) setTimeout(function () { registerToSupabase(em, pw, profile, tries + 1); }, 2000);
+            else console.warn("[signup] registrasi Supabase Auth error:", err);
+          });
+        }
+      } catch (e) { console.warn("[signup] syncSignup exception:", e); }
+    })(email, password, user, 0);
     state = defaultState();
     saveState();
 
