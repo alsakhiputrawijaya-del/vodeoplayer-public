@@ -23932,6 +23932,37 @@ $("#signinForm").addEventListener("submit", async e => {
               }
             } catch (_) {}
           }
+          // Fallback ke-3 (2026-07-03): akun BUATAN ADMIN ada di Supabase (auth
+          // + profiles) TAPI tak ada di tabel kv milik user ini — baris kv-nya
+          // dimiliki admin yang membuat, bukan user → softResync + kv fallback di
+          // atas gagal menemukannya. Susun-ulang akun dari /api/profile/me (profil
+          // cloud milik sesi yang BARU di-signin; endpoint ini memang dibuat untuk
+          // hydrate ganti-perangkat). Tanpa ini, login yang SAH ditolak dgn pesan
+          // menyesatkan "Email belum terdaftar" padahal password sudah terverifikasi
+          // Supabase (lihat kolom "Last sign in at" ikut terisi).
+          if (!existing) {
+            try {
+              const pr = await fetch("/api/profile/me", { credentials: "same-origin" });
+              const pd = await pr.json().catch(() => null);
+              if (pd && pd.ok && pd.profile && pd.profile.email) {
+                const p = pd.profile;
+                const acc = {
+                  name: p.name || p.username || email.split("@")[0],
+                  username: p.username || email.split("@")[0],
+                  email: p.email,
+                  role: (typeof isAllowedAdminEmail === "function" && isAllowedAdminEmail(p.email)) ? "admin" : "user",
+                  tier: p.tier === "premium" ? "premium" : "free",
+                  bio: p.bio || "",
+                  avatar: p.avatar_url || "",
+                  joinedAt: p.joined_at || new Date().toISOString(),
+                  userRegistered: true,
+                };
+                localStorage.setItem(`playly-account-${email}`, JSON.stringify(acc));
+                existing = acc;
+                console.log("[Auth] akun disusun-ulang dari profil cloud:", email);
+              }
+            } catch (_) {}
+          }
           if (existing) {
             recoveredFromCloud = true; // password sudah diverifikasi Supabase Auth
             console.log("[Auth] akun dipulihkan dari cloud:", email);
