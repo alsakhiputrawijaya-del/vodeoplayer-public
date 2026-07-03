@@ -19215,6 +19215,35 @@ document.getElementById("setTierModal")?.addEventListener("change", e => {
   if (ps) ps.hidden = e.target.value !== "premium";
 });
 
+// FIX 2026-07-03: daftarkan akun buatan admin ke Supabase Auth (auth.users) supaya
+// bisa login di perangkat LAIN — bukan cuma di perangkat tempat dibuat. Tanpa ini,
+// login di device lain gagal "Email belum terdaftar" (cloud recovery lewat Supabase
+// Auth tak menemukannya). Endpoint: app/api/admin/create-user (pakai Admin API
+// service-role, TIDAK membajak sesi admin). Dipanggil SETELAH akun ditulis lokal;
+// pembuatan lokal tetap jalan walau ini gagal, tapi admin diberi tahu.
+async function registerAdminCreatedAccount(payload) {
+  try {
+    const r = await fetch("/api/admin/create-user", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json().catch(() => null);
+    if (r.ok && d && d.ok) return true;
+    const reason = (d && (d.message || d.error)) || ("HTTP " + r.status);
+    console.warn("[admin-create] registrasi Supabase Auth gagal:", reason);
+    if (typeof toast === "function")
+      toast("⚠️ Akun dibuat, tapi BELUM terdaftar di server login (" + reason + "). Login di perangkat lain mungkin gagal.", "warning");
+    return false;
+  } catch (err) {
+    console.warn("[admin-create] registrasi Supabase Auth error:", err);
+    if (typeof toast === "function")
+      toast("⚠️ Akun dibuat lokal, tapi gagal daftar ke server login. Login lintas-perangkat mungkin gagal.", "warning");
+    return false;
+  }
+}
+
 document.getElementById("createUserForm")?.addEventListener("submit", async e => {
   e.preventDefault();
   const modal = document.getElementById("createUserModal");
@@ -19314,6 +19343,9 @@ document.getElementById("createUserForm")?.addEventListener("submit", async e =>
     // Pengaturan setelah login pertama. Tidak ada side-effect saat create.
   }
 
+  // Daftarkan ke Supabase Auth supaya akun bisa login lintas-perangkat (lihat helper di atas).
+  await registerAdminCreatedAccount({ email, password, name, username, tier, asAdmin: isAdminMode });
+
   const tl = isAdminMode
     ? "Admin"
     : (tier === "premium" ? `Premium · ${plan.charAt(0).toUpperCase() + plan.slice(1)}` : "Free");
@@ -19406,6 +19438,9 @@ document.getElementById("createUserForm")?.addEventListener("submit", async e =>
     if (typeof purgeUserDataByUsername === "function") purgeUserDataByUsername(username);
     try { localStorage.removeItem(`playly-prefs-${email}`); } catch {}
     localStorage.setItem(`playly-account-${email}`, JSON.stringify(acc));
+
+    // Daftarkan ke Supabase Auth supaya akun bisa login lintas-perangkat (form inline = user saja).
+    await registerAdminCreatedAccount({ email, password, name, username, tier, asAdmin: false });
 
     const tl = tier === "premium"
       ? `Premium · ${plan.charAt(0).toUpperCase() + plan.slice(1)}`
