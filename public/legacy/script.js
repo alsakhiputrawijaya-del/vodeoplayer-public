@@ -19278,13 +19278,14 @@ document.getElementById("createUserForm")?.addEventListener("submit", async e =>
     return toast("⚠ Password minimal 6 karakter", "warning");
   if (isReservedUsername(username))
     return toast("⚠ Username itu direservasi sistem", "warning");
-  // Cek email collision: di mode admin, email yang sudah jadi admin lain di-reject;
-  // di mode user, email yang ada di allowlist admin di-reject (tidak boleh user daftar pakai email admin).
+  // Cek email collision. Mode user: email yang terdaftar sebagai admin di-reject
+  // (user tak boleh pakai email admin). Mode admin: cek duplikat admin DIPINDAH ke
+  // bawah (setelah tarik cloud) supaya bisa membedakan admin ASLI (ada akunnya)
+  // vs "admin hantu" (masih tercatat di daftar-admin/allowlist tapi akunnya sudah
+  // hilang — sisa cabut/hapus lintas-perangkat yang tak sinkron).
   if (isAdminMode) {
     if (email === OFFICIAL_ADMIN_EMAIL)
       return toast("⚠ Email itu adalah super admin — tidak bisa duplikat", "warning");
-    if (getExtraAdminEmails().includes(email))
-      return toast("⚠ Email sudah terdaftar sebagai admin", "warning");
   } else {
     if (isAllowedAdminEmail(email))
       return toast("⚠ Email itu terdaftar sebagai email admin", "warning");
@@ -19297,7 +19298,19 @@ document.getElementById("createUserForm")?.addEventListener("submit", async e =>
       await Promise.resolve(window.cloudSync.syncSingleKey(`playly-account-${email}`));
     }
   } catch {}
-  if (findAccountByEmail(email))
+  const existingAcc = findAccountByEmail(email);
+  // v570 (2026-07-03): SELF-HEAL "admin hantu". Kalau email masih tercatat di
+  // daftar-admin (allowlist) TAPI akunnya tak ada, itu entri hantu sisa cabut/
+  // hapus lintas-perangkat yang tak sinkron — dulu bikin galat "Email sudah
+  // terdaftar sebagai admin" padahal di tabel kosong, dan MEMBLOKIR pembuatan
+  // ulang. Sekarang: akun ADA → tolak duplikat (admin asli); akun TAK ADA →
+  // bersihkan entri hantu + izinkan buat ulang.
+  if (isAdminMode && getExtraAdminEmails().includes(email)) {
+    if (existingAcc)
+      return toast("⚠ Email sudah terdaftar sebagai admin", "warning");
+    setExtraAdminEmails(getExtraAdminEmails().filter(e2 => e2 !== email));
+  }
+  if (existingAcc)
     return toast("⚠ Email sudah terdaftar", "warning");
   if (findAccountByUsername(username))
     return toast("⚠ Username sudah dipakai", "warning");
