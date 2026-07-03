@@ -3766,6 +3766,21 @@ function bootWithWelcome() {
         !!localStorage.getItem("playly-current-email") ||
         Object.keys(localStorage).some(function (k) { return /sb-.*auth-token/.test(k); });
       if (!hasSession) return;                                   // memang di landing (belum login)
+      // FIX 2026-07-03: JANGAN paksa reload kalau user sedang MENGISI form login.
+      // Watchdog ini untuk "boot nyangkut" (sudah login tapi dashboard tak muncul).
+      // Bug: saat user di HALAMAN LOGIN + ada token sisa (sb-*-auth-token / email
+      // lama), watchdog salah kira "nyangkut" lalu reload (?_r=...) → menghapus
+      // email/password yang sudah diketik. Pembeda andal: user login = sedang
+      // mengetik / fokus di form; boot-nyangkut = tidak menyentuh form login.
+      var authEl = document.getElementById("authScreen");
+      if (authEl) {
+        var focusedInAuth = document.activeElement && authEl.contains(document.activeElement);
+        var typedInAuth = Array.prototype.some.call(
+          authEl.querySelectorAll("input"),
+          function (el) { return el.value && String(el.value).trim(); }
+        );
+        if (focusedInAuth || typedInAuth) return;                // user sedang login → jangan reload
+      }
       if (sessionStorage.getItem("playly-boot-recovered")) return; // sudah coba sekali → stop
       sessionStorage.setItem("playly-boot-recovered", "1");
       var u = new URL(location.href);
