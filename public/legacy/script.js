@@ -30648,6 +30648,54 @@ function renderAdminActionCenter() {
   }).join("");
 }
 
+// v570 (2026-07-03): tarik daftar user dari Supabase (tabel profiles) supaya
+// user yang DAFTAR SENDIRI dari perangkat MANA PUN muncul di panel admin —
+// bukan cuma akun yang kebetulan tersimpan di localStorage perangkat admin ini.
+// Sebelumnya renderAdminUsers() cuma baca getAllAccounts() (localStorage lokal),
+// jadi user signup di HP-nya sendiri tak pernah kelihatan oleh admin.
+//
+// Cara kerja: GET /api/admin/list-users (super-admin only, server default-deny),
+// lalu setiap user cloud yang BELUM ada lokal → tulis entri playly-account-<email>
+// minimal + flag userRegistered:true (lindungi dari auto-purge, lihat
+// shouldBanAccount) supaya getAllAccounts()/renderAdminUsers() otomatis
+// menampilkannya. Akun lokal yang sudah ada TIDAK ditimpa (data device menang).
+async function hydrateCloudUsersIntoAdmin() {
+  try {
+    const me = String(user?.email || "").trim().toLowerCase();
+    // Hanya super-admin — endpoint pun menolak selain super-admin (403).
+    if (!me || (typeof isOfficialAdminEmail === "function" && !isOfficialAdminEmail(me))) return;
+    const resp = await fetch("/api/admin/list-users", { credentials: "same-origin" });
+    if (!resp.ok) return;
+    const data = await resp.json().catch(() => null);
+    const cloudUsers = data && data.ok && Array.isArray(data.users) ? data.users : [];
+    let added = 0;
+    for (const cu of cloudUsers) {
+      const email = String(cu?.email || "").trim().toLowerCase();
+      if (!email) continue;
+      const key = `playly-account-${email}`;
+      if (localStorage.getItem(key)) continue;         // sudah ada lokal → jangan timpa
+      const username = String(cu.username || email.split("@")[0]).trim();
+      if (!username) continue;                          // getAllAccounts skip tanpa username
+      const acc = {
+        name: cu.name || username,
+        username,
+        email,
+        role: "user",
+        tier: cu.tier === "premium" ? "premium" : "free",
+        bio: cu.bio || "",
+        avatar: cu.avatar_url || "",
+        joinedAt: cu.joined_at || cu.created_at || new Date().toISOString(),
+        userRegistered: true,   // lindungi dari auto-purge (shouldBanAccount → false)
+        cloudMirror: true,      // penanda: berasal dari Supabase, bukan device ini
+      };
+      try { localStorage.setItem(key, JSON.stringify(acc)); added++; } catch {}
+    }
+    if (added > 0 && typeof renderAdminUsers === "function") renderAdminUsers();
+  } catch (e) {
+    console.warn("[admin] tarik daftar user dari cloud gagal:", e);
+  }
+}
+
 function renderAdminUsers() {
   const tbody = $("#adminUserTbody"); if (!tbody) return;
   const search = ($("#adminUserSearch")?.value || "").toLowerCase().trim();
@@ -35571,6 +35619,10 @@ function switchView(name, { fromNav = false } = {}) {
       requestAnimationFrame(() => requestAnimationFrame(() => ah.classList.add("anim-enter")));
     }
   }
+  // v570: begitu admin buka daftar user, tarik user dari Supabase (profiles)
+  // supaya user daftar-sendiri dari perangkat mana pun ikut tampil. Async +
+  // aman (super-admin only, re-render sendiri kalau ada tambahan).
+  if (name === "admin-users") hydrateCloudUsersIntoAdmin();
   if ((name === "admin-users" || name === "admin-inbox" || name === "admin-dashboard")
       && window.cloudSync?.softResync) {
     Promise.resolve(window.cloudSync.softResync()).then(() => {
