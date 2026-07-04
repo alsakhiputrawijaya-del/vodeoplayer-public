@@ -32,7 +32,17 @@ export async function GET() {
     });
   }
 
-  // 1. Pemanggil harus login + super-admin resmi (default-deny).
+  // 1. Pemanggil harus login + admin platform (default-deny).
+  //    v2 (2026-07-04): dulu HANYA super-admin — akibatnya panel "Manajemen Akun"
+  //    milik ADMIN TAMBAHAN (mis. kangdedi1) ditolak 403 diam-diam → daftar user
+  //    di perangkatnya cuma menampilkan akun lokal (owner komplain "user cuma 1").
+  //    Kini admin tambahan yang SAH (ada di daftar-admin kv `playly-admin-allowlist`
+  //    + TIDAK ada di daftar-tercabut `playly-admin-revoked`) juga boleh.
+  //    KENAPA AMAN untuk endpoint INI saja: data yang dikembalikan (profiles kolom
+  //    publik) memang sudah bisa dibaca anon langsung dari Supabase (RLS public
+  //    read) — tak ada eksposur baru. Endpoint MUTASI (create-user, reset-password)
+  //    SENGAJA tetap super-admin-only: kv adalah data yang bisa ditulis klien,
+  //    jadi TIDAK layak dijadikan jangkar kepercayaan untuk aksi tulis/sensitif.
   let callerEmail: string | null = null;
   try {
     const supabase = await createClient();
@@ -45,7 +55,23 @@ export async function GET() {
   }
   if (!callerEmail) return jsonError('not_authenticated', 401);
   if (callerEmail !== OFFICIAL_ADMIN_EMAIL) {
-    return jsonError('forbidden', 403, { message: 'Hanya super-admin yang boleh melihat daftar user.' });
+    const norm = (v: unknown): string[] =>
+      Array.isArray(v) ? v.map((e) => String(e || '').trim().toLowerCase()).filter(Boolean) : [];
+    let isExtraAdmin = false;
+    try {
+      const { data: rows } = await admin
+        .from('kv')
+        .select('key, value')
+        .in('key', ['playly-admin-allowlist', 'playly-admin-revoked']);
+      const allow = norm(rows?.find((r) => r.key === 'playly-admin-allowlist')?.value);
+      const revoked = norm(rows?.find((r) => r.key === 'playly-admin-revoked')?.value);
+      isExtraAdmin = allow.includes(callerEmail) && !revoked.includes(callerEmail);
+    } catch {
+      /* kv tak terbaca → tetap ditolak di bawah (default-deny) */
+    }
+    if (!isExtraAdmin) {
+      return jsonError('forbidden', 403, { message: 'Hanya admin yang boleh melihat daftar user.' });
+    }
   }
 
   // 2. Tarik daftar user dari profiles — HANYA kolom aman (tanpa rahasia).

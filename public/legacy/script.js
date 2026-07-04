@@ -30777,8 +30777,11 @@ function renderAdminActionCenter() {
 async function hydrateCloudUsersIntoAdmin() {
   try {
     const me = String(user?.email || "").trim().toLowerCase();
-    // Hanya super-admin — endpoint pun menolak selain super-admin (403).
-    if (!me || (typeof isOfficialAdminEmail === "function" && !isOfficialAdminEmail(me))) return;
+    // v573 (2026-07-04): dulu HANYA super-admin → panel Manajemen Akun milik
+    // admin TAMBAHAN tak pernah menarik user dari pusat (tampak "user cuma 1",
+    // padahal pusat punya banyak). Kini semua admin sah (allowlist − tercabut)
+    // ikut menarik; server tetap memverifikasi ulang (default-deny di endpoint).
+    if (!me || (typeof isAllowedAdminEmail === "function" && !isAllowedAdminEmail(me))) return;
     const resp = await fetch("/api/admin/list-users", { credentials: "same-origin" });
     if (!resp.ok) return;
     const data = await resp.json().catch(() => null);
