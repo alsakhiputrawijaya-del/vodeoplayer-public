@@ -1044,10 +1044,47 @@ function setExtraAdminEmails(arr) {
     .filter(e => e !== OFFICIAL_ADMIN_EMAIL);
   localStorage.setItem(ADMIN_ALLOWLIST_KEY, JSON.stringify(dedup));
 }
+// v572 (2026-07-04): TOMBSTONE anti-kebangkitan "admin hantu". Daftar-admin
+// (allowlist) = data bersama antar-perangkat dengan aturan "penulis terakhir
+// menang" — perangkat lain yang salinannya BASI bisa menimpa balik daftar yang
+// sudah dibersihkan. Kasus nyata 2026-07-03: owner Cabut kangdedi@gmail.com +
+// admin.playly2@gmail.com (~13:37 WIB), lalu 14:50 WIB perangkat lain mem-push
+// balik daftar LAMA ke cloud → kangdedi "jadi admin lagi" → login user ditolak
+// "Akun admin tidak bisa login di halaman User". Solusi: pencabutan dicatat
+// PERMANEN di daftar-tercabut (ikut sinkron cloud). isAllowedAdminEmail MENOLAK
+// email yang tercabut WALAU allowlist (basi) masih mencantumkannya. Menjadikan
+// admin lagi lewat "Buat Admin" menghapus tanda tercabutnya (bisa dipulihkan).
+const ADMIN_REVOKED_KEY = "playly-admin-revoked";
+function getRevokedAdminEmails() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(ADMIN_REVOKED_KEY) || "[]");
+    if (!Array.isArray(arr)) return [];
+    return arr.map(e => String(e || "").trim().toLowerCase()).filter(Boolean);
+  } catch { return []; }
+}
+function addRevokedAdminEmail(email) {
+  const e = String(email || "").trim().toLowerCase();
+  if (!e || e === OFFICIAL_ADMIN_EMAIL) return;
+  const list = getRevokedAdminEmails();
+  if (!list.includes(e)) {
+    list.push(e);
+    localStorage.setItem(ADMIN_REVOKED_KEY, JSON.stringify(list));
+  }
+}
+function clearRevokedAdminEmail(email) {
+  const e = String(email || "").trim().toLowerCase();
+  if (!e) return;
+  const list = getRevokedAdminEmails();
+  const filtered = list.filter(x => x !== e);
+  if (filtered.length !== list.length) {
+    localStorage.setItem(ADMIN_REVOKED_KEY, JSON.stringify(filtered));
+  }
+}
 function isAllowedAdminEmail(email) {
   const e = (email || "").trim().toLowerCase();
   if (!e) return false;
   if (e === OFFICIAL_ADMIN_EMAIL) return true;
+  if (getRevokedAdminEmails().includes(e)) return false; // v572: tercabut = bukan admin, titik.
   return getExtraAdminEmails().includes(e);
 }
 
@@ -19355,6 +19392,9 @@ document.getElementById("createUserForm")?.addEventListener("submit", async e =>
   // exceeded, dll), allowlist updated tapi no account = inconsistent state.
   if (isAdminMode) {
     try {
+      // v572: kalau email ini pernah dicabut admin-nya, hapus tanda tercabutnya
+      // dulu (tombstone) — "Buat Admin" = keputusan sadar menjadikannya admin lagi.
+      clearRevokedAdminEmail(email);
       const extras = getExtraAdminEmails();
       if (!extras.includes(email)) {
         extras.push(email);
@@ -19696,6 +19736,9 @@ document.addEventListener("click", e => {
     onConfirm: () => {
       const list = getExtraAdminEmails().filter(e2 => e2 !== email);
       setExtraAdminEmails(list);
+      // v572: catat PERMANEN di daftar-tercabut (tombstone) — supaya perangkat
+      // lain yang daftar-adminnya basi tidak bisa "membangkitkan" admin ini lagi.
+      addRevokedAdminEmail(email);
       const accKey = `playly-account-${email}`;
       const acc = JSON.parse(localStorage.getItem(accKey) || "null");
       if (acc) {
@@ -24073,6 +24116,8 @@ $("#signinForm").addEventListener("submit", async e => {
     try {
       if (window.cloudSync?.syncSingleKey) {
         await Promise.resolve(window.cloudSync.syncSingleKey(ADMIN_ALLOWLIST_KEY));
+        // v572: daftar-tercabut (tombstone) ikut ditarik — penentu akhir vonis admin.
+        await Promise.resolve(window.cloudSync.syncSingleKey(ADMIN_REVOKED_KEY));
       }
     } catch (_) {}
   }
