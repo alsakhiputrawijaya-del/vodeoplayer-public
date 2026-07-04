@@ -24057,6 +24057,26 @@ $("#signinForm").addEventListener("submit", async e => {
     });
   }
 
+  // v571 (2026-07-04): daftar-admin (allowlist) salinan perangkat ini bisa BASI dua arah:
+  //   (a) email sudah DICABUT admin-nya di perangkat lain, tapi salinan lama di sini
+  //       masih mencantumkannya → user SAH tertolak "Akun admin tidak bisa login di
+  //       halaman User" (kasus nyata: kangdedi@gmail.com — bisa login di perangkat
+  //       owner yang daftarnya sudah bersih, tertolak di perangkat lain yang basi);
+  //   (b) admin BARU ditambahkan di perangkat lain, salinan di sini belum kebawa →
+  //       admin sah tertolak di halaman /admin.
+  // Sebelum memvonis lewat 2 guard di bawah, tarik salinan TERBARU dari cloud lalu
+  // cek ulang. Aman: hanya menyegarkan dari sumber pusat (bukan melonggarkan aturan);
+  // super-admin resmi tidak bergantung allowlist, jadi tak perlu (dan tak boleh) refresh.
+  const _allowlistSaysAdmin = isAllowedAdminEmail(email);
+  const _allowlistMismatch = (pickedRole === "admin") ? !_allowlistSaysAdmin : _allowlistSaysAdmin;
+  if (_allowlistMismatch && !isOfficialAdminEmail(email)) {
+    try {
+      if (window.cloudSync?.syncSingleKey) {
+        await Promise.resolve(window.cloudSync.syncSingleKey(ADMIN_ALLOWLIST_KEY));
+      }
+    } catch (_) {}
+  }
+
   // Guard: akun admin (super admin / admin tambahan) tidak boleh login lewat halaman User (/).
   // Jangan auto-redirect ke /admin — tiap URL harus tetap di domainnya sendiri.
   // Dicek SETELAH password verified supaya popup hanya muncul ke admin asli, bukan ke
