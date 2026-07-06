@@ -113,6 +113,15 @@ export async function POST(req: Request) {
       // user_id column belum di-apply (migration 0008 not yet run)
       return jsonError('schema_outdated', 503);
     }
+    // v575 (2026-07-06): key ini DIMILIKI user lain → upsert-nya melanggar RLS
+    // (row-level security). Ini PERMANEN (bukan gangguan server), sering muncul
+    // dari key "yatim" akun uji lama yang nyangkut di antrean sync sebuah
+    // perangkat. Balas 403 (bukan 500) supaya klien MEMBUANG entri itu dari
+    // antrean — bukan mencoba ulang selamanya tiap 30 detik (banjir 500 di
+    // console). Lihat flushRetryQueue di public/legacy/cloud-sync.js.
+    if (error.code === '42501' || /row-level security/i.test(error.message)) {
+      return jsonError('forbidden_rls', 403, { message: 'Bukan pemilik key ini.' });
+    }
     console.warn('[kv/sync] upsert failed:', error.message);
     return jsonError(error.message, 500);
   }

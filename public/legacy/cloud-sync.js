@@ -288,6 +288,20 @@
     return /row-level security|violates|not authorized|permission denied|policy/i.test(String(msg || ""));
   }
 
+  // v575 (2026-07-06): jaring pengaman anti-loop. Entri yang gagal karena
+  // gangguan SEMENTARA (network/5xx) tetap disimpan untuk dicoba lagi, TAPI
+  // dibatasi maks 3 percobaan — supaya entri yang sebenarnya gagal PERMANEN
+  // (mis. key "yatim" akun uji lama yang RLS-nya balas 5xx) tidak di-retry
+  // selamanya tiap 30 detik (banjir error di console + boros request).
+  var RETRY_MAX_ATTEMPTS = 3;
+  function _retryKeepOrDrop(entry, remaining, reason) {
+    entry._tries = (entry._tries || 0) + 1;
+    if (entry._tries >= RETRY_MAX_ATTEMPTS) {
+      console.warn("[cloud] retry dibuang (gagal " + entry._tries + "x): " + entry.key + " - " + reason);
+      return;
+    }
+    remaining.push(entry);
+  }
   let _retryFlushing = false;
   async function flushRetryQueue() {
     if (_retryFlushing) return;
@@ -319,8 +333,9 @@
             console.warn("[cloud] retry dibuang (bukan pemilik / sesi habis):", entry.key);
             continue;
           }
-          // Selain itu (network / 5xx) → transien, simpan untuk dicoba lagi.
-          remaining.push(entry);
+          // Selain itu (network / 5xx) → transien, simpan untuk dicoba lagi
+          // (maks 3x — lihat _retryKeepOrDrop).
+          _retryKeepOrDrop(entry, remaining, "bridge status " + res.status);
           continue;
         }
         // Key platform → jalur anon.
@@ -331,10 +346,10 @@
             console.warn("[cloud] retry dibuang (RLS permanen):", entry.key);
             continue; // permanen → DROP, jangan loop
           }
-          remaining.push(entry); // transien → simpan
+          _retryKeepOrDrop(entry, remaining, error.message); // transien → simpan (maks 3x)
           console.warn("[cloud] retry still failing:", entry.key, error.message);
         }
-      } catch (err) { remaining.push(entry); console.warn("[cloud] retry exception:", entry.key, err); }
+      } catch (err) { _retryKeepOrDrop(entry, remaining, String(err)); console.warn("[cloud] retry exception:", entry.key, err); }
     }
     saveRetryQueue(remaining);
     _retryFlushing = false;
