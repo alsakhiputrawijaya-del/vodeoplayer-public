@@ -59191,9 +59191,15 @@ function renderNotifPage() {
   } else {
     list.innerHTML = slice.map(n => {
       const sender = n.fromUsername || extractSenderFromText(n.text) || "—";
-      const init = n.init || (avatarInitial(sender));
       const text = n.text || `@${sender}`;
       const time = n.ts ? (typeof relTime === "function" ? relTime(n.ts) : new Date(n.ts).toLocaleString()) : "";
+      // v574 (2026-07-06): FIX crash "icon is not defined" — variabel `icon`
+      // tak pernah dideklarasikan di sini, bikin renderNotifPage lempar
+      // ReferenceError → halaman Notifikasi kosong/gagal tampil. Ambil ikon dari
+      // kategori notif, sama seperti dropdown lonceng (renderNotifications ~59005).
+      const _fallbackBell = (typeof NI_BELL !== "undefined") ? NI_BELL : "🔔";
+      const _cat = (typeof NOTIF_CATEGORY_MAP !== "undefined" && NOTIF_CATEGORY_MAP[n.type]) || null;
+      const icon = n.icon || (_cat && _cat.icon) || _fallbackBell;
       return `<div class="notif-page-item ${n.unread ? 'unread' : ''}" data-notif-id="${n.id}">
         <span class="np-icon">${icon}</span>
         <div class="info">
