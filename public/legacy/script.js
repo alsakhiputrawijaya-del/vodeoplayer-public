@@ -19720,6 +19720,89 @@ Object.assign(I18N.es, {
   "adm.belumKreator": "Aún no hay creadores activos.",
 });
 
+// === v580 (2026-07-06): Pelengkap terjemahan SUB-MENU sidebar admin
+// (nav-subitem) ke 8 bahasa. Ditangkap autoTranslateByText via peta-kebalikan. ===
+
+Object.assign(I18N.id, {
+  "adm.sub.grafikTrafik": "Grafik Trafik",
+  "adm.sub.pencapaianUser": "Pencapaian User",
+  "adm.sub.bannerSamping": "Banner Samping",
+  "adm.sub.iklanPreroll": "Iklan Pre-roll",
+  "adm.sub.streamPendapatan": "Stream Pendapatan Langsung",
+  "adm.sub.user": "User",
+  "adm.sub.status": "Status",
+});
+
+Object.assign(I18N.en, {
+  "adm.sub.grafikTrafik": "Traffic Chart",
+  "adm.sub.pencapaianUser": "User Achievements",
+  "adm.sub.bannerSamping": "Side Banner",
+  "adm.sub.iklanPreroll": "Pre-roll Ad",
+  "adm.sub.streamPendapatan": "Live Revenue Stream",
+  "adm.sub.user": "User",
+  "adm.sub.status": "Status",
+});
+
+Object.assign(I18N.ms, {
+  "adm.sub.grafikTrafik": "Carta Trafik",
+  "adm.sub.pencapaianUser": "Pencapaian Pengguna",
+  "adm.sub.bannerSamping": "Sepanduk Sisi",
+  "adm.sub.iklanPreroll": "Iklan Pra-roll",
+  "adm.sub.streamPendapatan": "Strim Pendapatan Langsung",
+  "adm.sub.user": "Pengguna",
+  "adm.sub.status": "Status",
+});
+
+Object.assign(I18N.ja, {
+  "adm.sub.grafikTrafik": "トラフィックグラフ",
+  "adm.sub.pencapaianUser": "ユーザー実績",
+  "adm.sub.bannerSamping": "サイドバナー",
+  "adm.sub.iklanPreroll": "プレロール広告",
+  "adm.sub.streamPendapatan": "リアルタイム収益ストリーム",
+  "adm.sub.user": "ユーザー",
+  "adm.sub.status": "ステータス",
+});
+
+Object.assign(I18N.ar, {
+  "adm.sub.grafikTrafik": "مخطط الزيارات",
+  "adm.sub.pencapaianUser": "إنجازات المستخدم",
+  "adm.sub.bannerSamping": "لافتة جانبية",
+  "adm.sub.iklanPreroll": "إعلان ما قبل التشغيل",
+  "adm.sub.streamPendapatan": "تدفق الإيرادات المباشر",
+  "adm.sub.user": "المستخدم",
+  "adm.sub.status": "الحالة",
+});
+
+Object.assign(I18N.zh, {
+  "adm.sub.grafikTrafik": "流量图表",
+  "adm.sub.pencapaianUser": "用户成就",
+  "adm.sub.bannerSamping": "侧边横幅",
+  "adm.sub.iklanPreroll": "贴片广告",
+  "adm.sub.streamPendapatan": "实时收入流",
+  "adm.sub.user": "用户",
+  "adm.sub.status": "状态",
+});
+
+Object.assign(I18N.ko, {
+  "adm.sub.grafikTrafik": "트래픽 차트",
+  "adm.sub.pencapaianUser": "사용자 성과",
+  "adm.sub.bannerSamping": "사이드 배너",
+  "adm.sub.iklanPreroll": "프리롤 광고",
+  "adm.sub.streamPendapatan": "실시간 수익 스트림",
+  "adm.sub.user": "사용자",
+  "adm.sub.status": "상태",
+});
+
+Object.assign(I18N.es, {
+  "adm.sub.grafikTrafik": "Gráfico de tráfico",
+  "adm.sub.pencapaianUser": "Logros del usuario",
+  "adm.sub.bannerSamping": "Banner lateral",
+  "adm.sub.iklanPreroll": "Anuncio pre-roll",
+  "adm.sub.streamPendapatan": "Flujo de ingresos en vivo",
+  "adm.sub.user": "Usuario",
+  "adm.sub.status": "Estado",
+});
+
 // Default lang = "id" (Bahasa Indonesia). Cek user pref dulu (kalau login),
 // fallback ke localStorage guest key (untuk landing/auth tanpa login).
 function currentLang() {
@@ -36985,6 +37068,15 @@ function switchView(name, { fromNav = false } = {}) {
         profile: "page.profile.edit", settings: "page.settings",
         player: "page.library", "user-profile": "page.profile.creator",
         "myprofile": "page.profile.my", "user-email": "page.email",
+        // v580: breadcrumb halaman admin — pakai kunci nav yang sudah ada (sama
+        // dengan sidebar) supaya breadcrumb ikut ganti bahasa (sebelumnya jatuh
+        // ke VIEW_TITLES = teks Indonesia mentah karena breadcrumb di-skip walker).
+        "admin-dashboard": "nav.home", "admin-users": "admin.nav.users",
+        "admin-videos": "admin.nav.videos", "admin-analytics": "admin.nav.analytics",
+        "admin-ads": "admin.nav.ads", "admin-revenue": "admin.nav.revenue",
+        "admin-inbox": "nav.messages", "admin-audit": "admin.nav.audit",
+        "admin-comms": "admin.nav.comms", "admin-comms-broadcasts": "admin.nav.broadcasts",
+        "admin-reports": "admin.nav.reports",
       };
       const key = titleKeyMap[vname];
       if (key) return t(key);
