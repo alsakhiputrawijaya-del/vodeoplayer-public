@@ -19803,6 +19803,129 @@ Object.assign(I18N.es, {
   "adm.sub.status": "Estado",
 });
 
+// === v581 (2026-07-06): Pelengkap terjemahan SISA label admin (ekor:
+// judul aktivitas audit, empty-state, kolom Tier, dll) ke 8 bahasa. ===
+
+Object.assign(I18N.id, {
+  "adm.revenueThisMonth": "Revenue This Month",
+  "adm.viewsDistToday": "Views distribution per user — Today",
+  "adm.superAdminActivity": "Super Admin Activity",
+  "adm.adminActivity": "Admin Activity",
+  "adm.userActivity": "User Activity",
+  "adm.noUserActions": "No user actions in this period.",
+  "adm.noTxn5min": "tidak ada transaksi 5 menit terakhir",
+  "adm.manajemenUser": "Manajemen User",
+  "adm.pageKreatorOnly": "Halaman ini khusus untuk user kreator",
+  "adm.refresh": "Refresh",
+  "adm.colTier": "Tier",
+  "adm.sekarang": "Sekarang",
+});
+
+Object.assign(I18N.en, {
+  "adm.revenueThisMonth": "Revenue This Month",
+  "adm.viewsDistToday": "Views distribution per user — Today",
+  "adm.superAdminActivity": "Super Admin Activity",
+  "adm.adminActivity": "Admin Activity",
+  "adm.userActivity": "User Activity",
+  "adm.noUserActions": "No user actions in this period.",
+  "adm.noTxn5min": "no transactions in the last 5 minutes",
+  "adm.manajemenUser": "User Management",
+  "adm.pageKreatorOnly": "This page is for creator users only",
+  "adm.refresh": "Refresh",
+  "adm.colTier": "Tier",
+  "adm.sekarang": "Now",
+});
+
+Object.assign(I18N.ms, {
+  "adm.revenueThisMonth": "Pendapatan Bulan Ini",
+  "adm.viewsDistToday": "Taburan tontonan setiap pengguna — Hari Ini",
+  "adm.superAdminActivity": "Aktiviti Super Admin",
+  "adm.adminActivity": "Aktiviti Admin",
+  "adm.userActivity": "Aktiviti Pengguna",
+  "adm.noUserActions": "Tiada tindakan pengguna dalam tempoh ini.",
+  "adm.noTxn5min": "tiada transaksi dalam 5 minit terakhir",
+  "adm.manajemenUser": "Pengurusan Pengguna",
+  "adm.pageKreatorOnly": "Halaman ini khusus untuk pengguna pencipta",
+  "adm.refresh": "Segar Semula",
+  "adm.colTier": "Tier",
+  "adm.sekarang": "Sekarang",
+});
+
+Object.assign(I18N.ja, {
+  "adm.revenueThisMonth": "今月の収益",
+  "adm.viewsDistToday": "ユーザー別視聴分布 — 今日",
+  "adm.superAdminActivity": "スーパー管理者アクティビティ",
+  "adm.adminActivity": "管理者アクティビティ",
+  "adm.userActivity": "ユーザーアクティビティ",
+  "adm.noUserActions": "この期間のユーザー操作はありません。",
+  "adm.noTxn5min": "直近5分間に取引はありません",
+  "adm.manajemenUser": "ユーザー管理",
+  "adm.pageKreatorOnly": "このページはクリエイターユーザー専用です",
+  "adm.refresh": "更新",
+  "adm.colTier": "ティア",
+  "adm.sekarang": "現在",
+});
+
+Object.assign(I18N.ar, {
+  "adm.revenueThisMonth": "إيرادات هذا الشهر",
+  "adm.viewsDistToday": "توزيع المشاهدات لكل مستخدم — اليوم",
+  "adm.superAdminActivity": "نشاط المشرف الأعلى",
+  "adm.adminActivity": "نشاط المشرف",
+  "adm.userActivity": "نشاط المستخدم",
+  "adm.noUserActions": "لا توجد إجراءات مستخدم في هذه الفترة.",
+  "adm.noTxn5min": "لا توجد معاملات في آخر 5 دقائق",
+  "adm.manajemenUser": "إدارة المستخدمين",
+  "adm.pageKreatorOnly": "هذه الصفحة مخصّصة لمستخدمي المُنشئين فقط",
+  "adm.refresh": "تحديث",
+  "adm.colTier": "الفئة",
+  "adm.sekarang": "الآن",
+});
+
+Object.assign(I18N.zh, {
+  "adm.revenueThisMonth": "本月收入",
+  "adm.viewsDistToday": "每位用户的观看分布 — 今日",
+  "adm.superAdminActivity": "超级管理员活动",
+  "adm.adminActivity": "管理员活动",
+  "adm.userActivity": "用户活动",
+  "adm.noUserActions": "此时间段内无用户操作。",
+  "adm.noTxn5min": "最近 5 分钟无交易",
+  "adm.manajemenUser": "用户管理",
+  "adm.pageKreatorOnly": "此页面仅供创作者用户",
+  "adm.refresh": "刷新",
+  "adm.colTier": "等级",
+  "adm.sekarang": "现在",
+});
+
+Object.assign(I18N.ko, {
+  "adm.revenueThisMonth": "이번 달 수익",
+  "adm.viewsDistToday": "사용자별 조회 분포 — 오늘",
+  "adm.superAdminActivity": "슈퍼 관리자 활동",
+  "adm.adminActivity": "관리자 활동",
+  "adm.userActivity": "사용자 활동",
+  "adm.noUserActions": "이 기간에 사용자 작업이 없습니다.",
+  "adm.noTxn5min": "최근 5분간 거래 없음",
+  "adm.manajemenUser": "사용자 관리",
+  "adm.pageKreatorOnly": "이 페이지는 크리에이터 사용자 전용입니다",
+  "adm.refresh": "새로고침",
+  "adm.colTier": "등급",
+  "adm.sekarang": "지금",
+});
+
+Object.assign(I18N.es, {
+  "adm.revenueThisMonth": "Ingresos de este mes",
+  "adm.viewsDistToday": "Distribución de vistas por usuario — Hoy",
+  "adm.superAdminActivity": "Actividad de superadministrador",
+  "adm.adminActivity": "Actividad de administrador",
+  "adm.userActivity": "Actividad del usuario",
+  "adm.noUserActions": "No hay acciones de usuario en este período.",
+  "adm.noTxn5min": "sin transacciones en los últimos 5 minutos",
+  "adm.manajemenUser": "Gestión de usuarios",
+  "adm.pageKreatorOnly": "Esta página es solo para usuarios creadores",
+  "adm.refresh": "Actualizar",
+  "adm.colTier": "Nivel",
+  "adm.sekarang": "Ahora",
+});
+
 // Default lang = "id" (Bahasa Indonesia). Cek user pref dulu (kalau login),
 // fallback ke localStorage guest key (untuk landing/auth tanpa login).
 function currentLang() {
