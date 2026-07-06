@@ -68,7 +68,9 @@ masuk lewat **Pull Request (PR)** — "permintaan gabung" yang dicek dulu.
    robot **Penjaga Kebocoran Rahasia**. Merah? Baca pesannya, perbaiki, push lagi.
 7. **Minta 1 teman me-review** (baca + setujui). Kalau PR menyentuh area sensitif
    (API/database/config), GitHub otomatis minta persetujuan owner juga.
-8. **Gabungkan (Merge)** → buka situs live → **cek cepat** halaman yang kamu ubah
+8. **Gabungkan** — klik tombol **"Squash and merge"** (= gabung-ringkas: berapa pun
+   commit coretanmu di branch, yang tercatat di `main` cuma 1 catatan rapi per tugas;
+   branch-mu otomatis terhapus setelahnya) → buka situs live → **cek cepat** halaman yang kamu ubah
    + coba login. Rusak? → lihat Bagian 6 (balikkan < 5 menit).
 
 ---
