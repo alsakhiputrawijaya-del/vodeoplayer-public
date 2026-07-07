@@ -8,7 +8,11 @@
 
 import { createClient } from '@/lib/supabase/server';
 
-export const runtime = 'edge';
+// v-sec 2026-07-07: dipindah dari runtime 'edge' ke nodejs (default). Cek-login
+// pakai createClient (cookie + @supabase/ssr + next/headers) TIDAK jalan andal
+// di edge — anon lolos ke jalur berikutnya alih-alih ditolak 401. Di nodejs
+// (sama seperti /api/r2/*), createClient bekerja + auth ditegakkan. Endpoint ini
+// cuma mem-proksi DeepL, jadi tak butuh edge.
 
 type Cue = { start: number; end: number; text: string };
 
