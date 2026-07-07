@@ -1,6 +1,6 @@
 window.PLAYLY_SUPABASE = {
       url: "https://urfkqcdwcvyzctbtbpwv.supabase.co",
-      key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyZmtxY2R3Y3Z5emN0YnRicHd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzODk0NjgsImV4cCI6MjA5NDk2NTQ2OH0.sXDLka8JTyfH1pJ5_hnu7t3PQHVnF-duXi93Bs6mV8k",
+      key: "sb_publishable_DJBulGFQevEx4Sk0B3WCaQ_eLu9noic",
     };
     // v547 (2026-05-25): Cloudflare R2 video storage. Egress $0 vs Supabase
     // Storage (5 GB/mo cap, $0.09/GB after). New uploads → R2; existing videos

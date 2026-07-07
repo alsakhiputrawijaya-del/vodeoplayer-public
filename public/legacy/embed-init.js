@@ -1,7 +1,7 @@
 (function () {
       "use strict";
       const SB_URL = "https://urfkqcdwcvyzctbtbpwv.supabase.co";
-      const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyZmtxY2R3Y3Z5emN0YnRicHd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzODk0NjgsImV4cCI6MjA5NDk2NTQ2OH0.sXDLka8JTyfH1pJ5_hnu7t3PQHVnF-duXi93Bs6mV8k";
+      const SB_KEY = "sb_publishable_DJBulGFQevEx4Sk0B3WCaQ_eLu9noic";
       const BUCKET = "videos";
 
       const $ = (id) => document.getElementById(id);
