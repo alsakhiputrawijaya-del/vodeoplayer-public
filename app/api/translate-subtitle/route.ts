@@ -6,6 +6,8 @@
 //
 // Env var WAJIB: DEEPL_API_KEY (set di Vercel Project Settings → Env Vars).
 
+import { createClient } from '@/lib/supabase/server';
+
 export const runtime = 'edge';
 
 type Cue = { start: number; end: number; text: string };
@@ -22,6 +24,22 @@ function json(obj: unknown, status = 200): Response {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  // ANTI-ABUSE (v-sec 2026-07-07): endpoint ini memanggil DeepL (API BERBAYAR
+  // per pemakaian). Sebelumnya bisa dipanggil TANPA login sama sekali → siapa
+  // pun bisa membanjiri panggilan & menguras kuota berbayar / bikin lambat.
+  // Sekarang WAJIB login (kurangi abuse drastis; butuh akun terverifikasi).
+  // Batas ukuran per-permintaan (MAX_CUES / MAX_CHARS_TOTAL) tetap di bawah.
+  // (Pembatasan laju per-user = peningkatan lanjutan bila perlu.)
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) return json({ error: 'not_authenticated' }, 401);
+  } catch {
+    return json({ error: 'auth_unavailable' }, 503);
+  }
+
   const key = process.env.DEEPL_API_KEY;
   if (!key) return json({ error: 'no_api_key', hint: 'set DEEPL_API_KEY env var' }, 500);
 

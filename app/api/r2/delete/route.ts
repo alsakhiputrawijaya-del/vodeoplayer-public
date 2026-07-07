@@ -17,6 +17,7 @@
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getR2Config, videoObjectKey } from '@/lib/r2/client';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { jsonError, jsonOk } from '@/lib/api/responses';
 
 type DeleteBody = {
@@ -53,13 +54,50 @@ export async function POST(req: Request) {
     return jsonError('bad_json', 400);
   }
 
+  // Tentukan id video + key. Key R2 = "videos/{id}.{ext}" (TANPA folder pemilik),
+  // jadi kepemilikan HARUS diverifikasi via tabel (tak bisa dari path). Kalau
+  // client kirim key eksplisit, ambil id dari key itu untuk verifikasi.
   let key = String(body.key || '').trim();
+  let vidId = String(body.id || '').trim();
+  if (!vidId && key) {
+    const m = key.match(/^videos\/([^/.]+)/);
+    if (m) vidId = m[1];
+  }
+  if (!vidId) {
+    return jsonError('missing_id_or_key', 400);
+  }
+
+  // ANTI-IDOR (v-sec 2026-07-07): sebelumnya endpoint ini hanya cek "sudah
+  // login?" — TIDAK cek "video ini milikmu?". Akibatnya user login mana pun
+  // bisa menghapus file video milik orang lain hanya dengan tahu id-nya (id
+  // terekspos di halaman /watch publik). Sekarang verifikasi kepemilikan via
+  // service-role (bypass RLS supaya bisa melihat video privat orang lain juga):
+  //   - baris ADA + pemilik BEDA  → tolak 403 (blokir IDOR)
+  //   - baris ADA + pemilik SAMA  → lanjut hapus
+  //   - baris TIDAK ADA           → izinkan (idempoten; row hilang = video tak
+  //     pernah ada / sudah dihapus pemiliknya via jalur Supabase paralel. Orang
+  //     lain tak bisa membuat kondisi ini untuk video bukan miliknya karena RLS
+  //     mencegahnya menghapus baris video orang).
+  const admin = createAdminClient();
+  if (!admin) {
+    return jsonError('service_unavailable', 503, {
+      message: 'SUPABASE_SERVICE_ROLE_KEY belum di-set — verifikasi kepemilikan tidak bisa dijalankan.',
+    });
+  }
+  const { data: vid, error: vErr } = await admin
+    .from('videos')
+    .select('owner_id')
+    .eq('id', vidId)
+    .maybeSingle();
+  if (vErr) {
+    return jsonError('ownership_check_failed', 500, { message: vErr.message });
+  }
+  if (vid && vid.owner_id !== authUserId) {
+    return jsonError('forbidden_not_owner', 403, { message: 'Video ini bukan milikmu.' });
+  }
+
   if (!key) {
-    const id = String(body.id || '').trim();
-    if (!id) {
-      return jsonError('missing_id_or_key', 400);
-    }
-    key = videoObjectKey(id, body.contentType);
+    key = videoObjectKey(vidId, body.contentType);
   }
 
   // Safety: scope key to videos/ prefix supaya endpoint ini gak bisa
