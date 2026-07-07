@@ -20361,6 +20361,97 @@ Object.assign(I18N.es, {
   "adm.footPengaturan": "Ajustes",
 });
 
+// === v900 (2026-07-07): teks berangka-dinamis (Admin tambahan (N), sub-label
+// Pendapatan: N transaksi tercatat/sejak 00:00/dll) dirender via t(). 8 bahasa. ===
+
+Object.assign(I18N.id, {
+  "adm.adminTambahan": "Admin tambahan",
+  "adm.rev.menungguPertama": "menunggu transaksi pertama",
+  "adm.rev.transaksiTercatat": "transaksi tercatat",
+  "adm.rev.sejak0": "sejak 00:00",
+  "adm.rev.menunggu": "menunggu transaksi",
+  "adm.rev.5menit": "5 menit terakhir",
+  "adm.rev.belumTercatat": "Belum ada transaksi tercatat",
+  "adm.rev.total": "total",
+});
+
+Object.assign(I18N.en, {
+  "adm.adminTambahan": "Additional admins",
+  "adm.rev.menungguPertama": "awaiting first transaction",
+  "adm.rev.transaksiTercatat": "transactions recorded",
+  "adm.rev.sejak0": "since 00:00",
+  "adm.rev.menunggu": "awaiting transactions",
+  "adm.rev.5menit": "last 5 minutes",
+  "adm.rev.belumTercatat": "No transactions recorded yet",
+  "adm.rev.total": "total",
+});
+
+Object.assign(I18N.ms, {
+  "adm.adminTambahan": "Admin tambahan",
+  "adm.rev.menungguPertama": "menunggu transaksi pertama",
+  "adm.rev.transaksiTercatat": "transaksi direkod",
+  "adm.rev.sejak0": "sejak 00:00",
+  "adm.rev.menunggu": "menunggu transaksi",
+  "adm.rev.5menit": "5 minit terakhir",
+  "adm.rev.belumTercatat": "Tiada transaksi direkod lagi",
+  "adm.rev.total": "jumlah",
+});
+
+Object.assign(I18N.ja, {
+  "adm.adminTambahan": "追加の管理者",
+  "adm.rev.menungguPertama": "最初の取引を待機中",
+  "adm.rev.transaksiTercatat": "件の取引を記録",
+  "adm.rev.sejak0": "00:00から",
+  "adm.rev.menunggu": "取引を待機中",
+  "adm.rev.5menit": "直近5分",
+  "adm.rev.belumTercatat": "まだ取引はありません",
+  "adm.rev.total": "合計",
+});
+
+Object.assign(I18N.ar, {
+  "adm.adminTambahan": "مشرفون إضافيون",
+  "adm.rev.menungguPertama": "بانتظار أول معاملة",
+  "adm.rev.transaksiTercatat": "معاملة مسجّلة",
+  "adm.rev.sejak0": "منذ 00:00",
+  "adm.rev.menunggu": "بانتظار المعاملات",
+  "adm.rev.5menit": "آخر 5 دقائق",
+  "adm.rev.belumTercatat": "لا توجد معاملات مسجّلة بعد",
+  "adm.rev.total": "الإجمالي",
+});
+
+Object.assign(I18N.zh, {
+  "adm.adminTambahan": "额外管理员",
+  "adm.rev.menungguPertama": "等待首笔交易",
+  "adm.rev.transaksiTercatat": "笔交易已记录",
+  "adm.rev.sejak0": "自 00:00 起",
+  "adm.rev.menunggu": "等待交易",
+  "adm.rev.5menit": "最近 5 分钟",
+  "adm.rev.belumTercatat": "暂无交易记录",
+  "adm.rev.total": "总计",
+});
+
+Object.assign(I18N.ko, {
+  "adm.adminTambahan": "추가 관리자",
+  "adm.rev.menungguPertama": "첫 거래 대기 중",
+  "adm.rev.transaksiTercatat": "건 거래 기록됨",
+  "adm.rev.sejak0": "00:00부터",
+  "adm.rev.menunggu": "거래 대기 중",
+  "adm.rev.5menit": "최근 5분",
+  "adm.rev.belumTercatat": "아직 기록된 거래가 없습니다",
+  "adm.rev.total": "합계",
+});
+
+Object.assign(I18N.es, {
+  "adm.adminTambahan": "Administradores adicionales",
+  "adm.rev.menungguPertama": "esperando la primera transacción",
+  "adm.rev.transaksiTercatat": "transacciones registradas",
+  "adm.rev.sejak0": "desde las 00:00",
+  "adm.rev.menunggu": "esperando transacciones",
+  "adm.rev.5menit": "últimos 5 minutos",
+  "adm.rev.belumTercatat": "Aún no hay transacciones registradas",
+  "adm.rev.total": "total",
+});
+
 // Default lang = "id" (Bahasa Indonesia). Cek user pref dulu (kalau login),
 // fallback ke localStorage guest key (untuk landing/auth tanpa login).
 function currentLang() {
@@ -21817,7 +21908,7 @@ function renderExtraAdminList() {
   }
   const accounts = getAllAccounts();
   box.innerHTML = `
-    <p class="muted" style="font-size:12px;margin:18px 0 8px">Admin tambahan (${emails.length}):</p>
+    <p class="muted" style="font-size:12px;margin:18px 0 8px">${t("adm.adminTambahan")} (${emails.length}):</p>
     <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
       ${emails.map(em => {
         const a = accounts.find(x => (x.email || "").toLowerCase() === em);
@@ -31728,15 +31819,15 @@ function tickRevenue() {
 
   // Sub-labels — semua jujur, tidak ada angka mengarang
   $("#revTotalSub") && ($("#revTotalSub").textContent =
-    r.isEmpty ? "menunggu transaksi pertama" : `${r.ledger.length} transaksi tercatat`);
+    r.isEmpty ? t("adm.rev.menungguPertama") : `${r.ledger.length} ${t("adm.rev.transaksiTercatat")}`);
   $("#revTodaySub") && ($("#revTodaySub").textContent =
-    r.today > 0 ? `+${fmtRp(r.today)} sejak 00:00` : "sejak 00:00");
+    r.today > 0 ? `+${fmtRp(r.today)} ${t("adm.rev.sejak0")}` : t("adm.rev.sejak0"));
   $("#revRateSub") && ($("#revRateSub").textContent =
-    r.isEmpty ? "menunggu transaksi" :
-    r.rate > 0 ? `5 menit terakhir` :
-    "tidak ada transaksi 5 menit terakhir");
+    r.isEmpty ? t("adm.rev.menunggu") :
+    r.rate > 0 ? t("adm.rev.5menit") :
+    t("adm.noTxn5min"));
   $("#revBreakdownSub") && ($("#revBreakdownSub").textContent =
-    r.isEmpty ? "Belum ada transaksi tercatat" : `${fmtRp(r.total)} total`);
+    r.isEmpty ? t("adm.rev.belumTercatat") : `${fmtRp(r.total)} ${t("adm.rev.total")}`);
 
   updateRevSplit(r);
   drawRevLiveChart();
@@ -67213,14 +67304,32 @@ function getNotifList() {
     SL: "Slovenia", SV: "Swedia", TR: "Turki", UK: "Ukraina", ZH: "Mandarin",
   };
 
+  // v601: nama bahasa terlokalisasi OTOMATIS via Intl.DisplayNames (akurat di
+  // semua bahasa UI tanpa terjemahan manual). Fallback ke label Indonesia
+  // (DEEPL_LANGS) kalau Intl gagal. Contoh: UI Mandarin → "德语 (DE)".
+  function langDisplayName(code) {
+    try {
+      const lang = (typeof currentLang === "function" ? currentLang() : "id") || "id";
+      const nm = new Intl.DisplayNames([lang], { type: "language" }).of(code.toLowerCase());
+      if (nm && nm.toLowerCase() !== code.toLowerCase()) return nm.charAt(0).toUpperCase() + nm.slice(1);
+    } catch {}
+    return DEEPL_LANGS[code] || code;
+  }
+  // Re-populate tiap panggil supaya ikut bahasa aktif; hapus HANYA option bahasa
+  // (placeholder tetap), pilihan user dipertahankan. data-no-i18n: nama sudah
+  // terlokalisasi di sini, jangan disentuh translateOptions.
   function populateLangSelect(sel) {
-    if (!sel || sel.dataset.populated === "1") return;
-    Object.entries(DEEPL_LANGS).forEach(([code, label]) => {
+    if (!sel) return;
+    const prev = sel.value;
+    sel.querySelectorAll("option").forEach(o => { if (DEEPL_LANGS[o.value]) o.remove(); });
+    Object.keys(DEEPL_LANGS).forEach(code => {
       const opt = document.createElement("option");
       opt.value = code;
-      opt.textContent = `${label} (${code})`;
+      opt.textContent = `${langDisplayName(code)} (${code})`;
+      opt.setAttribute("data-no-i18n", "");
       sel.appendChild(opt);
     });
+    if (prev) sel.value = prev;
     sel.dataset.populated = "1";
   }
 
@@ -67314,6 +67423,13 @@ function getNotifList() {
     populateLangSelect(vemSel);
     vemBtn?.addEventListener("click", () => translate(vemSel?.value, "edit"));
     bindShowToggle("vemSubtitleLabel", "vemSubtitleTranslateRow");
+    // v601: saat UI ganti bahasa, nama bahasa di dropdown ikut terlokalisasi ulang
+    window.addEventListener("playly:lang-changed", () => {
+      try {
+        populateLangSelect(document.getElementById("upSubtitleTranslateLang"));
+        populateLangSelect(document.getElementById("vemSubtitleTranslateLang"));
+      } catch {}
+    });
   }
 
   if (document.readyState === "loading") {
