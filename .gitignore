@@ -35,6 +35,9 @@ desktop.ini
 db-url.txt
 db-url.txt/
 
+# Keluaran alat migrasi playly2 (SQL hasil olahan — dibuat ulang tiap jalan)
+.migrasi-playly2/
+
 # Build artifacts
 node_modules/
 dist/
