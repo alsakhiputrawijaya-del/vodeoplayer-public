@@ -10,7 +10,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "migrasi:playly2": "node scripts/migrasi-ke-playly2.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1053.0",
@@ -28,6 +29,7 @@
     "clean-css": "^5.3.3",
     "eslint": "^9.18.0",
     "eslint-config-next": "15.5.18",
+    "pg": "^8.22.0",
     "terser": "^5.48.0",
     "typescript": "^5.7.3"
   },
