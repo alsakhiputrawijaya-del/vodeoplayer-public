@@ -25,11 +25,11 @@ import { spawnSync, spawn } from 'node:child_process'
 
 import { isInteractiveInput, showYesNo, showInput, showChoice, showNumberedChoice, showInfo } from './lib/popup-shim.mjs'
 import { initializeManifest, addToManifest, addDirToManifest, saveManifest } from './lib/manifest.mjs'
-import { copyTemplateWithPlaceholder, copyStaticTemplate } from './lib/template-deploy.mjs'
+import { copyTemplateWithPlaceholder, copyStaticTemplate, refreshUpdateGuideIfLegacy } from './lib/template-deploy.mjs'
 import { removeGitMetadata, removeMotwBlock } from './lib/git-helpers.mjs'
 import { publishAgentsMd, publishClaudeMd } from './lib/agents-md.mjs'
 import { getKitVersionFromChangelog } from './lib/version-detect.mjs'
-import { readKitFiles } from './lib/kit-files.mjs'
+import { readKitManifest } from './lib/kit-files.mjs'
 import { getStackType, getPackageManager } from './lib/project-detect.mjs'
 import { writeLintasProjectManifestIfMissing } from './lib/project-manifest.mjs'
 import { mergeAllowList } from './lib/json-merge-helpers.mjs'
@@ -114,6 +114,9 @@ function shouldCopyKitEntry(srcAbs, kitRootAbs) {
   if (rel === 'docs/plans') return true
   if (rel === 'docs/plans/POLA_REPO_AMAN.md') return true
   if (rel.startsWith('docs/plans/')) return false
+  // Folder arsip repo-dev (audit + perbandingan internal usang, memuat nama kit pihak ketiga) - tak untuk
+  // staff klien. Cermin negasi package.json files[] (jalur npm) + .npmignore. Buang folder + seluruh isinya.
+  if (rel === 'docs/arsip' || rel.startsWith('docs/arsip/')) return false
   return true
 }
 
@@ -294,26 +297,27 @@ function main() {
   console.log(`Tanggal       : ${today}`)
   if (dryRun) console.log('Mode          : SIMULASI (tidak ada berkas yang ditulis)')
 
-  // ---- Verifikasi berkas inti kit ADA (sumber-tunggal: lib/kit-files.psd1) ----
-  const kitFilesPath = path.join(KitDir, 'lib', 'kit-files.psd1')
-  if (!fs.existsSync(kitFilesPath)) {
-    console.error('ERROR: lib/kit-files.psd1 hilang. Pasang ulang kit.')
-    process.exit(1)
-  }
-  let kitFiles
+  // ---- Verifikasi berkas inti kit ADA (sumber-tunggal DUA-FORMAT: lib/kit-files.json v2 / .psd1 v1) ----
+  let manifest
   try {
-    kitFiles = readKitFiles(kitFilesPath)
+    manifest = readKitManifest(KitDir)
   } catch (e) {
-    console.error(`ERROR: Gagal baca lib/kit-files.psd1: ${e.message}`)
+    console.error(`ERROR: Gagal baca manifest daftar-berkas (lib/kit-files.json / .psd1): ${e.message}`)
     process.exit(1)
   }
+  if (!manifest) {
+    console.error('ERROR: manifest daftar-berkas (lib/kit-files.json) hilang. Pasang ulang kit.')
+    process.exit(1)
+  }
+  const kitFiles = manifest.data
   // Grup 'tests' SENGAJA TIDAK diverifikasi sebagai "wajib ada": berkas tes Pester (*.Tests.ps1) = internal
   // dev, sengaja DIKECUALIKAN dari paket npm (package.json files[] !tests/*.Tests.ps1, "ramping tarball").
   // kit-files.psd1 tetap mendaftar semua tes (dijaga install-mapping-sync.Tests.ps1 untuk integritas DEV),
   // tapi PEMASANG CLIENT cuma boleh mewajibkan berkas yang BENAR-BENAR dikirim ke client. Dulu mewajibkan
   // 'tests' -> "Kit tidak lengkap. Berkas hilang" di TIAP install/re-install npm (bug terdeteksi uji-tarball
   // 2026-06-25). Dijaga package-bundle.Tests.ps1 (berkas wajib pemasang non-tests WAJIB ada di tarball).
-  const groups = ['core_prompts', 'universal_rules', 'scripts', 'lib_files', 'templates', 'docs', 'ci', 'meta']
+  // 'workflows' (v2.4.0) = rak rujukan on-demand pecah-per-seksi; kit lama tanpa grup ini tetap jalan (|| []).
+  const groups = ['core_prompts', 'universal_rules', 'workflows', 'scripts', 'lib_files', 'templates', 'docs', 'ci', 'meta']
   const wajibAda = []
   for (const g of groups) {
     for (const f of (kitFiles[g] || [])) wajibAda.push(String(f))
@@ -399,7 +403,13 @@ function main() {
   const agentsTemplate = path.join(KitDir, 'AGENTS.md.template')
   const agentsTarget = path.join(projectRoot, 'AGENTS.md')
   const agentsExists = fs.existsSync(agentsTarget)
-  let agentsAction = agentsExists ? (force ? 'backup-replace' : 'skip') : 'create'
+  // AGENTS.md = artefak KLIEN (Lajur C, rencana STRATEGI_UPDATE_v2 §2 + Langkah 1a): kustomisasi klien
+  // WAJIB bertahan lintas-update. Sudah-ada -> DEFAULT LEWATI/pertahankan, TERMASUK saat --force (jalur
+  // UPDATE: update-kit.mjs memanggil `setup-pola-b --force`). DULU --force -> 'backup-replace' menimpa
+  // AGENTS.md klien dgn template kosong (kustomisasi terlempar ke .backup-<timestamp>) = celah "update
+  // menimpa kerja klien". Hanya jalur INTERAKTIF (popup di bawah, non-force) yang boleh menaikkan ke
+  // 'backup-replace' atas pilihan SADAR user. Mau reset ke template? hapus AGENTS.md dulu lalu jalankan ulang.
+  let agentsAction = agentsExists ? 'skip' : 'create'
 
   if (agentsExists && !force && !dryRun) {
     console.log('')
@@ -455,10 +465,10 @@ function main() {
     // 'backup-replace' / 'create' -> lanjut ke publishAgentsMd di bawah
   }
 
-  if (dryRun) {
+  if (agentsAction === 'skip') {
+    console.log(`${dryRun ? '[SIMULASI] ' : ''}LEWATI AGENTS.md (sudah ada - kustomisasi klien dipertahankan, tidak ditimpa).`)
+  } else if (dryRun) {
     console.log('[SIMULASI] PASANG AGENTS.md (isi template + cadangkan kalau sudah ada)')
-  } else if (agentsAction === 'skip') {
-    console.log('LEWATI AGENTS.md (kamu pilih Lewati - berkas lama dipertahankan).')
   } else {
     try {
       const r = publishAgentsMd({ projectRoot, templatePath: agentsTemplate, placeholders, preserve: false })
@@ -526,7 +536,6 @@ function main() {
     const extraStatic = [
       { name: '_PATTERNS.md', desc: 'aturan dokumentasi tim' },
       { name: '_EXAMPLE.md', desc: 'contoh format .md pendamping' },
-      { name: 'architecture_auto.md', desc: 'registry TOC' },
     ]
     for (const t of extraStatic) {
       const src = path.join(KitDir, 'templates', t.name)
@@ -554,7 +563,6 @@ function main() {
       ['templates/github/workflows/secret-guard.yml', path.join(workflowsDir, 'secret-guard.yml')],
       ['templates/github/workflows/audit-access.yml', path.join(workflowsDir, 'audit-access.yml')],
       ['templates/github/scripts/ai-review.cjs', path.join(scriptsDir, 'ai-review.cjs')],
-      ['templates/github/scripts/setup-branch-protection.ps1', path.join(scriptsDir, 'setup-branch-protection.ps1')],
       ['templates/github/CODEOWNERS.template', path.join(githubDir, 'CODEOWNERS')],
       ['templates/github/pull_request_template.md', path.join(githubDir, 'pull_request_template.md')],
       ['templates/KERJA_KELOMPOK.md', path.join(docsDir, 'KERJA_KELOMPOK.md')],
@@ -568,11 +576,9 @@ function main() {
       ['templates/REFACTOR_STANDARD.md', path.join(docsDir, 'REFACTOR_STANDARD.md')],
       ['templates/RESEP_PERUBAHAN.md', path.join(docsDir, 'RESEP_PERUBAHAN.md')],
       // Contoh peta-konsistensi (anti drift "ubah A lupa B"). .jsonc = format yang dibaca GERBANG NODE
-      // klien (`npx lintasai preflight` -> robot consistency-check.mjs). .psd1 = format robot PowerShell
-      // cadangan (consistency-check.ps1). Keduanya disalin supaya jalur Node (utama) + PS (cadangan)
-      // sama-sama punya contoh; klien/AI salin yang sesuai -> docs/consistency-map.jsonc lalu isi fakta.
+      // klien (`npx lintasai preflight` -> robot consistency-check.mjs). Klien/AI salin ->
+      // docs/consistency-map.jsonc lalu isi fakta.
       ['templates/consistency-map.example.jsonc', path.join(docsDir, 'consistency-map.example.jsonc')],
-      ['templates/consistency-map.example.psd1', path.join(docsDir, 'consistency-map.example.psd1')],
       // Contoh "Buku Pelajaran" (LAPIS 3 anti-bug-berulang): tiap bug yang lolos -> jadi pengaman tetap.
       // Disalin sbg CONTOH (.example) -> klien/AI salin jadi docs/BUKU_PELAJARAN.md saat bug pertama,
       // lewat alur "AI usul -> owner setujui" (aturan CLAUDE_universal sec. 6.4, auto-baca tiap sesi).
@@ -597,6 +603,26 @@ function main() {
     }
     // docs/SIGNED_RELEASE.md (dari folder docs/ kit, bukan templates/)
     deployOne({ src: path.join(KitDir, 'docs/SIGNED_RELEASE.md'), dst: path.join(docsDir, 'SIGNED_RELEASE.md'), from: 'docs/SIGNED_RELEASE.md', kind: 'team_file', manifestState, dryRun, withPlaceholder: false })
+
+    // Refresh docs/UPDATE_GUIDE.md era-PowerShell (v2.0.0 3e): deployOne di atas lewati-kalau-ada -> tak
+    // pernah menyegarkan salinan lama yang menyuruh `kit.ps1 update`. Kalau salinan klien masih era-PS
+    // DAN template kit sudah bebas-PS -> cadangkan + timpa (SIMULASI saat --dry-run). Aman/no-op kalau
+    // tak ada / sudah segar / template kit sendiri masih era-PS (pra-sapuan dokumen 3f).
+    try {
+      const guideRes = refreshUpdateGuideIfLegacy({
+        sourcePath: path.join(KitDir, 'templates/UPDATE_GUIDE.md'),
+        targetPath: path.join(docsDir, 'UPDATE_GUIDE.md'),
+        dryRun,
+      })
+      if (guideRes.status === 'refreshed') {
+        addToManifest(manifestState, path.join(docsDir, 'UPDATE_GUIDE.md'), 'team_file', 'templates/UPDATE_GUIDE.md')
+        console.log(`OK    docs/UPDATE_GUIDE.md disegarkan (era-PowerShell) - cadangan: ${path.basename(guideRes.backupPath)}`)
+      } else if (guideRes.status === 'simulated') {
+        console.log('[SIMULASI] SEGARKAN docs/UPDATE_GUIDE.md era-PowerShell (+ cadangan ber-cap-waktu)')
+      }
+    } catch (e) {
+      console.log(`PERINGATAN: Gagal menyegarkan UPDATE_GUIDE.md (lanjut): ${e.message}`)
+    }
 
     // Pengingat mode-tim (cermin setup-pola-b.ps1:939-949): tunjuk berkas tim yang baru disalin supaya
     // staff tahu langkah lanjut yang TAK muncul di rangkuman akhir (kunci branch main + setup database).
@@ -984,8 +1010,9 @@ function launchVsCode({ projectRoot, kitDir, skippedSteps }) {
 // checklist untuk AI / langkah yang dilewati / Status SIAP NGODING + arahan AI lanjut Fase B).
 // #4 Papan "apa yang sudah nyala vs belum": cek deterministik (cuma-baca) status tiap PENJAGA yang bisa
 // dinyalakan di project, supaya owner tahu di Hari-0 mana yang masih tidur (bukan baru ketahuan saat
-// insiden). Pola lintasAI: beberapa penjaga terkuat default-MATI/opt-in (Palang Rem risk-gate, pencegah
-// salah-ketik-angka consistency-map, Buku Induk akses) -> panel ini MEMBUATNYA TERLIHAT + 1 kalimat cara
+// insiden). Pola lintasAI: sebagian penjaga default-MATI/opt-in (pencegah salah-ketik-angka
+// consistency-map, Buku Induk akses; Palang Rem risk-gate justru default NYALA sejak v1.61.0)
+// -> panel ini MEMBUATNYA TERLIHAT + 1 kalimat cara
 // nyalakan (ramah non-programmer). Semua cek = existsSync / baca teks -> tak mengubah apa pun. Diekspor
 // untuk uji-banding. Dipakai printFinalSummary (hanya saat bukan simulasi).
 export function buildGuardStatusLines(projectRoot, { almostEmpty = false, skipTeamFiles = false } = {}) {
@@ -1022,7 +1049,7 @@ function printFinalSummary({ projectName, projectRoot, kitDir, kitVersion, almos
   console.log('')
 
   console.log('SUDAH AKTIF (otomatis dibaca tiap sesi AI):')
-  console.log('  [x] Aturan AI         : 4 dokumen aturan + Tinjauan lintasAI Divisi (programmer + non-programmer)')
+  console.log('  [x] Aturan AI         : 4 dokumen aturan + Tinjauan lintasAI Divisi (Junior-<profesi> + Non-<profesi>) + blok belajar "Belajar dari task ini"')
   if (almostEmpty) {
     console.log('  [ ] docs/             : DILEWATI (project hampir kosong) - akan dibuat otomatis saat ada kode')
     console.log('  [ ] .github/          : DILEWATI (project hampir kosong) - berkas tim belum disalin')
@@ -1122,7 +1149,7 @@ function printFinalSummary({ projectName, projectRoot, kitDir, kitVersion, almos
   console.log('')
 
   console.log('UPDATE KIT KE VERSI BARU:')
-  console.log('  .\\.claude-kit\\update-kit.ps1   (auto unduh-ulang + cadangkan + deteksi [BREAKING]/[SCAN-REQUIRED])')
+  console.log('  npx lintasai update   (auto unduh-ulang + cadangkan + deteksi [BREAKING]/[SCAN-REQUIRED])')
   console.log('')
 
   if (dryRun) console.log('Mode SIMULASI: jalankan ulang tanpa --dry-run untuk eksekusi sungguhan.')

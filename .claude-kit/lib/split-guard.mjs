@@ -248,10 +248,12 @@ function isDbStructFile(rel, name) {
   return false
 }
 
-// --- penjelajah folder (cuma-baca). truncated=true kalau cap tercapai (fail-closed di pemanggil) ---
+// --- penjelajah folder (cuma-baca). truncated=true kalau cap tercapai; unreadableDirs = folder yang
+// GAGAL dibaca (keduanya = "pemindaian TAK lengkap" -> fail-closed di pemanggil) ---
 function walkCollect(root, cap = 50000) {
-  const envFiles = []     // { abs, rel, name }
-  const dbStructFiles = []// { abs, rel }
+  const envFiles = []      // { abs, rel, name }
+  const dbStructFiles = [] // { abs, rel }
+  const unreadableDirs = []// folder yang fs.readdirSync-nya MELEMPAR (izin terbatas/terkunci/path>260/terhapus saat scan)
   let seen = 0
   let truncated = false
   const stack = [root]
@@ -259,7 +261,14 @@ function walkCollect(root, cap = 50000) {
     if (seen >= cap) { truncated = true; break }
     const dir = stack.pop()
     let entries
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { continue }
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }) }
+    catch {
+      // FAIL-CLOSED (audit 2026-07-08, rencana STRATEGI_UPDATE_v2 Langkah 1b): JANGAN telan diam-diam.
+      // Folder tak terbaca = subtree-nya TAK pernah dipindai -> catat supaya pemanggil menaikkan GENTING,
+      // bukan diam-diam melewatinya lalu vonis "BERSIH/aman" atas isi yang belum pernah dilihat (fail-open).
+      unreadableDirs.push(path.relative(root, dir).split(path.sep).join('/') || '.')
+      continue
+    }
     for (const ent of entries) {
       if (seen >= cap) { truncated = true; break }
       seen++
@@ -274,7 +283,7 @@ function walkCollect(root, cap = 50000) {
       }
     }
   }
-  return { envFiles, dbStructFiles, truncated }
+  return { envFiles, dbStructFiles, truncated, unreadableDirs }
 }
 
 // === invokeSplitGuard ============================================================================
@@ -294,11 +303,20 @@ export function invokeSplitGuard(repoRoot, { tier = null, role = null, quiet = f
     add('PENTING', 'TIER_KONFLIK', `Penanda .split-state bertentangan: access_tier='${resolved.conflict.atTier}' tapi role='${resolved.conflict.role}' (memetakan ke '${resolved.conflict.roTier}'). Robot pakai yang PALING KETAT ('${resolved.tier}'). Betulkan penanda biar tak salah-deteksi.`, '.claude-kit/.split-state')
   }
 
-  const { envFiles, dbStructFiles, truncated } = walkCollect(repoRoot)
+  const { envFiles, dbStructFiles, truncated, unreadableDirs } = walkCollect(repoRoot)
 
   // FAIL-CLOSED: penjelajahan terpotong -> JANGAN bilang "aman", tolak + minta pindai manual.
   if (truncated) {
     add('GENTING', 'SCAN_TAK_LENGKAP', 'Folder terlalu besar - pemindaian BERHENTI sebelum selesai, jadi robot TIDAK bisa menjamin tak ada rahasia nyelip. JANGAN anggap "aman". Pindai per-subfolder / kurangi berkas dulu, atau periksa manual sebelum push.')
+  }
+
+  // FAIL-CLOSED: ada folder yang GAGAL dibaca saat pindai (izin terbatas / terkunci / nama path terlalu
+  // panjang / terhapus di tengah scan) -> isinya TAK pernah diperiksa. DULU dilewati diam-diam -> laporan
+  // "BERSIH/aman" palsu atas folder yang belum pernah dilihat (audit fail-open 2026-07-08). Sekarang
+  // naikkan GENTING supaya gerbang MENOLAK sampai folder itu benar-benar terpindai.
+  if (unreadableDirs.length > 0) {
+    const daftar = unreadableDirs.slice(0, 5).join(', ') + (unreadableDirs.length > 5 ? `, +${unreadableDirs.length - 5} folder lagi` : '')
+    add('GENTING', 'SCAN_FOLDER_TAK_TERBACA', `${unreadableDirs.length} folder GAGAL dibaca saat pindai (mis. ${daftar}) - kemungkinan izin akses terbatas, folder terkunci, atau nama path terlalu panjang. Isi folder itu TIDAK diperiksa, jadi robot TIDAK bisa menjamin tak ada rahasia '.env' nyelip di sana. JANGAN anggap "aman": perbaiki izin / pindahkan folder lalu pindai ulang, atau periksa manual sebelum push.`)
   }
 
   // C1: berkas .env ASLI -> vonis menurut ISI.

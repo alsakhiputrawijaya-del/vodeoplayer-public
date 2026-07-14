@@ -1,6 +1,6 @@
 ﻿# Split Repo Migration Prompt - lintasAI v1.10.0 (🧪 BETA - belum diuji end-to-end di GitHub nyata)
 
-> **Ini Tangga Refactor TINGKAT 3 (Repository Split / Polyrepo)** — tingkat paling berat. Default kit = **Tingkat 1 (Refactoring di tempat)**; naik ke sini **bertahap** (pola Strangler Fig), hanya saat modul sudah matang + butuh tim/akses(IP) terpisah. Lihat "Tangga Refactor 3-Tingkat" di `LINTASAI_WORKFLOWS_v1.md` §4.2.
+> **Ini Tangga Refactor TINGKAT 3 (Repository Split / Polyrepo)** — tingkat paling berat. Default kit = **Tingkat 1 (Refactoring di tempat)**; naik ke sini **bertahap** (pola Strangler Fig), hanya saat modul sudah matang + butuh tim/akses(IP) terpisah. Lihat "Tangga Refactor 3-Tingkat" di `workflows/4.2-pattern-driven.md`.
 >
 > **Paste ke Claude Code di project monolithic kamu** untuk migrate jadi multi-repo.
 > Ada **2 bentuk split** — pilih dulu di "Mode Selector" di bawah: **[1] per-Lapisan (2-3 repo)** atau **[2] per-Kapabilitas (jumlah ikut wilayah rahasia + tim)**. **Jumlah repo = ikut kebutuhan, BUKAN angka tetap** — sumber tunggal keputusan topologi: `docs/plans/POLA_REPO_AMAN.md` (jangan salin angka dari sini).
@@ -77,7 +77,7 @@ Konsisten dengan poin di atas: yang melindungi = **siapa punya AKSES**, bukan ju
 
 ## Idempotency guard - Post-Split Detection (WAJIB di awal)
 
-Sebelum analyze atau propose, AI WAJIB run `Test-PostSplitState -ProjectRoot $PWD` (dari `lib/project-detect.ps1`) untuk cek apakah project sudah pernah split:
+Sebelum analyze atau propose, AI WAJIB cek apakah project sudah pernah split (deteksi 3-lapis di bawah; robot Node: `testPostSplitState` di `lib/project-detect.mjs`):
 
 - **Layer 1 (paling reliable)**: marker file `.claude-kit/.split-state` exist → IsPostSplit = true.
 - **Layer 2**: `AGENTS.md` mention "post-split" / "multi-repo coordination" / "sister repo:" / "cross-repo types pipeline" → IsPostSplit = true.
@@ -284,7 +284,7 @@ Tambahan opsional yang membantu (boleh skip kalau belum tahu):
   - **Mode [1]:** → repo **shared** (schema tinggal di shared) + salinan ke **backend** (pemakai DB).
   - **Mode [2]:** → tiap repo kapabilitas dapat **denah schema-NYA SENDIRI saja** (bukan denah semua engine); backend-aggregator dapat denah gabungan (read-only) seperlunya untuk menyajikan; **dashboard NOL denah DB**. (Jangan kumpulkan denah semua engine rahasia di 1 repo yang dibaca luas.)
   - **JANGAN ke frontend** (frontend tak boleh tahu struktur DB — sejalan pengaman `.env`).
-- **Peta besar + kamus istilah** (`docs/architecture.md`, `docs/architecture_auto.md`, `docs/glossary.md`) → tiap repo dapat **versinya SENDIRI** (dibuat-ulang/disesuaikan agar cuma menjelaskan repo itu — fokus + AI baca lebih sedikit + tidak ada yang basi). **BUKAN** 1 file induk disalin sama ke 3 (itu cepat basi + bikin staff frontend lihat isi backend yang bukan urusannya).
+- **Peta besar + kamus istilah** (`docs/architecture.md`, `docs/glossary.md`) → tiap repo dapat **versinya SENDIRI** (dibuat-ulang/disesuaikan agar cuma menjelaskan repo itu — fokus + AI baca lebih sedikit + tidak ada yang basi). **BUKAN** 1 file induk disalin sama ke 3 (itu cepat basi + bikin staff frontend lihat isi backend yang bukan urusannya).
 - **Catatan keputusan** (`docs/decisions/`) → keputusan yang relevan ikut repo terkait; keputusan "pecah-repo" disalin ke **KETIGA** repo (jejak audit).
 - **PLUS bikin `docs/cross-repo-overview.md`** (peta hubungan 3-repo, **SINGKAT**: backend = API + logika DB; frontend = tampilan; shared = tipe data + denah DB sebagai paket npm; siapa depend ke siapa) → salin ke **KETIGA** repo. Singkat + stabil (topologi jarang berubah) → aman diduplikasi, dan staff non-programmer lihat gambaran besar **tanpa loncat ke repo lain**.
 
@@ -443,7 +443,7 @@ Kelebihan:
 Kekurangan:
 - Sedikit dobel (alamat loket/route ditulis di 2 tempat)
 
-> 🔒 **WAJIB (cegah IDOR = ganti ID di URL untuk curi data orang lain):** validasi input + otorisasi per-resource SELALU di **backend** (handler asli `handleOrdersList` dst, pakai identitas server-side terverifikasi) — shell wrapper frontend HANYA meneruskan, JANGAN PERNAH menaruh keputusan akses di frontend. Kalau tidak, permintaan user A bisa membuka data user B. Selaras `LINTASAI_WORKFLOWS_v1.md` §4.13 Backend + §8.
+> 🔒 **WAJIB (cegah IDOR = ganti ID di URL untuk curi data orang lain):** validasi input + otorisasi per-resource SELALU di **backend** (handler asli `handleOrdersList` dst, pakai identitas server-side terverifikasi) — shell wrapper frontend HANYA meneruskan, JANGAN PERNAH menaruh keputusan akses di frontend. Kalau tidak, permintaan user A bisa membuka data user B. Selaras `workflows/4.13-skill-divisi.md` Backend + §8.
 
 ---
 
@@ -764,6 +764,8 @@ Setelah saya analyze project kamu, saya akan present plan dengan format:
 - Risks + mitigations
 
 Tanya saja kalau ada konteks tambahan owner mau saya tahu (misal: ada module legacy, ada constraint compliance, ada deadline rilis fitur, dst).
+
+> 📊 **Setelah migrasi selesai:** pantau semua repo dari 1 layar dengan `npx lintasai board` (cuma-baca) — kelihatan repo mana yang tertinggal commit / punya perubahan berkas rahasia `.env` yang belum aman (ditandai GENTING). AI juga menawarkannya otomatis di akhir alur pecah-repo (`JALANKAN_KIT.md` 19b-ii).
 
 ---
 

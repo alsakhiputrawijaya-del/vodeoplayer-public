@@ -2,9 +2,7 @@
 // lib/version-detect.mjs - Deteksi versi kit (port Node dari lib/version-detect.ps1).
 //
 // MIGRASI grup [A] (ADR-003 / docs/plans/keputusan-per-elemen-node-vs-ps.md): robot regex
-// MURNI (0 System API), C4 nol. Pola Strangler Fig = BERDAMPINGAN: versi .ps1 TETAP hidup
-// (dot-source oleh kit.ps1/setup-pola-b + tes Pester). Versi .mjs ini untuk pemanggil Node
-// (mis. bin/lintasai.js) + diuji node:test. Output WAJIB identik versi PS.
+// MURNI (0 System API), C4 nol. Dipakai pemanggil Node (mis. bin/lintasai.js) + diuji node:test.
 //
 // Scan TERPADU lintas-format (regresi v1.13.3): ambil heading versi PERTAMA dari atas (= terbaru),
 // terima KEDUA gaya: "## [X.Y.Z]" (Keep-a-Changelog, sekarang) DAN "## vX.Y.Z" (lama).

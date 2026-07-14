@@ -194,7 +194,7 @@ JANGAN pakai starter template. Langsung adapt lintasAI:
 ```bash
 cd <existing-project>
 git clone https://github.com/ojokesusu/lintasAI.git .claude-kit
-.claude-kit/setup-pola-b.ps1
+node .claude-kit/setup-pola-b.mjs
 ```
 
 LintasAI akan auto-detect stack (via `STACK_DETECTION_PATTERN.md`) dan customize setup berdasarkan project existing.
@@ -214,7 +214,7 @@ Owner (lintasAI maintainer) update template tiap kit version baru:
 User yang sudah clone template TIDAK otomatis update. Mereka manual sync `.claude-kit/` via:
 
 ```bash
-.claude-kit/kit.ps1 update
+npx lintasai update
 ```
 
 Sample code (auth flow, dashboard, dst) TIDAK auto-sync. User cherry-pick manual kalau mau adopt pattern baru.

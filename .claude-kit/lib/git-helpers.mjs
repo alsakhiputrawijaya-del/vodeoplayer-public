@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// lib/git-helpers.mjs - Helper bersih-bersih metadata git (versi Node). Padanan SEBAGIAN lib/git-helpers.ps1.
+// lib/git-helpers.mjs - Helper bersih-bersih metadata git (versi Node).
 //
 // DI-PORT (logika murni & lintas-OS, perilaku identik dgn PS):
 //   - removeGitMetadata : hapus folder .git/ DI DALAM sebuah path. Penting saat kit di-CLONE
@@ -14,9 +14,7 @@
 //   NTFS Alternate Data Stream `Zone.Identifier`. DULU shim ke `Unblock-File` PowerShell; KINI
 //   dilakukan Node murni: hapus stream `<file>:Zone.Identifier` lewat fs.rmSync (Node di Windows
 //   bisa membuka/menghapus ADS via path `path:streamname` - terbukti uji empiris Node v24). Hasil
-//   IDENTIK dengan Unblock-File rekursif: file tanpa MOTW di-skip diam-diam (cermin -ErrorAction
-//   SilentlyContinue), gagal fatal tak terduga -> false (tak lempar), cermin Remove-MotwBlock PS.
-//   Cadangan PowerShell: Remove-MotwBlock di lib/git-helpers.ps1 TETAP ada (jalur PS_FALLBACK).
+//   file tanpa MOTW di-skip diam-diam; gagal fatal tak terduga -> false (tak lempar).
 //   (Di jalur npm-only, berkas tak ber-MOTW jadi ini umumnya no-op.)
 import fs from 'node:fs'
 import path from 'node:path'

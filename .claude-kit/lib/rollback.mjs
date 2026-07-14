@@ -7,15 +7,12 @@
 // (SHA-256) di catatan + segel ulang catatan (HMAC) supaya tidak memicu alarm "di-utak-atik" palsu.
 //
 // ===========================================================================================
-// STATUS MIGRASI (Gelombang 6, ADR-003/ADR-004) - SUDAH CUTOVER (aksi MERUSAK, sesi-khusus owner
-//   2026-06-23) -> FILE INI = JALUR PRODUKSI:
-//   File ini = port Node lib/rollback.ps1, hidup BERSAMA (side-by-side) versi PowerShell. Sejak cutover,
-//   dispatcher (bin/lintasai.js) memetakan 'rollback' -> 'lib/rollback.mjs' (FILE INI) di COMMANDS_NODE +
+// FILE INI = JALUR PRODUKSI (aksi MERUSAK):
+//   Dispatcher (bin/lintasai.js) memetakan 'rollback' -> 'lib/rollback.mjs' (FILE INI) di COMMANDS_NODE +
 //   menyuntik --project-root; router kit.mjs 'rollback' juga men-delegasi ke file ini. Jadi
-//   `npx lintasai rollback` dan `kit.mjs rollback` KINI MENJALANKAN file ini di PRODUKSI (AKSI MERUSAK:
+//   `npx lintasai rollback` dan `kit.mjs rollback` MENJALANKAN file ini di PRODUKSI (AKSI MERUSAK:
 //   menimpa berkas project dari backup) -- nilai blast radius dengan benar saat menyunting (bukan dormant).
-//   Cadangan PowerShell tetap terbit: `kit.ps1 rollback` -> lib/rollback.ps1 (jalur manual, tak disentuh
-//   cutover). Tetap diuji tes pengunci (tests/rollback.test.mjs) + uji-banding PS==Node.
+//   Diuji tes pengunci (tests/rollback.test.mjs).
 //
 // SIFAT NON-INTERAKTIF (keputusan owner 06-22, cermin uninstall.mjs): versi Node TIDAK menampilkan
 //   popup jendela. Karena ini aksi MERUSAK (menimpa berkas), default-aman = TIDAK menimpa apa pun.
@@ -443,7 +440,7 @@ export function invokeRollback({ projectRoot, kitDir, force = false, acceptUntru
       // R3 (audit 2026-06-23): petunjuk pemulihan AWAM - restore SUDAH aman; segel bisa dipulihkan
       // tanpa melemahkan pengaman. Cegah staff terbiasa pakai --force sebagai jalan pintas.
       console.warn("[PENTING] Berkas SUDAH dipulihkan dengan aman; hanya 'segel' catatan yang gagal diperbarui.")
-      console.warn("          Pulihkan segel: jalankan 'npx lintasai init' (atau '.\\.claude-kit\\kit.ps1 doctor').")
+      console.warn("          Pulihkan segel: jalankan 'npx lintasai init' (atau 'npx lintasai doctor').")
       console.warn('          JANGAN biasakan pakai --force / --accept-untrusted-manifest sebagai jalan pintas (itu melemahkan pengaman).')
       try {
         if (manifest.metadata && Object.prototype.hasOwnProperty.call(manifest.metadata, 'signature')) {

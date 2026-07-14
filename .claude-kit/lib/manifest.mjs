@@ -19,6 +19,9 @@ import { newManifestSignature } from './manifest-signing.mjs'
 // stripBom (sumber bersama lib/fs-text.mjs): tanpa buang-BOM, manifest ber-BOM (editor Windows) bikin
 // merge daftar-berkas-lama HILANG diam-diam (entri lama tak terlacak saat uninstall = sampah tertinggal).
 import { stripBom } from './fs-text.mjs'
+// Peta versi-diharapkan (Mesin 1 STRATEGI_UPDATE_v2): angka schema_version catatan-pasang diambil
+// dari sumber-tunggal lib/expected-schema.mjs -> penulis ini + pemeriksa uninstall.mjs tak bisa selisih.
+import { getLintasExpectedSchemaVersion } from './expected-schema.mjs'
 
 // Buat wadah state baru untuk melacak manifest pemasangan.
 export function initializeManifest(projectRoot) {
@@ -70,8 +73,10 @@ export function addDirToManifest(state, dirPath) {
   if (!includesCI(state.directories, relPath)) state.directories.push(relPath)
 }
 
-// Format waktu lokal 'yyyy-MM-ddTHH:mm:ss' (cermin Get-Date -Format).
-function formatLocalTimestamp(d) {
+// Format waktu lokal 'yyyy-MM-ddTHH:mm:ss' (cermin Get-Date -Format). Di-EXPORT untuk dipakai ulang
+// lib/migration-state.mjs (cap `applied_at` buku-besar migrasi) - anti fungsi-kembar (§5 reuse,
+// dijaga tests/no-duplicate-functions.test.mjs).
+export function formatLocalTimestamp(d) {
   const p = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
@@ -83,7 +88,10 @@ function formatLocalTimestamp(d) {
 // rusak) -> rollback (rollback.mjs:readManifestJson) DAN uninstall (uninstall.mjs) dua-duanya
 // lumpuh persis saat dibutuhkan. Cermin idiom writeManifestJson di rollback.mjs:100-104 (sumber
 // idiom sama; sengaja TAK di-impor lintas-modul demi jaga batas lapisan installer<-manifest ringan).
-function writeJsonAtomic(targetPath, obj) {
+// Di-EXPORT untuk dipakai ulang lib/migration-state.mjs (penulis buku-besar migrasi - lapisan sama
+// dgn manifest, jadi impor di sini sah; duplikat dgn rollback.mjs tetap terdokumentasi di daftar-izin
+// tests/no-duplicate-functions.test.mjs).
+export function writeJsonAtomic(targetPath, obj) {
   const tmp = targetPath + '.tmp'
   fs.writeFileSync(tmp, JSON.stringify(obj, null, 2), 'utf8')
   fs.renameSync(tmp, targetPath)
@@ -93,9 +101,8 @@ function writeJsonAtomic(targetPath, obj) {
 // opts: { kitDir, kitVersion, projectName, installerName, noPreserve=false, skipSigning=false, now? }
 // `now` opsional (Date) untuk uji deterministik; default = sekarang.
 // `installerName` = nama pemasang yang menulis catatan ini (metadata.installer). Default
-// 'setup-pola-b.ps1' (jaga kompat PS + jalur yang belum cutover). Pemasang Node mengoper
-// 'setup-pola-b.mjs' supaya catatan JUJUR soal "siapa yang masang" saat jalur Node aktif.
-export function saveManifest(state, { kitDir, kitVersion, projectName, installerName = 'setup-pola-b.ps1', noPreserve = false, skipSigning = false, now = null } = {}) {
+// 'setup-pola-b.mjs' (v2.0.0: kit 100% Node). team-setup mengoper 'team-setup.mjs'.
+export function saveManifest(state, { kitDir, kitVersion, projectName, installerName = 'setup-pola-b.mjs', noPreserve = false, skipSigning = false, now = null } = {}) {
   if (!kitDir) throw new Error('saveManifest: kitDir wajib diisi.')
   const manifestPath = path.join(kitDir, '.install-manifest.json')
   let merged = false
@@ -138,7 +145,7 @@ export function saveManifest(state, { kitDir, kitVersion, projectName, installer
   // Bangun objek manifest (urutan untuk keterbacaan; segel akan urut-abjad sendiri).
   const ts = now || new Date()
   const manifest = {
-    schema_version: 1,
+    schema_version: getLintasExpectedSchemaVersion('.install-manifest.json'),
     kit_version: kitVersion,
     installed_at: formatLocalTimestamp(ts),
     installed_by: '<USER>',

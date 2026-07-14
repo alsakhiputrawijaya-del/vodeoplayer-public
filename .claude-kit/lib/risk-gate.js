@@ -30,8 +30,9 @@
  * ANTI ALARM-PALSU: hanya pola benar-benar berisiko yang dijaga. `deleteMany({ where })`,
  * `DELETE ... WHERE`, `prisma migrate deploy`, `rm berkas.txt` = AMAN -> lolos.
  *
- * Default OPT-IN (sec. 4.12: mode baru = default mati); nyalakan via .claude/settings.json
- * (lihat docs/risk-gate.md). Robot TIDAK auto-memperbaiki/menjalankan apa pun - cuma menilai lalu
+ * Default NYALA sejak v1.61.0 (ADR-002): setup-pola-b memasang hook ini otomatis tiap init/update;
+ * matikan = hapus blok PreToolUse risk-gate di .claude/settings.json (lihat docs/risk-gate.md).
+ * Robot TIDAK auto-memperbaiki/menjalankan apa pun - cuma menilai lalu
  * meneruskan keputusan ke USER.
  *
  * Versi  : 2.0.0 (1.0.0 = versi PowerShell lama; 2.0.0 = port Node)

@@ -1,20 +1,12 @@
 #!/usr/bin/env node
 // lib/consistency-check.mjs - "Robot pemeriksa kecocokan" lintas-berkas, MODE PROJECT (port Node).
 //
-// FASE 3 Langkah 2 (ADR-003 / migrasi .psd1 -> JSON, BERTAHAP + BERDAMPINGAN): port HANYA bagian
-// PEMERIKSA MODE PROJECT (cuma-baca) dari consistency-check.ps1, supaya project staff bisa
-// menjalankan robot konsistensi via Node sambil membaca peta `.jsonc` (bukan `.psd1`).
+// Robot pemeriksa kecocokan versi + fakta + istilah-pensiun. MODE PROJECT (cuma-baca) membaca peta
+// `.jsonc` milik project staff; MODE KIT (KIT_VERSION_CHECKS/KIT_FACTS + hitung blok teamFiles) =
+// pemeriksa internal kit; MODE CAP VERSI = penulis cap-versi (invokeLintasVersionBump dkk, dipanggil
+// kit.mjs case 'bump'). v2.0.0: berkas .ps1 sudah dihapus - ini satu-satunya implementasi.
 //
-// MODE KIT ($KitVersionChecks/$KitFacts + hitung blok $teamFiles) = pemeriksa internal kit.
-//   GELOMBANG 3 (2026-06-22): bagian PEMERIKSA (cuma-baca) kini DIPORT ke Node di berkas ini
-//   (lihat bagian "MODE KIT" di bawah), lulus uji-banding DETERMINISTIK PS==Node di repo nyata.
-//
-// PORT Node (migrasi PS->Node 2026-06-25, owner-gated): Penulis cap-versi (invokeLintasVersionBump dkk)
-//   KINI ada di berkas INI (lihat bagian "MODE CAP VERSI" di bawah) - dipanggil kit.mjs case 'bump'.
-//   Cadangan PowerShell (Invoke-LintasVersionBump di consistency-check.ps1 + kit.ps1 bump) TETAP ada.
-// Versi .ps1 TETAP HIDUP penuh (gerbang + bump) sebagai cadangan. Berdampingan, bukan pengganti.
-//
-// KEHATI-HATIAN KIT (case-sensitivity, sumber bug parity tersering):
+// KEHATI-HATIAN KIT (case-sensitivity, sumber bug tersering):
 //  - Pemeriksa versi pakai PS `-match` (CASE-INSENSITIVE) -> compileRx (flag i).
 //  - Buku FAKTA pakai PS `[regex]::Matches(...)` yang default CASE-SENSITIVE (BEDA dari -match!)
 //    -> compileRxGlobalCS (TANPA flag i, DENGAN flag g untuk ambil semua kemunculan).
@@ -140,7 +132,6 @@ export const KIT_VERSION_CHECKS = [
   { File: 'CHANGELOG.md', Label: 'Entri teratas CHANGELOG', UseChangelogParser: true },
   { File: 'CLAUDE_universal_v1.md', Label: 'Judul aturan (auto-baca tiap sesi staff)', Pattern: 'Versi\\s+(\\d+\\.\\d+\\.\\d+)', HeaderLines: 10 },
   { File: 'README.md', Label: 'Baris "Versi stabil sekarang"', Pattern: 'Versi stabil sekarang:\\s*\\*\\*v(\\d+\\.\\d+\\.\\d+)\\*\\*' },
-  { File: 'KEUNGGULAN_LINTASAI.md', Label: 'Baris "Terakhir diselaraskan"', Pattern: 'Terakhir diselaraskan:\\s*\\*\\*v(\\d+\\.\\d+\\.\\d+)' },
   { File: 'templates/INDEX.md', Label: 'Judul Index dokumen', Pattern: 'Daftar Lengkap Dokumen lintasAI v(\\d+\\.\\d+\\.\\d+)' },
 ]
 
@@ -149,9 +140,8 @@ export const KIT_SOURCE = { File: 'package.json', JsonField: 'version' }
 
 // Sumber 'jumlah file tim' didefinisikan SEKALI (anti-DRY); tiap fakta cuma beda Filter.
 // Kind 'CountInBlock' = hitung baris ber-Entry di antara baris BlockStart..BlockEnd.
-// EXPORT (bukan const lokal) supaya tes paritas (tests/consistency-parity.Tests.ps1) bisa
-// membandingkan nilai ini vs $KitTeamFilesSource di consistency-check.ps1 -> simetri penuh PS<->Node.
-export const KIT_TEAM_FILES_SOURCE = { Kind: 'CountInBlock', File: 'setup-pola-b.ps1', BlockStart: '\\$teamFiles\\s*=\\s*@\\(', BlockEnd: '^\\s*\\)\\s*$', Entry: "Src\\s*=\\s*'templates" }
+// EXPORT (bukan const lokal) supaya tes Node (tests/consistency-check.test.mjs) bisa memakai nilai ini.
+export const KIT_TEAM_FILES_SOURCE = { Kind: 'CountInBlock', File: 'setup-pola-b.mjs', BlockStart: 'const teamFiles\\s*=\\s*\\[', BlockEnd: '^\\s*\\]', Entry: "\\['templates/" }
 
 // Buku fakta: nilai-berulang NON-versi yang gampang drift (mis. "jumlah file tim").
 // Beda dari versi: 1 dokumen boleh sebut angkanya >1x -> dicek SEMUA kemunculan.
@@ -168,24 +158,71 @@ export const KIT_FACTS = [
 // Masalah yang dipecahkan: istilah/heading kanonik diganti (mis. "Multi-Divisi" -> "Tinjauan
 // lintasAI Divisi"), tapi salinan lama nyangkut di berkas instruksi -> klien lihat istilah usang.
 // Ini drift TEKS (bukan angka). Robot MENOLAK rilis kalau pola istilah-pensiun muncul di berkas
-// instruksi HIDUP (root *.md + templates/*.md + 2 skrip pemasang), KECUALI di berkas sejarah
-// (CHANGELOG, di ExcludeFiles). CASE-SENSITIVE (cermin .NET [regex]::Match default): "Multi-Divisi"
-// (proper noun) ditangkap; "multi-divisi" (prosa umum, mis. "full multi-divisi") + "Multi-Divisional"
-// (sebutan peran) TIDAK. EXPORT supaya tes paritas (via tests/dump-kit-consistency.mjs) bisa
-// membandingkan daftar ini vs $script:KitRetiredTerms di consistency-check.ps1 (anti drift-senyap).
+// instruksi HIDUP (root *.md + templates/*.md + pemasang setup-pola-b.mjs), KECUALI di berkas sejarah
+// (CHANGELOG, di ExcludeFiles). CASE-SENSITIVE: "Multi-Divisi" (proper noun) ditangkap;
+// "multi-divisi" (prosa umum, mis. "full multi-divisi") + "Multi-Divisional" (sebutan peran) TIDAK.
+// EXPORT supaya tes Node (tests/consistency-check.test.mjs) bisa memakai daftar ini (anti drift-senyap).
 export const KIT_RETIRED_TERMS = [
   {
     Name: 'heading-tinjauan-divisi',
     Label: 'Istilah lama blok review (bagian 4.1)',
     Pattern: 'Multi-Divisi(?!onal)', // (?!onal) = izinkan "Multi-Divisional Engineer" (sebutan peran)
     Replacement: 'Tinjauan lintasAI Divisi',
-    ExcludeFiles: ['CHANGELOG.md'], // sejarah - boleh menyimpan istilah lama
+    ExcludeFiles: ['CHANGELOG.md', 'CHANGELOG_ARCHIVE.md'], // sejarah - boleh menyimpan istilah lama
+  },
+  // 2 entri di bawah menjaga kelas-bug LP risk-gate (drift v1.61.0->v2.5.0): komentar/teks yang masih
+  // mengklaim Palang Rem risk-gate "OPT-IN/default mati/opsional" padahal DEFAULT NYALA sejak v1.61.0
+  // (setup-pola-b memasangnya otomatis tiap init/update). Kenapa DUA entri: pattern dieksekusi PER-BARIS,
+  // sedangkan 2 baris basi (lib/risk-gate.js header + bin/lintasai.js komentar registry) TIDAK memuat
+  // kata "risk-gate"/"Palang Rem" di baris yang sama -> butuh entri frasa-unik terpisah (E2).
+  {
+    Name: 'risk-gate-optin-sebaris',
+    Label: 'Klaim basi risk-gate OPT-IN/mati/opsional (sebaris dengan kata risk-gate/Palang Rem)',
+    // (?!.*NYALA) WAJIB: baris sah penjelas pengecualian (mis. setup-pola-b "…jadi default NYALA…")
+    // menyebut risk-gate + "default mati" sekaligus -> tanpa guard ini ikut tertangkap (alarm palsu).
+    Pattern: '(?=.*(?:[Rr]isk-[Gg]ate|Palang Rem))(?!.*NYALA).*(?:OPT-IN|[Oo]pt-in|opsional|default[- ](?:kit )?[Mm][Aa][Tt][Ii])',
+    Replacement: 'default NYALA sejak v1.61.0 (ADR-002)',
+    ExcludeFiles: ['CHANGELOG.md', 'CHANGELOG_ARCHIVE.md'],
+  },
+  {
+    Name: 'risk-gate-optin-frasa',
+    Label: 'Frasa basi "Default OPT-IN"/"default kit MATI" (baris tanpa kata risk-gate)',
+    Pattern: 'Default OPT-IN|default kit MATI', // frasa unik: 0 kemunculan sah lain di cakupan pindai
+    Replacement: 'Default NYALA sejak v1.61.0 (ADR-002)',
+    ExcludeFiles: ['CHANGELOG.md', 'CHANGELOG_ARCHIVE.md'],
+  },
+  // Entri #4 (v2.6.0, ADR-012): label STATIS lama blok 2-versi diganti label DINAMIS ikut profesi
+  // (👨‍🎓 Junior-<profesi> + 🙂 Non-<profesi>, mis. Junior-Backend). Emoji SENGAJA ikut di pattern:
+  // menangkap LABEL output lama yang nyangkut via copy-paste, TANPA menyentuh frasa gaya §2.1
+  // "gaya junior-programmer + non-programmer" (huruf kecil, tanpa emoji) yang tetap sah.
+  {
+    Name: 'label-tinjauan-junior-programmer',
+    Label: 'Label statis lama blok 2-versi (diganti label dinamis Junior-<profesi>, v2.6.0)',
+    Pattern: '👨‍🎓 Junior-programmer',
+    Replacement: '👨‍🎓 Junior-<profesi> (label dinamis ikut divisi/topik, §4.1/§4.1b)',
+    ExcludeFiles: ['CHANGELOG.md', 'CHANGELOG_ARCHIVE.md'],
   },
 ]
 
 // Cakupan pindai: berkas instruksi HIDUP yang dikirim/di-load sebagai aturan. Dir NON-rekursif.
 // (docs/ + docs/plans/ SENGAJA di luar cakupan: berisi laporan bertanggal = sejarah, seperti CHANGELOG.)
-export const KIT_RETIRED_SCAN = { Dirs: ['.', 'templates'], Extensions: ['.md'], ExtraFiles: ['setup-pola-b.ps1', 'setup-pola-b.mjs'] }
+// ExtraFiles = GLOBAL untuk semua entri (lolos filter ekstensi .md); berkas lib/bin/docs spesifik di bawah
+// masuk cakupan untuk penjaga risk-gate (kelas-bug "komentar kode basi soal kebijakan default").
+export const KIT_RETIRED_SCAN = {
+  Dirs: ['.', 'templates'],
+  Extensions: ['.md'],
+  ExtraFiles: [
+    'setup-pola-b.mjs',
+    'lib/risk-gate.js',
+    'bin/lintasai.js',
+    'lib/lang-hook-wiring.mjs',
+    'lib/install-secret-hook.mjs',
+    'lib/ensure-preflight-ci.mjs',
+    'docs/architecture.md',
+    'docs/install-secret-hook.md',
+    'templates/hooks/risk-gate.settings.example.json', // templates/ dipindai tapi HANYA .md -> .json wajib lewat sini
+  ],
+}
 
 // Enumerasi berkas yang dipindai (relatif, garis-miring-maju supaya identik PS<->Node).
 function getLintasScanFiles(repoRoot, scan) {

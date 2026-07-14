@@ -9,12 +9,10 @@
 //   5. Tampilkan beda CHANGELOG lama vs baru + langkah lanjut + peringatan keamanan
 //
 // ===========================================================================================
-// STATUS MIGRASI (Gelombang 4, ADR-003/ADR-004) - SUDAH CUTOVER:
-//   File ini = JALUR AKTIF untuk `npx lintasai update`. Dispatcher bin/lintasai.js memetakan
-//   'update' -> update-kit.mjs di COMMANDS_NODE (bukan lagi update-kit.ps1 di COMMANDS), dan
+// JALUR AKTIF untuk `npx lintasai update` (v2.0.0, kit 100% Node):
+//   Dispatcher bin/lintasai.js memetakan 'update' -> update-kit.mjs di COMMANDS_NODE, dan
 //   package.json files[] mendaftarkannya eksplisit -> ikut paket npm + jalan di mesin staff.
-//   update-kit.ps1 tetap terbit sebagai CADANGAN manual (.\.claude-kit\update-kit.ps1) bila
-//   versi Node bermasalah. Pola cutover sama dengan 'init' (setup-pola-b.mjs).
+//   (update-kit.ps1 sudah dihapus.)
 //
 // SIFAT NON-INTERAKTIF (keputusan owner 06-22): versi Node TIDAK menampilkan popup jendela.
 //   Keputusan keamanan yang di versi PS pakai popup/Read-Host -> di sini jadi default-AMAN:
@@ -26,11 +24,8 @@
 // PENGGANTI POWERSHELL YANG DIPAKAI (suku cadang Node yang sudah ada):
 //   - removeGitMetadata (git-helpers.mjs)  -> hapus .git/ internal (Langkah 3).
 //   - addLintasAuditEntry (audit-helpers.mjs) -> catat keputusan keamanan GPG (lewati/lolos/bypass/gagal).
-//   - resolvePowerShellExe (popup-shim.mjs) -> hanya bila perlu jatuh ke pemasang/.ps1 lama.
-//   Langkah pasang-ulang (4) MEMILIH pemasang Node (setup-pola-b.mjs) bila ada di kit baru;
-//   kalau tidak ada, jatuh ke setup-pola-b.ps1 lama (kit baru yang di-clone selalu punya keduanya
-//   setelah rilis). Langkah cek-kesehatan (6) memanggil 'kit.mjs doctor' bila ada, jika belum
-//   diport jatuh ke 'kit.ps1 doctor' (kit.ps1 = mesin lama berikutnya yang diport setelah ini).
+//   v2.0.0: kit 100% Node. Langkah pasang-ulang (4) memanggil pemasang Node (setup-pola-b.mjs);
+//   Langkah cek-kesehatan (6) memanggil 'node kit.mjs doctor --skip-migrasi'. Tak ada lagi jalur .ps1.
 //
 // BATAS JUJUR (§4.6): operasi NYATA (ambil dari internet + GPG + pasang-ulang + doctor) hanya bisa
 //   diuji penuh saat owner RILIS + uji di mesin staff baru. Yang terverifikasi DI SINI = (a) semua
@@ -43,7 +38,6 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { removeGitMetadata } from './lib/git-helpers.mjs'
 import { addLintasAuditEntry } from './lib/audit-helpers.mjs'
-import { resolvePowerShellExe } from './lib/popup-shim.mjs'
 import { stripBom, eqCI, backupStamp } from './lib/fs-text.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -264,7 +258,7 @@ export function formatUpdateSummary(tier, entry) {
       break
     case 'Tier 3':
       analogi = 'Tier 3 BREAKING (kayak iPhone iOS 16 -> iOS 17 major, backup wajib)'
-      action = 'Action: BACA migration notes di CHANGELOG, jalanin PS commands yang tertera. Backup udah otomatis di .bak.'
+      action = 'Action: BACA migration notes di CHANGELOG + UPGRADING.md, jalanin langkah migrasi yang tertera. Cadangan otomatis di folder .claude-kit.backup-<tanggal>.'
       break
     case 'Tier 4':
       analogi = 'Tier 4 SCAN-REQUIRED (kayak Tokopedia ganti algoritma kategori, perlu re-mapping)'
@@ -607,7 +601,7 @@ export function runUpdate(argv) {
       console.log("    Cek versi terbaru di npm: jalankan 'npm view lintasai version'.")
     }
     console.log('Mode cek-saja: TIDAK ada perubahan dilakukan.')
-    console.log("Kalau mau update: minta AI 'tolong update kit', atau jalankan '.\\.claude-kit\\kit.ps1 update'.")
+    console.log("Kalau mau update: minta AI 'tolong update kit', atau jalankan 'npx lintasai update'.")
     return 0
   }
 
@@ -807,21 +801,15 @@ export function runUpdate(argv) {
     console.log(`[SIMULASI] jalankan pemasang ulang: setup-pola-b (--force --project-root '${projectRoot}')`)
   } else {
     const setupMjs = path.join(kitDir, 'setup-pola-b.mjs')
-    const setupPs1 = path.join(kitDir, 'setup-pola-b.ps1')
     if (fs.existsSync(setupMjs)) {
-      // Utamakan pemasang Node (arah konsolidasi ADR-004; sama efek = berkas ter-deploy identik).
+      // v2.0.0: pemasang Node (kit 100% Node).
       const r = spawnSync(process.execPath, [setupMjs, '--force', '--project-root', projectRoot], { stdio: 'inherit', timeout: 600000 })
       if (r.error || r.status !== 0) {
         console.log(`WARN  Pemasang Node bermasalah (kode ${r.status ?? 'error'}). Berkas kit sudah ter-ambil, tapi setup mungkin tak komplit.`)
-      }
-    } else if (fs.existsSync(setupPs1)) {
-      const psExe = resolvePowerShellExe()
-      const r = spawnSync(psExe, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', setupPs1, '-Force', '-ProjectRoot', projectRoot], { stdio: 'inherit', timeout: 600000 })
-      if (r.error || r.status !== 0) {
-        console.log(`WARN  Pemasang PowerShell bermasalah (kode ${r.status ?? 'error'}). Jalankan manual: .\\.claude-kit\\setup-pola-b.ps1 -Force`)
+        console.log('      Jalankan manual: node .\\.claude-kit\\setup-pola-b.mjs --force')
       }
     } else {
-      console.log('WARN  Pemasang (setup-pola-b) tak ada di kit baru - lewati.')
+      console.log('WARN  Pemasang setup-pola-b.mjs tak ada di kit baru - lewati.')
     }
   }
 
@@ -901,18 +889,16 @@ export function runUpdate(argv) {
 
     // ---- Langkah 6: Cek kesehatan kit baru (doctor) ----
     const newKitMjs = path.join(kitDir, 'kit.mjs')
-    const newKitPs1 = path.join(kitDir, 'kit.ps1')
     let doctorExit = null
     if (fs.existsSync(newKitMjs)) {
       console.log('')
       console.log('Langkah 6: Cek kesehatan kit baru (doctor)...')
-      const r = spawnSync(process.execPath, [newKitMjs, 'doctor'], { stdio: 'inherit', timeout: 300000 })
-      doctorExit = r.error ? 1 : r.status
-    } else if (fs.existsSync(newKitPs1)) {
-      console.log('')
-      console.log('Langkah 6: Cek kesehatan kit baru (doctor)...')
-      const psExe = resolvePowerShellExe()
-      const r = spawnSync(psExe, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', newKitPs1, 'doctor'], { stdio: 'inherit', timeout: 300000 })
+      // --skip-migrasi: laporan migrasi artefak klien dijalankan TERPISAH di Langkah 7 (dengan
+      // penjelasan yang benar). Kalau ikut di doctor sini, artefak-tertinggal bikin doctor merah ->
+      // pesan "update mungkin tak lengkap" + saran rollback di bawah jadi MENYESATKAN (kit-nya
+      // sendiri sehat; yang tertinggal = berkas milik project). Kit baru versi lama tak kenal
+      // bendera ini -> diabaikan tanpa efek (aman dua arah).
+      const r = spawnSync(process.execPath, [newKitMjs, 'doctor', '--skip-migrasi'], { stdio: 'inherit', timeout: 300000 })
       doctorExit = r.error ? 1 : r.status
     }
     if (doctorExit !== null && doctorExit !== 0) {
@@ -931,6 +917,38 @@ export function runUpdate(argv) {
       }
     } else if (doctorExit === 0) {
       console.log('OK    Kit baru sehat (doctor lulus).')
+    }
+
+    // ---- Langkah 7: Laporan migrasi artefak klien (Mesin 2 STRATEGI_UPDATE_v2 Langkah 3) ----
+    // Jalankan robot MILIK KIT BARU (proses anak, bukan import dari kit lama yang sedang berjalan) -
+    // yang dibanding = peta versi-diharapkan kit BARU. Non-fatal untuk update (kit sudah terpasang
+    // benar); hasil "Selesai sebagian" = pekerjaan lanjutan di berkas project, BUKAN alasan rollback.
+    const migrationRobot = path.join(kitDir, 'lib', 'migration-state.mjs')
+    if (fs.existsSync(migrationRobot)) {
+      console.log('')
+      console.log('Langkah 7: Banding artefak klien vs versi yang diharapkan kit BARU (laporan migrasi)...')
+      // Tangkap keluaran supaya bisa BEDAKAN "robot crash" vs "robot melapor artefak tertinggal"
+      // (dua-duanya exit !=0). Pembeda: baris penanda laporan (kontrak string dgn
+      // lib/migration-state.mjs - cermin kit.mjs doctor 2c). Crash -> saran perbaiki kit, BUKAN
+      // saran migrasi CHANGELOG yang salah arah. stderr sengaja tak ditampilkan (jejak-error
+      // mentah bisa memuat path komputer; jalankan manual kalau butuh detail).
+      const rm = spawnSync(process.execPath, [migrationRobot, '--project-root', projectRoot, '--kit-dir', kitDir], { encoding: 'utf8', timeout: 60000 })
+      const robotOut = rm.stdout || ''
+      if (robotOut.trim()) process.stdout.write(robotOut)
+      const reportPrinted = robotOut.includes('Robot laporan-migrasi artefak klien')
+      if (rm.error || rm.status == null || (rm.status !== 0 && !reportPrinted)) {
+        console.log('WARN  Robot laporan-migrasi gagal dijalankan / berhenti sebelum melapor - salinan kit baru mungkin')
+        console.log('      tidak lengkap. Jalankan doctor untuk cek: node .claude-kit/kit.mjs doctor')
+        console.log('      (detail error robot: jalankan manual node .claude-kit/lib/migration-state.mjs)')
+      } else if (rm.status !== 0) {
+        console.log('')
+        console.log('CATATAN: "Selesai sebagian" di atas BUKAN kegagalan update - berkas kit sendiri sudah baru semua.')
+        console.log('         Yang tertinggal = berkas milik project (di luar .claude-kit/). JANGAN rollback karena ini;')
+        console.log('         ikuti langkah migrasi di entri CHANGELOG ber-label [BREAKING] versi terkait.')
+      }
+    } else {
+      console.log('')
+      console.log('INFO  Laporan migrasi dilewati: kit baru belum punya robotnya (lib/migration-state.mjs).')
     }
 
     if (!args.noBackup && fs.existsSync(backupDir)) {

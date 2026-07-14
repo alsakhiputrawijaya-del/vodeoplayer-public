@@ -73,8 +73,7 @@ Node ≥ 18 (tanpa paket eksternal). Reuse `lib/fs-text.mjs` (`readTextSafe`, `p
   kena. `.env.production` yang isinya hanya var publik **tidak** memblokir gerbang (RAPIKAN). Backend/
   engine **boleh** punya `DATABASE_URL` + `prisma/` (tier `sensitive`).
 - **Pola rahasia** sengaja diselaraskan dengan `lib/ai-config-check.mjs` + `templates/hooks/
-  pre-commit-secret-scan.sh` (belum disatukan ke 1 modul karena `ai-config-check` dijaga
-  byte-identik dengan padanan PowerShell-nya — konsolidasi = refactor terpisah). Sumber:
+  pre-commit-secret-scan.sh` (belum disatukan ke 1 modul — konsolidasi = refactor terpisah). Sumber:
   `lib/split-guard.mjs:1`.
 - **Bukan jaminan mutlak:** menutup pola kebocoran yang **diketahui** secara deterministik — bukan
   klaim "anti-bocor sempurna". Jujur soal batas (anti rasa-aman-palsu).

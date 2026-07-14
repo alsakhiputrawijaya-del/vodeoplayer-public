@@ -4,7 +4,7 @@
 
 Panduan ini ditujukan untuk **staff IT non-programmer** yang mau memasang lintasAI Kit ke project pakai **npm** (lebih cepat dari `git clone`, tidak perlu paham git, dan otomatis dapat versi terbaru).
 
-> **Satu cara saja:** kit ini distandarkan ke **satu** perintah pasang — `npm create lintasai`. Tidak perlu memilih antara `npm` atau `npx` lagi. Setelah terpasang, semua hal lain (cek, update, balikin versi) cukup **minta ke AI di chat** atau jalankan lewat `.\.claude-kit\kit.ps1`.
+> **Satu cara saja:** kit ini distandarkan ke **satu** perintah pasang — `npm create lintasai`. Tidak perlu memilih antara `npm` atau `npx` lagi. Setelah terpasang, semua hal lain (cek, update, balikin versi) cukup **minta ke AI di chat** atau jalankan lewat `npx lintasai <perintah>`.
 
 Kalau kamu sudah familiar dengan terminal & PowerShell, cukup 1 perintah, kit langsung terpasang di folder project.
 
@@ -59,7 +59,7 @@ Sejak **pemasang versi Node**, pemasangan **otomatis penuh** — **tidak ada pop
 
 Yang kamu lakukan: **1x ketik chat + beberapa klik popup di chat**. Tidak ada jendela Windows yang perlu diklik.
 
-> **Catatan jalur lama:** versi kit lebih lama memakai pemasang **PowerShell** yang memunculkan beberapa popup jendela Windows saat dijalankan manual. Sejak pemasang **Node**, popup jendela itu **dihilangkan** (diganti pemanduan di chat). Pemasang PowerShell lama **tetap disertakan** sebagai cadangan (lihat Troubleshooting "Pemasang versi Node gagal").
+> **Catatan jalur lama:** versi kit lebih lama memakai pemasang **PowerShell** yang memunculkan beberapa popup jendela Windows saat dijalankan manual. Sejak pemasang **Node** (kit 100% Node di v2.0.0), popup jendela itu **dihilangkan** (diganti pemanduan di chat) dan seluruh pemasang PowerShell sudah **dihapus**.
 
 ### Headless / Server Core / SSH / otomatis (AI/CI)
 
@@ -71,7 +71,7 @@ Tidak perlu flag khusus: saat sesi **tidak punya layar/keyboard** (headless) **a
 
 Cek status kit (jalankan **di dalam folder project**):
 ```powershell
-.\.claude-kit\kit.ps1 status
+npx lintasai status
 ```
 
 Output yang **benar** harus menampilkan:
@@ -161,11 +161,11 @@ Kalau masih gagal, coba registry mirror: `npm config set registry https://regist
 
 **Penyebab**: pemasang versi **Node** (jalur baku sejak `init` pindah ke Node) bermasalah di mesin tertentu (jarang).
 
-**Jalan cadangan (pemasang PowerShell)**: pemasang versi PowerShell tetap disertakan di kit. Kalau folder `.claude-kit\` sudah terbentuk, jalankan dari **dalam project**:
+**Jalan cadangan (jalankan pemasang Node langsung)**: kalau folder `.claude-kit\` sudah terbentuk, jalankan dari **dalam project**:
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\.claude-kit\setup-pola-b.ps1
+node .\.claude-kit\setup-pola-b.mjs
 ```
-Atau cukup minta AI di chat: *"pasang manual pakai setup-pola-b.ps1"* — AI yang jalankan + jelaskan hasilnya. (Kalau `.claude-kit\` belum terbentuk sama sekali, ulangi dulu `npm create lintasai`.)
+Atau cukup minta AI di chat: *"pasang manual pakai setup-pola-b.mjs"* — AI yang jalankan + jelaskan hasilnya. (Kalau `.claude-kit\` belum terbentuk sama sekali, ulangi dulu `npm create lintasai`.)
 
 ### Error: "Root proyek" salah deteksi (npm cache path)
 
@@ -175,8 +175,8 @@ Atau cukup minta AI di chat: *"pasang manual pakai setup-pola-b.ps1"* — AI yan
 
 **Fix**:
 1. Hapus install yang salah (dari dalam project):
-   ```powershell
-   .\.claude-kit\kit.ps1 uninstall
+   ```bash
+   npx lintasai uninstall --yes
    ```
 2. Pasang ulang versi terbaru:
    ```powershell
@@ -192,7 +192,7 @@ Kalau update terbaru bermasalah, paling mudah **minta AI**: "rollback dong" (AI 
 
 Manual, dari dalam project:
 ```powershell
-.\.claude-kit\kit.ps1 rollback
+npx lintasai rollback
 ```
 
 > Catatan: untuk balik **seluruh folder kit** ke versi sebelum update (mis. update baru bikin kit rusak), AI akan mengembalikan folder cadangan `.claude-kit.backup-<tanggal>` yang dibuat otomatis saat update. Tinggal bilang "rollback dong".
@@ -203,16 +203,19 @@ Manual, dari dalam project:
 
 Hapus kit dari project secara aman (sambil keep file user-custom), jalankan dari dalam project:
 
-```powershell
-.\.claude-kit\kit.ps1 uninstall
+```bash
+# 1) Lihat dulu apa yang akan dihapus (aman, tidak menghapus apa pun):
+npx lintasai uninstall
+# 2) Kalau sudah yakin, hapus beneran:
+npx lintasai uninstall --yes
 ```
 
 Perintah ini akan:
 - Hapus folder `.claude-kit/`.
-- Hapus `AGENTS.md` (kalau belum dimodifikasi user).
+- Hapus `AGENTS.md` (kalau belum dimodifikasi user; pakai `--delete-agents` kalau memang mau ikut hapus).
 - **TIDAK** hapus `docs/`, `src/`, atau file project user lain.
 
-Kalau `AGENTS.md` sudah dimodifikasi, kit akan tanya konfirmasi sebelum hapus.
+Langkah pertama (tanpa `--yes`) cuma menampilkan rencana lalu berhenti aman — kamu selalu bisa lihat apa yang akan dihapus sebelum benar-benar menghapus.
 
 ---
 
@@ -222,7 +225,7 @@ Cara termudah untuk staff non-programmer: **minta AI di chat** — "tolong updat
 
 Manual, dari dalam project:
 ```powershell
-.\.claude-kit\kit.ps1 update
+npx lintasai update
 ```
 
 Perintah ini akan:
@@ -237,12 +240,12 @@ Perintah ini akan:
 
 Cek status + versi (dari dalam project):
 ```powershell
-.\.claude-kit\kit.ps1 status
+npx lintasai status
 ```
 
 Lihat file yang berubah dari versi original:
 ```powershell
-.\.claude-kit\kit.ps1 diff
+npx lintasai diff
 ```
 
 Output `diff` akan tampilkan:
@@ -266,6 +269,6 @@ Bandingkan dengan `Kit version` di output `status`. Kalau beda, minta AI "tolong
 - **Bug report**: buka issue di GitHub repo `lintasai` (link di npm page).
 
 Untuk error yang **tidak** ada di troubleshooting di atas:
-1. Jalankan `.\.claude-kit\kit.ps1 status` (output status kit).
+1. Jalankan `npx lintasai status` (output status kit).
 2. Screenshot output + share di Discord channel.
 3. Jangan paste output yang berisi password / API key - mask dulu.

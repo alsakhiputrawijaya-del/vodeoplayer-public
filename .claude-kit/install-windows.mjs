@@ -6,12 +6,10 @@
 // (format .backup-yyyyMMdd-HHmmss). CLAUDE_universal_v1.md di-RENAME jadi CLAUDE.md saat install.
 //
 // ===========================================================================================
-// STATUS MIGRASI (Gelombang 6, ADR-003/ADR-004) - SUDAH CUTOVER:
-//   File ini = JALUR AKTIF untuk `npx lintasai install-windows`. Dispatcher bin/lintasai.js
-//   memetakan 'install-windows' -> install-windows.mjs di COMMANDS_NODE. install-windows.ps1
-//   tetap terbit sebagai CADANGAN manual bila versi Node bermasalah. install-windows TIDAK ada
-//   di shouldPassProjectRoot (target = %USERPROFILE%\.claude, BUKAN project) -> dispatcher tak
-//   menyuntik --project-root.
+// JALUR AKTIF untuk `npx lintasai install-windows` (v2.0.0, kit 100% Node):
+//   Dispatcher bin/lintasai.js memetakan 'install-windows' -> install-windows.mjs di COMMANDS_NODE.
+//   (install-windows.ps1 sudah dihapus.) install-windows TIDAK ada di shouldPassProjectRoot
+//   (target = %USERPROFILE%\.claude, BUKAN project) -> dispatcher tak menyuntik --project-root.
 //
 // KESETIAAN (parity dgn versi PS):
 //   - Salin MENTAH byte-identik via fs.copyFileSync (cermin Copy-Item; versi PS TIDAK menormalkan
@@ -63,7 +61,6 @@ export const MAPPING = [
   { src: 'templates/glossary.md', dst: ['templates', 'glossary.md'] },
   { src: 'templates/_PATTERNS.md', dst: ['templates', '_PATTERNS.md'] },
   { src: 'templates/_EXAMPLE.md', dst: ['templates', '_EXAMPLE.md'] },
-  { src: 'templates/architecture_auto.md', dst: ['templates', 'architecture_auto.md'] },
 ]
 
 // Cap-waktu cadangan 'yyyyMMdd-HHmmss' -> backupStamp (sumber bersama lib/fs-text.mjs).
@@ -185,6 +182,43 @@ export function runInstallWindows(argv, { now = null } = {}) {
       console.error(`GAGAL copy ${label} : ${e.message}`)
       missCount++
     }
+  }
+
+  // ---- Salin folder rujukan on-demand workflows/ (v2.4.0 pecah-per-seksi) ----
+  // Install global (~/.claude) juga butuh rak ini: CLAUDE.md hasil rename merujuk workflows/<seksi>.md.
+  // Semantik sama dgn loop MAPPING: backup .backup-<ts> sebelum timpa; folder hilang = MISSING.
+  const wfSrcDir = path.join(scriptDir, 'workflows')
+  if (fs.existsSync(wfSrcDir)) {
+    const wfFiles = []
+    const walkWf = (d) => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, e.name)
+        if (e.isDirectory()) walkWf(p)
+        else if (e.isFile()) wfFiles.push(p)
+      }
+    }
+    walkWf(wfSrcDir)
+    // Hitungan TERPISAH dari okCount/bakCount MAPPING: ringkasan "Ter-install"/"Di-backup" = kontrak
+    // lama per-berkas-inti (dikunci tests/install-windows.test.mjs); rak workflows dilaporkan 1 baris sendiri.
+    let wfOk = 0
+    for (const srcPath of wfFiles) {
+      const rel = path.relative(scriptDir, srcPath)
+      const dstPath = path.join(claudeDir, rel)
+      if (args.dryRun) { console.log(`[DRY] INSTALL ${rel}  ->  ${dstPath}`); continue }
+      try {
+        fs.mkdirSync(path.dirname(dstPath), { recursive: true })
+        if (fs.existsSync(dstPath)) fs.copyFileSync(dstPath, `${dstPath}.backup-${timestamp}`)
+        fs.copyFileSync(srcPath, dstPath)
+        wfOk++
+      } catch (e) {
+        console.error(`GAGAL copy ${rel} : ${e.message}`)
+        missCount++
+      }
+    }
+    if (!args.dryRun) console.log(`OK        workflows/ (${wfOk}/${wfFiles.length} berkas rujukan on-demand)  ->  ${path.join(claudeDir, 'workflows')}`)
+  } else {
+    console.error('MISSING   workflows/  (folder rujukan on-demand tidak ditemukan di folder paket)')
+    missCount++
   }
 
   // ---- Ringkasan & panduan ----

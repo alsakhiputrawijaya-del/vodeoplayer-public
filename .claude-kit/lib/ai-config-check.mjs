@@ -3,10 +3,10 @@
 //
 // MIGRASI grup [A]/[C] (ADR-003 / keputusan-per-elemen): robot KEAMANAN cuma-baca (deteksi
 // kunci-API bocor / izin lebar / hook unduh-jalankan / frasa-tembus-pagar di .mcp.json /
-// .claude/settings.json / SKILLS_LOCAL.md). Strangler Fig = BERDAMPINGAN: versi .ps1 TETAP hidup.
+// .claude/settings.json / SKILLS_LOCAL.md).
 //
-// KEHATI-HATIAN KEAMANAN (port byte/temuan-identik):
-//  - Operator PowerShell `-match` = CASE-INSENSITIVE default -> pola inline (type/url/npx/Bash/dll)
+// KEHATI-HATIAN KEAMANAN (pola pencocokan case-insensitive):
+//  - pola inline (type/url/npx/Bash/dll) case-insensitive; dulu mengikuti operator PowerShell `-match`
 //    WAJIB flag `i` di JS. Rahasia vendor (sk-/ghp_/AKIA/...) = case-SENSITIVE (tanpa i) cermin [regex].
 //  - env-var `${VAR}` TIDAK ditandai (pola aman); hanya rahasia LITERAL.
 //  - Tingkat: GENTING / PENTING / RAPIKAN. Gerbang gagal hanya jika GENTING > 0.

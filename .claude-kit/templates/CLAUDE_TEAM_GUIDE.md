@@ -230,10 +230,7 @@ Tiap task punya **Risk Level**. Owner WAJIB klasifikasi di awal supaya tim tahu 
 ### Format declare di prompt task
 
 ```
-[Risk Level] <Low / Medium / High>
-   * Low = UI minor, copy edit, refactor internal
-   * Medium = fitur baru self-contained, tidak sentuh auth/billing/data sensitif
-   * High = sentuh auth/billing/schema-user-visible/destruktif/eksperimental - owner WAJIB hold merge sampai yakin
+[Risk Level] <Low / Medium / High>    (kriteria lengkap: lihat tabel §7b di atas)
 ```
 
 ### Contoh konkret

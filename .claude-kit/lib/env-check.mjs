@@ -1,22 +1,25 @@
 #!/usr/bin/env node
 // lib/env-check.mjs - Robot "Pemeriksa Lingkungan Setara" (deterministik, ~0 token AI).
 //
-// APA INI: memotret LINGKUNGAN EKSEKUSI di komputer (versi Node/PowerShell/OS/Git + ada-tidaknya
+// APA INI: memotret LINGKUNGAN EKSEKUSI di komputer (versi Node/OS/Git + ada-tidaknya
 // node_modules/lockfile/.env.local), lalu menilainya terhadap ambang yang diharapkan. Tujuannya
 // menutup akar keluhan "di dev jalan, di client TERASA BEDA": penyebab tersering = beda versi/konfig
 // lingkungan, padahal `kit doctor` lama cuma cek berkas kit + sha256 -- BUTA ke runtime client.
 //
-// DIPANGGIL DARI: invokeDoctor (kit.mjs) saat flag `--env` aktif -> `npx lintasai doctor --env`.
+// DIPANGGIL DARI: invokeDoctor (kit.mjs) sebagai BAGIAN DEFAULT doctor (v2.0.0 - gerbang
+// output-identik ADR-003 gugur bersama kit.ps1; janji §7.6); bisa dimatikan dengan --no-env.
 // Robot ini mengembalikan DATA (facts + findings); kit.mjs yang mencetak + menambah penghitung
 // OK/WARN/ERROR (invokeDoctor pakai console.log + counter, BUKAN return teks -- jadi env-check
 // sengaja TIDAK mencetak sendiri supaya satu gaya output + mudah diuji tanpa menangkap stdout).
+//
+// v2.0.0: kit 100% Node -> env-check TIDAK lagi memotret/menilai PowerShell (dulu ada temuan "PS tak
+// terdeteksi = jalur cadangan kit butuh ini" - basi + menyesatkan karena tak ada lagi jalur PS).
 //
 // KEAMANAN (WAJIB, dikunci tes env-check.test.mjs):
 //   - HANYA mengumpulkan nomor versi + platform + boolean ada/tidak. DILARANG mengambil/mencetak
 //     hostname, username, path absolut, isi env var, atau ISI .env (cuma cek NAMA berkas ada/tidak,
 //     sesuai CLAUDE_universal_v1 sec.8.1 #6 "kerahasiaan secret mutlak").
-//   - Spawn PowerShell/Git pakai array-args (tanpa shell -> tak ada injeksi) + -ExecutionPolicy Bypass
-//     (pelajaran MOTW: di PC Restricted/AllSigned, tanpa Bypass spawn ditolak) + timeout 5 detik.
+//   - Spawn Git pakai array-args (tanpa shell -> tak ada injeksi) + timeout 5 detik.
 //   - FAIL-HONEST: kalau deteksi gagal/timeout -> lapor "tidak terdeteksi", JANGAN diam-diam "OK"
 //     (sec.6.3 #4 "timbangan mati != 0 kg").
 //
@@ -35,7 +38,7 @@ import { readLintasProjectManifest, resolveLintasManifestPath } from './project-
 // LTS aktif minimum yang masih didukung saat berkas ini ditulis.
 export const DEFAULT_NODE_MAJOR = 18
 
-// Batas waktu deteksi alat luar (ms). Sama dengan probe pwsh di bin/lintasai.js + popup-shim.
+// Batas waktu deteksi alat luar (Git) (ms).
 const SPAWN_TIMEOUT_MS = 5000
 
 // --- util kecil (senyap) -------------------------------------------------------------------------
@@ -75,24 +78,6 @@ export function getNodeThreshold(projectRoot) {
   return { major: DEFAULT_NODE_MAJOR, source: 'ambang default lintasAI' }
 }
 
-// detectPowerShell: coba pwsh (PS7) dulu, lalu powershell.exe (PS5.1). FAIL-HONEST -> null.
-// Hanya minta string versi -- TIDAK mengeksekusi skrip apa pun (cuma baca $PSVersionTable).
-export function detectPowerShell() {
-  for (const exe of ['pwsh', 'powershell.exe']) {
-    try {
-      const r = spawnSync(
-        exe,
-        ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', '$PSVersionTable.PSVersion.ToString()'],
-        { encoding: 'utf8', timeout: SPAWN_TIMEOUT_MS, windowsHide: true }
-      )
-      if (!r.error && r.status === 0 && r.stdout && r.stdout.trim()) {
-        return { exe, version: r.stdout.trim() }
-      }
-    } catch { /* exe tak ada / ditolak -> coba berikutnya */ }
-  }
-  return null
-}
-
 // detectGit: "git version 2.43.0" -> "2.43.0". FAIL-HONEST -> null.
 export function detectGit() {
   try {
@@ -105,7 +90,7 @@ export function detectGit() {
 }
 
 // collectEnvironment: kumpulkan FAKTA lingkungan (semua bebas-rahasia). { skipSpawn } untuk tes
-// deterministik (lewati deteksi PowerShell/Git yang bergantung mesin).
+// deterministik (lewati deteksi Git yang bergantung mesin).
 export function collectEnvironment(projectRoot, { skipSpawn = false } = {}) {
   const pm = getPackageManager(projectRoot)
   const hasPackageJson = fileExists(path.join(projectRoot, 'package.json'))
@@ -116,7 +101,6 @@ export function collectEnvironment(projectRoot, { skipSpawn = false } = {}) {
     platform: process.platform, // "win32"/"linux"/"darwin" -- BUKAN hostname
     osRelease: os.release(), // mis. "10.0.26100" (build OS, bukan PII)
     arch: process.arch, // "x64"/"arm64"
-    powershell: skipSpawn ? null : detectPowerShell(),
     git: skipSpawn ? null : detectGit(),
     packageManager: pm.manager, // "npm"/"pnpm"/"yarn"/"bun"/"none"
     lockFile,
@@ -134,12 +118,11 @@ export function evaluateEnvironment(facts, projectRoot, { baseline = null } = {}
   const findings = []
 
   // Baris potret ringkas (selalu, INFO) -- berguna untuk owner/AI mendiagnosa "beda" dari jauh.
-  const psStr = facts.powershell ? `PowerShell ${facts.powershell.version}` : 'PowerShell tidak terdeteksi'
   const gitStr = facts.git ? `Git ${facts.git}` : 'Git tidak terdeteksi'
   findings.push({
     level: 'INFO',
     label: 'Lingkungan',
-    message: `Node ${facts.nodeVersion} | ${facts.platform} ${facts.osRelease} ${facts.arch} | ${psStr} | ${gitStr} | alat-paket: ${facts.packageManager}`,
+    message: `Node ${facts.nodeVersion} | ${facts.platform} ${facts.osRelease} ${facts.arch} | ${gitStr} | alat-paket: ${facts.packageManager}`,
   })
 
   // 1. Versi Node vs ambang -- AKAR parity paling sering.
@@ -182,19 +165,7 @@ export function evaluateEnvironment(facts, projectRoot, { baseline = null } = {}
     })
   }
 
-  // 4. PowerShell tak terdeteksi: di Windows itu janggal (WARN); di OS lain wajar (INFO).
-  if (!facts.powershell) {
-    findings.push({
-      level: facts.platform === 'win32' ? 'WARN' : 'INFO',
-      label: 'PowerShell',
-      message: facts.platform === 'win32'
-        ? 'PowerShell tidak terdeteksi di Windows — sebagian jalur cadangan kit butuh ini.'
-        : 'PowerShell tidak terdeteksi (wajar di non-Windows).',
-      hint: facts.platform === 'win32' ? 'Pasang PowerShell 7 (https://aka.ms/powershell) atau pastikan ada di PATH.' : undefined,
-    })
-  }
-
-  // 5. Baseline "cap lingkungan" (opsional, penyokong roadmap #3). Hanya INFO penunjuk-sumber-beda.
+  // 4. Baseline "cap lingkungan" (opsional, penyokong roadmap #3). Hanya INFO penunjuk-sumber-beda.
   if (baseline && baseline.recorded_node_major != null && facts.nodeMajor != null &&
       baseline.recorded_node_major !== facts.nodeMajor) {
     findings.push({

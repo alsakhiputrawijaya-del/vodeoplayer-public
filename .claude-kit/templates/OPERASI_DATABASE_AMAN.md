@@ -52,8 +52,22 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS phone text;   -- nullable: query 
 
 -- FASE 2 — BACKFILL: isi data lama, DIBATCH (jangan sekali UPDATE semua = kunci tabel)
 --   ulangi sampai 0 baris kosong; untuk tabel besar pakai job/loop, jeda antar batch.
-UPDATE customers SET phone = '-' 
-WHERE phone IS NULL AND id IN (SELECT id FROM customers WHERE phone IS NULL LIMIT 5000);
+-- Otomatis mengulang per-batch sampai habis (staff tak perlu jalankan ulang manual).
+-- ⚠️ Karena ada COMMIT, blok DO ini TAK BISA jalan di dalam pembungkus-transaksi migrasi
+--    (Prisma membungkus tiap file migrasi dalam 1 transaksi) → jalankan sebagai skrip SQL Editor/psql
+--    TERPISAH, bukan file migrasi. (Satu keluarga dengan gotcha CREATE INDEX CONCURRENTLY.)
+DO $$
+DECLARE rows_updated INT;
+BEGIN
+  LOOP
+    UPDATE customers SET phone = '-'
+    WHERE id IN (SELECT id FROM customers WHERE phone IS NULL LIMIT 5000 FOR UPDATE SKIP LOCKED);
+    GET DIAGNOSTICS rows_updated = ROW_COUNT;
+    EXIT WHEN rows_updated = 0;   -- berhenti saat tak ada lagi baris kosong
+    COMMIT;                        -- lepas kunci tiap batch (butuh Postgres >= 11)
+  END LOOP;
+END $$;
+-- Django: RunPython + Model.objects.bulk_update(batch, ["phone"], batch_size=5000) per-potong.
 
 -- FASE 3 — CONSTRAINT: pasang aturan wajib TANPA kunci-lama-panjang
 --   NOT VALID = cek hanya baris baru dulu (cepat, tak scan seluruh tabel) → VALIDATE terpisah (tak blokir tulis)

@@ -13,12 +13,10 @@
 // AGENTS.md default DILEWATI (biasanya kamu sunting berat) - pakai --delete-agents untuk ikut hapus.
 //
 // ===========================================================================================
-// STATUS MIGRASI (Gelombang 4, ADR-003/ADR-004) - SUDAH CUTOVER:
-//   File ini = JALUR AKTIF untuk `npx lintasai uninstall`. Dispatcher bin/lintasai.js memetakan
-//   'uninstall' -> uninstall.mjs di COMMANDS_NODE (bukan lagi uninstall.ps1 di COMMANDS), dan
+// JALUR AKTIF untuk `npx lintasai uninstall` (v2.0.0, kit 100% Node):
+//   Dispatcher bin/lintasai.js memetakan 'uninstall' -> uninstall.mjs di COMMANDS_NODE, dan
 //   package.json files[] mendaftarkannya eksplisit -> ikut paket npm + jalan di mesin staff.
-//   uninstall.ps1 tetap terbit sebagai CADANGAN manual (.\.claude-kit\uninstall.ps1) bila versi
-//   Node bermasalah. Pola cutover sama dengan 'init' (setup-pola-b.mjs).
+//   (uninstall.ps1 sudah dihapus.)
 //
 // SIFAT NON-INTERAKTIF (keputusan owner 06-22): versi Node TIDAK menampilkan popup jendela.
 //   Karena ini aksi MERUSAK (hapus berkas), default-aman = TIDAK menghapus apa pun. Untuk
@@ -43,6 +41,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { makeSafeProjectRoot, resolveSafeProjectPath } from './lib/safety.mjs'
 import { getFileSha256 } from './lib/manifest.mjs'
+import { getLintasExpectedSchemaVersion } from './lib/expected-schema.mjs'
 import { getManifestSignatureStatus } from './lib/manifest-signing.mjs'
 import { stripBom, eqCI, backupStamp, isSymlinkLike } from './lib/fs-text.mjs'
 import { testPathsHaveReparsePoint } from './lib/reparse-guard.mjs'
@@ -267,10 +266,14 @@ export function runUninstall(argv, opts = {}) {
   }
 
   // ---- Validasi schema_version (penjaga maju-kompat) ----
+  // Angka dari peta versi-diharapkan (lib/expected-schema.mjs, Mesin 1 STRATEGI_UPDATE_v2) - satu
+  // sumber dgn penulis lib/manifest.mjs. TETAP cek PERSIS-sama (===), BUKAN >=: menghapus berkas
+  // berdasar catatan berformat lebih BARU dari yang skrip ini pahami = bahaya (fail-closed dua arah).
+  const expectedManifestSchema = getLintasExpectedSchemaVersion('.install-manifest.json')
   const schemaVersion = parseInt(String(manifest.schema_version), 10)
-  if (schemaVersion !== 1) {
+  if (schemaVersion !== expectedManifestSchema) {
     console.log('')
-    console.log(`ERROR: Versi skema catatan = ${manifest.schema_version} (script ini cuma kenal schema_version=1).`)
+    console.log(`ERROR: Versi skema catatan = ${manifest.schema_version} (script ini cuma kenal schema_version=${expectedManifestSchema}).`)
     console.log('       Catatan mungkin dari kit versi lebih baru. Perbarui kit, atau pakai uninstall versi sama.')
     return 1
   }
@@ -343,7 +346,7 @@ export function runUninstall(argv, opts = {}) {
     // Pemeriksa reparse gagal jalan (jalur Node + cadangan PS dua-duanya gagal) -> fail-secure batal.
     console.log('')
     console.log(`[BATAL] Tidak bisa memeriksa junction/symlink dengan aman: ${e.message}`)
-    console.log('        Penghapusan dibatalkan demi keamanan. (Jalur utama Node; cadangan butuh PowerShell + lib/safety.ps1.)')
+    console.log('        Penghapusan dibatalkan demi keamanan. (Jalur Node murni; gagal-aman saat cek junction/symlink tak bisa dipastikan.)')
     return 1
   }
   const { pristine, modified, symlinked, blocked, locked, missing, skipped, backups } = groups

@@ -1,17 +1,13 @@
 #!/usr/bin/env node
 // lib/json-merge-helpers.mjs - Penggabung daftar-izin Claude Code (.claude/settings.local.json).
 //
-// GELOMBANG 4 (ADR-004 / port orkestrator besar ke Node, BERTAHAP + BERDAMPINGAN): pemasang
-// (setup-pola-b.ps1) + update-kit.ps1 menggabungkan daftar-izin (permissions.allow) bawaan kit
-// ke settings.local.json project, sambil menjaga kunci lain milik user (permissions.deny, env,
-// apiKeyHelper, dst.). Modul ini = padanan Node dari lib/json-merge-helpers.ps1.
+// ADR-004: pemasang (setup-pola-b.mjs) + update-kit.mjs menggabungkan daftar-izin (permissions.allow)
+// bawaan kit ke settings.local.json project, sambil menjaga kunci lain milik user (permissions.deny,
+// env, apiKeyHelper, dst.).
 //
-// SIFAT NON-PERUSAK (Strangler Fig): pemanggil live SAAT INI = orkestrator PowerShell, jadi
-// .ps1 tetap dipakai. Modul Node ini fondasi untuk orkestrator versi Node nanti; .ps1 TAK
-// disentuh (berdampingan). Uji-banding pada HASIL LOGIKA (daftar entri ter-gabung + kunci
-// terjaga), BUKAN byte-format: berkas ini TAK ber-tanda-tangan, jadi beda gaya-tulisan
-// (indentasi PS ConvertTo-Json vs JSON.stringify; CRLF vs LF) = KOSMETIK + tak berdampak
-// fungsional (Claude Code membaca permissions.allow sebagai himpunan, bukan urut byte).
+// SIFAT NON-PERUSAK: menggabungkan daftar-izin tanpa membuang kunci milik user. Berkas ini TAK
+// ber-tanda-tangan, jadi gaya-tulisan (indentasi, CRLF vs LF) = KOSMETIK + tak berdampak fungsional
+// (Claude Code membaca permissions.allow sebagai himpunan, bukan urut byte).
 //
 // NILAI entri allow sengaja CASE-SENSITIVE (cermin PS [StringComparer]::Ordinal): "Bash(X)" != "bash(x)".
 // NAMA KUNCI (permissions/allow) dicocokkan CASE-INSENSITIVE (cermin akses-anggota PS yang abai-huruf)

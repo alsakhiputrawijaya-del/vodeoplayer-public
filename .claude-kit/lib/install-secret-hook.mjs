@@ -20,7 +20,7 @@
 //  - Cegah COMMIT BARU, BUKAN riwayat lama. Rahasia yang SUDAH ter-commit tak tertangkap hook ini
 //    (butuh audit riwayat terpisah - lihat docs/SECURITY_INCIDENT_PLAYBOOK.md).
 //  - Deteksi NAMA berkas (.env*) + pola kunci, BUKAN jaminan menyeluruh.
-//  - Lapis pertahanan: hook lokal (lapis-1) + .github/workflows/secret-guard.yml (lapis-2 CI) + risk-gate (lapis-3 opsional).
+//  - Lapis pertahanan: hook lokal (lapis-1) + .github/workflows/secret-guard.yml (lapis-2 CI) + risk-gate (lapis-3, default NYALA sejak v1.61.0).
 //  - Bisa dilewati darurat: git commit --no-verify.
 //
 // Versi: 1 - 2026-06-24

@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 // lib/unicode-safety-check.mjs - "Robot pemindai huruf-tipuan" versi Node (deterministik, ~0 token).
 //
-// MIGRASI grup [A] (ADR-003 / docs/plans/keputusan-per-elemen-node-vs-ps.md): port Node dari
-// lib/unicode-safety-check.ps1. Pola Strangler Fig = BERDAMPINGAN: versi .ps1 TETAP hidup
-// (dot-source oleh tes Pester + gerbang PS); versi .mjs ini dipakai via dispatcher Node
-// (`lintasai unicode-check`) + diuji `node --test`. Output WAJIB identik dgn versi PS
-// (terbukti uji-banding 6/6 + gerbang repo bersih).
+// MIGRASI grup [A] (ADR-003 / docs/plans/keputusan-per-elemen-node-vs-ps.md): robot pemindai
+// deterministik. Dipakai via dispatcher Node (`lintasai unicode-check`) + diuji `node --test`.
 //
 // Kenapa Node pas di sini (kriteria profil tim): logika MURNI (iterasi codepoint, 0 System API),
 // C4 keamanan = deteksi deterministik (tak tergantung bahasa), dan Node baca berkas UTF-8 secara

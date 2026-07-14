@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 // lib/audit-helpers.mjs - Append-only audit log (port Node dari audit-helpers.ps1).
 //
-// MIGRASI grup [A] (ADR-003): robot PENULIS paling ringan (append-only). Strangler Fig =
-// BERDAMPINGAN: versi .ps1 TETAP hidup (dipakai update-kit.ps1 yang tetap PowerShell).
-// Port ini untuk pemanggil Node masa depan.
+// MIGRASI grup [A] (ADR-003): robot PENULIS paling ringan (append-only). v2.0.0: berkas .ps1
+// sudah dihapus - ini satu-satunya implementasi.
 //
 // Format per baris (ISO 8601 UTC): <TIMESTAMP> | <SOURCE> | <ACTION> | <DETAIL>
 //

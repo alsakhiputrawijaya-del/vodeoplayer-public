@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 // lib/agents-md.mjs - Deploy AGENTS.md + CLAUDE.md loader (port Node dari agents-md.ps1).
 //
-// MIGRASI grup [A] (ADR-003): robot PENULIS PENUH terakhir. Strangler Fig = BERDAMPINGAN:
-// versi .ps1 TETAP hidup (dipakai setup-pola-b/update-kit PS).
+// MIGRASI grup [A] (ADR-003): robot PENULIS PENUH terakhir. v2.0.0: berkas .ps1 sudah dihapus.
 //
-// Kontrak (byte-identik dgn PS): substitusi LITERAL (split/join, aman $0/$1/$); tulis UTF-8
+// Kontrak: substitusi LITERAL (split/join, aman $0/$1/$); tulis UTF-8
 // NO-BOM; strip BOM saat baca (charCodeAt 0xFEFF); backup .backup-<timestamp> sebelum overwrite;
 // Publish-ClaudeMd idempoten (kalau sudah ada marker loader -> 'current', jangan timpa).
 import fs from 'node:fs'

@@ -7,18 +7,15 @@
 //
 // Berkas inti yang dipasang (subset terfokus; `init` memasang set tim LENGKAP):
 //   .github/CODEOWNERS, .github/pull_request_template.md,
-//   .github/scripts/setup-branch-protection.ps1,
 //   docs/KERJA_KELOMPOK.md, docs/CLAUDE_TEAM_GUIDE.md,
 //   docs/TEAM_FLOW_SKETCH_v1.md, docs/ACCESS_CONTROL_NREPO_v1.md
 // Mengandalkan kit yang SUDAH terpasang di <project>/.claude-kit/ (jalankan `init` dulu).
 //
 // ===========================================================================================
-// STATUS MIGRASI (Gelombang 6, ADR-003/ADR-004) - SUDAH CUTOVER:
-//   File ini = JALUR AKTIF untuk `npx lintasai team-setup`. Dispatcher bin/lintasai.js memetakan
-//   'team-setup' -> team-setup.mjs di COMMANDS_NODE (bukan lagi team-setup.ps1 di COMMANDS), dan
+// JALUR AKTIF untuk `npx lintasai team-setup` (v2.0.0, kit 100% Node):
+//   Dispatcher bin/lintasai.js memetakan 'team-setup' -> team-setup.mjs di COMMANDS_NODE, dan
 //   package.json files[] mendaftarkannya eksplisit -> ikut paket npm + jalan di mesin staff.
-//   team-setup.ps1 tetap terbit sebagai CADANGAN manual (.\.claude-kit\team-setup.ps1) bila versi
-//   Node bermasalah. Pola cutover sama dengan 'init' (setup-pola-b.mjs).
+//   (team-setup.ps1 sudah dihapus.)
 //
 // SIFAT NON-INTERAKTIF: TIDAK ada Read-Host / popup -> aman dijalankan otomatis (AI/CI) tanpa risiko
 //   menggantung. Idempoten + non-destruktif (Skip kalau berkas sudah ada) -> tidak butuh konfirmasi.
@@ -55,7 +52,6 @@ export function parseArgs(argv) {
 export const COLLAB_FILES = [
   { src: 'templates/github/CODEOWNERS.template', dst: ['.github', 'CODEOWNERS'], from: 'templates/github/CODEOWNERS.template', desc: 'Approver wajib (EDIT dgn username GitHub asli)' },
   { src: 'templates/github/pull_request_template.md', dst: ['.github', 'pull_request_template.md'], from: 'templates/github/pull_request_template.md', desc: 'Formulir minta-review (PR)' },
-  { src: 'templates/github/scripts/setup-branch-protection.ps1', dst: ['.github', 'scripts', 'setup-branch-protection.ps1'], from: 'templates/github/scripts/setup-branch-protection.ps1', desc: 'Skrip kunci main (SIMULASI dulu, baru -Apply)' },
   { src: 'templates/KERJA_KELOMPOK.md', dst: ['docs', 'KERJA_KELOMPOK.md'], from: 'templates/KERJA_KELOMPOK.md', desc: 'Pintu masuk kerja kelompok + langkah kunci main' },
   { src: 'templates/CLAUDE_TEAM_GUIDE.md', dst: ['docs', 'CLAUDE_TEAM_GUIDE.md'], from: 'templates/CLAUDE_TEAM_GUIDE.md', desc: 'Alur harian branch -> PR -> gabung' },
   { src: 'templates/TEAM_FLOW_SKETCH_v1.md', dst: ['docs', 'TEAM_FLOW_SKETCH_v1.md'], from: 'templates/TEAM_FLOW_SKETCH_v1.md', desc: 'Pipa kerja tim + 5 peran' },

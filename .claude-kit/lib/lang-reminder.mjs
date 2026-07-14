@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // lib/lang-reminder.mjs - Pengingat per-giliran (disuntik ke konteks AI TIAP user kirim pesan):
-//   (1) BAHASA  : jawab Bahasa Indonesia + gaya non-programmer (sec.2.1).
-//   (2) 8 DIVISI: pertimbangkan 8 lensa divisi profesional tiap prompt + perketat di titik risiko (sec.4.13/4.17).
+//   (1) BAHASA      : jawab Bahasa Indonesia + gaya non-programmer (sec.2.1).
+//   (2) 8 DIVISI    : pertimbangkan 8 lensa divisi profesional tiap prompt + perketat di titik risiko (sec.4.13/4.17).
+//   (3) BLOK BELAJAR: tutup output substantif dengan blok "Belajar dari task ini" (sec.4.1b).
 //
 // KENAPA: dua aturan ini hanya berupa TEKS yang terkubur jauh di dokumen aturan ~1900 baris. Bawaan model
 // = Bahasa Inggris, DAN di bawah beban kerja AI gampang lupa menimbang lensa divisi - jadi di awal sesi
@@ -31,26 +32,35 @@
 // pengingat ke AI memang harus Indonesia: ia jadi "contoh hidup" mode bahasa yang diminta.
 
 // Blok 1 - pengingat BAHASA (jalan TIAP giliran -> sengaja pendek demi hemat token).
+// DIET v2.0.0: teks dipangkas ~40% (1.032 -> ~600 char = hemat ~107 token TIAP prompt client)
+// tanpa membuang satu pun frasa yang dikunci tests/lang-reminder.test.mjs.
 const pengingatBahasa = [
   '[Pengingat lintasAI - bahasa output]',
-  'Jawab SELALU dalam Bahasa Indonesia, BUKAN Bahasa Inggris - termasuk kalimat pertama,',
-  'narasi antar-langkah, judul to-do, dan laporan akhir.',
-  'Gaya wajib: mudah dipahami junior-programmer + staff non-programmer sekaligus; tiap istilah',
-  'teknis langsung beri analogi singkat di tempat. Nama kode/perintah/identifier tetap bahasa',
-  'aslinya. (Aturan §2.1 CLAUDE_universal_v1.md - ini menimpa bawaan model yang Inggris.)',
+  'Jawab SELALU Bahasa Indonesia - sejak kalimat pertama, narasi antar-langkah, to-do, laporan.',
+  'Gaya junior-programmer + non-programmer: jargon langsung dijelaskan awam; identifier kode',
+  'tetap asli. (§2.1 - menimpa bawaan model yang Inggris.)',
 ]
 
 // Blok 2 - pengingat 8 DIVISI (pertimbangkan SELALU; tampilkan PAS-UKURAN, jangan diledakkan).
 const pengingatDivisi = [
   '[Pengingat lintasAI - 8 divisi profesional]',
-  'Pertimbangkan 8 lensa divisi tiap prompt (otomatis, TANPA staff mengetik nama skill): Backend,',
-  'Frontend, Database, Webdesign, UI/UX, DevOps, Security, SEO - terapkan checklist yang relevan ke',
-  'berkas yang disentuh. PERKETAT Security + Database + aksesibilitas saat menyentuh',
-  'login/bayar/data-pribadi/upload/skema-DB/"mau rilis" (§4.13/§4.17).',
-  'TAMPILKAN pas-ukuran: default 2 penjaga (Adversarial Reviewer + Reversibility); JANGAN ledakkan',
-  '15 lensa untuk hal sepele; "nol temuan itu sah" - jangan mengarang temuan (§4.1/§8.2 Aturan 3b).',
+  'Timbang otomatis 8 lensa: Backend, Frontend, Database, Webdesign, UI/UX, DevOps, Security, SEO;',
+  'perketat saat sentuh login/bayar/data-pribadi/upload/skema-DB/rilis (§4.13/§4.17).',
+  'Tampilkan pas-ukuran: blok Tinjauan HANYA saat ada temuan nyata/keputusan besar,',
+  'jangan ledakkan 13 lensa, nol temuan itu sah (§4.1/§8.2).',
 ]
 
-console.log([...pengingatBahasa, '', ...pengingatDivisi].join('\n'))
+// Blok 3 - pengingat BLOK BELAJAR (sec.4.1b) - jalan TIAP giliran, sengaja ringkas demi diet token:
+// detail aturan (5 baris, label, daftar SKIP) sudah hidup di mandat sec.4.1b yang always-load,
+// jangan diulang di sini. Ukuran blok ini ~236 char ~ ~59 token/prompt (rasio kit 4 char/token,
+// selaras lib/rules-budget-check.mjs; angka dihitung nyata via .length saat dipasang 2026-07-14).
+const pengingatBelajar = [
+  '[Pengingat lintasAI - blok belajar]',
+  'Tutup output substantif dengan blok "📚 Belajar dari task ini" (5 baris §4.1b:',
+  '👨‍🎓 Junior-<profesi> s/d 🚀 jalan ke senior); balasan 1-2 baris & Mode Hemat dilewati;',
+  'ragu -> jangan ngarang (§8.2).',
+]
+
+console.log([...pengingatBahasa, '', ...pengingatDivisi, '', ...pengingatBelajar].join('\n'))
 // process.exitCode (bukan process.exit) = aman dari stdout ke-potong. 0 = jangan blokir pesan user.
 process.exitCode = 0

@@ -5,44 +5,37 @@
 // Subperintah: setup / update / check-update / uninstall / doctor / scan / status / diff /
 //   version / rollback / bump / help.
 //
-// STRANGLER FIG (berdampingan, BUKAN pengganti): kit.ps1 TETAP HIDUP sebagai cadangan PowerShell.
-// Dispatcher (bin/lintasai.js) memilih versi Node ini untuk perintah cuma-baca + setup yang
-// sudah lulus uji-banding; perintah yang belum diport tetap jatuh ke PowerShell. Port ini
-// MENGHASILKAN tulisan ke-user yang IDENTIK dengan kit.ps1 (diuji baris-per-baris) - kecuali
-// 2 perbaikan bug yang DISENGAJA + DIDOKUMENTASIKAN (lihat di bawah), yang JUGA diterapkan ke
-// kit.ps1 supaya kedua versi tetap sama.
+// v2.0.0: kit 100% Node. kit.mjs adalah SATU-SATUNYA router perintah (kit.ps1 sudah dihapus).
+// Dispatcher (bin/lintasai.js) mengarahkan tiap `npx lintasai <perintah>` ke sini atau ke port Node
+// terkait.
 //
 // DELEGASI:
 //   - setup/update/check-update/uninstall/rollback -> port Node (setup-pola-b.mjs, update-kit.mjs,
-//     uninstall.mjs, lib/rollback.mjs) di KitDir. Ini arah migrasi (orkestrator sudah Node).
-//   - bump -> DIPORT ke Node (migrasi PS->Node 2026-06-25, ADR-005): penulis cap-versi
-//     (invokeLintasVersionBump + setLintasDeclaredVersion + addLintasChangelogSkeleton dll) kini ada di
-//     lib/consistency-check.mjs. case 'bump' memanggilnya LANGSUNG (bukan shim kit.ps1 lagi). Cadangan
-//     PowerShell `kit.ps1 bump` tetap ada. Catatan: pesan verifikasi-akhir bump SENGAJA beda per-runtime
-//     (Node -> "npm run preflight"; PS -> "tests/Run-Tests.ps1") - bukan drift; cap versi + exit code +
-//     guard semuanya identik kit.ps1.
-//   - rollback CUTOVER 2026-06-23 (Gelombang 6, aksi MERUSAK sesi-khusus owner): dulu shim ke kit.ps1,
-//     kini -> lib/rollback.mjs (Node). Cadangan PowerShell `kit.ps1 rollback` -> lib/rollback.ps1.
+//     uninstall.mjs, lib/rollback.mjs) di KitDir.
+//   - bump -> penulis cap-versi (invokeLintasVersionBump + setLintasDeclaredVersion +
+//     addLintasChangelogSkeleton dll) di lib/consistency-check.mjs; case 'bump' memanggilnya langsung.
 //
-// 2 PERBAIKAN BUG yang disengaja (juga di kit.ps1, supaya PS==Node):
-//   (1) SCAN CRASH: pola Security '*-guard*' = regex tak-valid (.NET + JS sama-sama melempar
-//       "Quantifier following nothing"). Di kit.ps1 lama, `scan` pada project nyata ber-folder
-//       src/ CRASH di pola ini. Perbaikan: cabang pencocokan-regex (FullName) DILEWATI untuk pola
-//       yang bukan regex sah; cabang wildcard (Name -like) tetap jalan. + urutan kategori dibuat
-//       DETERMINISTIK (deklarasi, bukan urutan-hash).
+// doctor bagian 2c "laporan migrasi artefak klien" (Mesin 2 STRATEGI_UPDATE_v2 Langkah 3) SELALU jalan:
+//   health-check boleh hijau hanya kalau semua artefak klien >= versi-diharapkan, jadi tak boleh
+//   disembunyikan di balik flag (beda dari --env yang opt-in). `doctor --skip-migrasi` melewatinya
+//   (mencetak 1 baris INFO "Laporan migrasi dilewati...").
+//
+// 2 PERBAIKAN BUG yang disengaja:
+//   (1) SCAN CRASH: pola Security '*-guard*' = regex tak-valid (JS melempar "Quantifier following
+//       nothing"). Perbaikan: cabang pencocokan-regex (FullName) DILEWATI untuk pola yang bukan regex
+//       sah; cabang wildcard (Name -like) tetap jalan. + urutan kategori dibuat DETERMINISTIK
+//       (deklarasi, bukan urutan-hash).
 //   (2) DOBEL-"v": Show-Help + scan dulu mencetak "vv1.57.1" (versi dari CHANGELOG sudah ber-awalan
 //       'v', lalu ditambah 'v' lagi). Diperbaiki dengan normalisasi awalan-v (cermin logika doctor/status).
 //
-// KETAHANAN INPUT CACAT (diperbaiki di KEDUA versi pasca cek-silang skeptis 2026-06-23):
-//   - kit-files.psd1 ADA tapi RUSAK -> kit.ps1 + kit.mjs sama-sama cetak "ERROR ... rusak / tak terbaca"
-//     lalu LANJUT ke baris Result (dulu kit.ps1 CRASH dengan error merah tanpa Result).
-//   - manifest .json RUSAK saat `diff` -> kedua versi cetak peringatan rapi (dulu kit.ps1 bocorkan
-//     jejak-error .NET teknis ke staf). Pesan dibuat TANPA detail-runtime supaya identik PS==Node.
-//   - Perintah PEKA-HURUF: 'Doctor' = 'doctor' (cermin ValidateSet PowerShell).
-//   - skip-folder di scan menguji path INDUK juga (cermin '$_.FullName -match' PS).
-//   CATATAN: pada manifest cacat-tangan LAIN (mis. `files` ditulis objek/bukan array, `sha256` angka),
-//   kit.mjs SENGAJA lebih ketat (pakai Array.isArray + banding-string) -> bisa beda dari truthiness PS;
-//   ini peningkatan ketahanan, BUKAN regresi. Pada manifest SAH (yang ditulis kit), keduanya identik.
+// KETAHANAN INPUT CACAT:
+//   - daftar-berkas (kit-files.json / fallback .psd1) ADA tapi RUSAK -> cetak "ERROR ... rusak / tak
+//     terbaca" lalu LANJUT ke baris Result (bukan crash).
+//   - manifest .json RUSAK saat `diff` -> cetak peringatan rapi TANPA membocorkan jejak-error teknis.
+//   - Perintah TIDAK peka-huruf: 'Doctor'/'DOCTOR' diperlakukan sama dengan 'doctor'.
+//   - skip-folder di scan menguji path INDUK juga.
+//   - manifest cacat-tangan (mis. `files` objek/bukan array, `sha256` angka) ditolak ketat via
+//     Array.isArray + banding-string.
 //
 // Bahasa output WAJIB non-programmer Indonesia (ADR-004 #3) - dijaga robot lib/output-lang-check.mjs.
 import fs from 'node:fs'
@@ -53,8 +46,9 @@ import { fileURLToPath } from 'node:url'
 
 import { getKitVersionFallback } from './lib/version-detect.mjs'
 import { getManifestSignatureStatus } from './lib/manifest-signing.mjs'
-import { readKitFiles } from './lib/kit-files.mjs'
+import { readKitManifest } from './lib/kit-files.mjs'
 import { runEnvCheck } from './lib/env-check.mjs'
+import { isLegacyUpdateGuide } from './lib/template-deploy.mjs'
 import { stripBom } from './lib/fs-text.mjs'
 import { invokeLintasVersionBump, invokeLintasConsistencyCheckKit } from './lib/consistency-check.mjs'
 
@@ -143,28 +137,28 @@ function showHelp(kitDir) {
   const v = versionDisplay(getKitVersion(kitDir)) // PERBAIKAN dobel-v (dulu "v$(Get-KitVersion)")
   const L = (s = '') => console.log(s)
   L('')
-  L(`kit.ps1 - Single entry point untuk kit lintasAI (${v})`)
+  L(`lintasai - Router perintah kit lintasAI (${v})`)
   L('')
   L('USAGE:')
-  L('  .\\.claude-kit\\kit.ps1 <command> [args]')
+  L('  npx lintasai <command> [args]')
   L('')
   L('COMMANDS:')
-  L('  setup     - Setup Pola B di proyek (copy AGENTS.md, docs skeleton, file tim)')
-  L('              Args: -Force, -DryRun, -SkipTeamFiles')
+  L('  init      - Setup Pola B di proyek (copy AGENTS.md, docs skeleton, file tim)')
+  L('              Args: --force, --dry-run, --skip-team-files')
   L('')
   L('  update    - Update kit ke versi terbaru via re-clone fresh dari GitHub')
-  L('              Args: -NoBackup, -RepoUrl <url>, -Branch <name>, -DryRun')
+  L('              Args: --no-backup, --repo-url <url>, --branch <name>, --dry-run')
   L('')
   L('  check-update - Cek apakah ada versi baru TANPA mengubah apa pun (read-only)')
   L('              (no args)')
   L('')
   L('  uninstall - Hapus kit dari proyek dengan AMAN (diff vs daftar file kit)')
-  L('              Args: -DryRun, -Force, -DeleteAgents, -KeepKit, -Yes, -AllowProjectRootMismatch')
+  L('              Args: --dry-run, --force, --delete-agents, --keep-kit, --yes')
   L('              File project (yang BUKAN dari kit) AMAN tidak terhapus.')
   L('              Path traversal + symlink protection aktif by default.')
   L('')
   L('  doctor    - Diagnostic: cek versi + file inti utuh + cross-ref')
-  L('              --env: cek lingkungan (Node/PowerShell/OS/Git) - sumber "beda di client"')
+  L('              --env: cek lingkungan (Node/OS/Git) - sumber "beda di client"')
   L('')
   L('  scan      - Re-run scan project untuk identifikasi kandidat CRITICAL')
   L('              (tanpa setup ulang)')
@@ -186,16 +180,9 @@ function showHelp(kitDir) {
   L('  help      - Tampilkan help ini')
   L('')
   L('EXAMPLES:')
-  L('  .\\.claude-kit\\kit.ps1 setup -Force')
-  L('  .\\.claude-kit\\kit.ps1 update')
-  L('  .\\.claude-kit\\kit.ps1 doctor')
-  L('')
-  L('BACKWARD COMPATIBILITY:')
-  L('  Setup script lama tetap bisa dipanggil langsung:')
-  L('    .\\.claude-kit\\setup-pola-b.ps1 -Force')
-  L('    .\\.claude-kit\\update-kit.ps1')
-  L('')
-  L('  kit.ps1 cuma alternative entry point yang lebih ringkas.')
+  L('  npx lintasai init --force')
+  L('  npx lintasai update')
+  L('  npx lintasai doctor')
   L('')
 }
 
@@ -225,27 +212,46 @@ function invokeDoctor(kitDir, projectRoot, extra = []) {
     err++
   }
 
-  // 2. Cek file inti. Sumber tunggal: lib/kit-files.psd1 (10 grup, urutan SAMA dengan kit.ps1).
-  const kitFilesPsd1 = path.join(kitDir, 'lib', 'kit-files.psd1')
+  // 2. Cek file inti. Sumber tunggal DUA-FORMAT (v2.0.0, D1): lib/kit-files.json (SSOT baru) ATAU
+  // lib/kit-files.psd1 (kit era-v1 klien). readKitManifest prefer .json, fallback .psd1. Inilah
+  // penutup jebakan doctor lintas-versi (§2.3): doctor v2 atas kit v1 TETAP baca daftar (fallback
+  // .psd1) -> INFO lunak ajakan update, BUKAN vonis "manifest hilang" ERROR.
   let wajibAda = []
-  if (!fs.existsSync(kitFilesPsd1)) {
-    L('ERROR lib\\kit-files.psd1 hilang (manifest single-source-of-truth)')
+  let testsGroup = []
+  let manifest = null
+  try { manifest = readKitManifest(kitDir) } catch (e) {
+    L('ERROR manifest daftar-berkas (lib/kit-files.json / .psd1) rusak / tak terbaca')
+    L(`      ${e.message}`)
+    err++
+    manifest = { data: null }
+  }
+  if (manifest === null) {
+    L('ERROR manifest daftar-berkas hilang (lib/kit-files.json - single-source-of-truth)')
     err++
   } else {
-    let kitFiles
-    try { kitFiles = readKitFiles(kitFilesPsd1) } catch (e) {
-      // psd1 ADA tapi RUSAK (gagal parse). kit.ps1 kini juga menangkap ini + cetak pesan SAMA
-      // + LANJUT (dulu kit.ps1 CRASH dengan error merah tanpa baris Result - lebih buruk untuk staf).
-      L('ERROR lib\\kit-files.psd1 rusak / tak terbaca (cek sintaks .psd1)')
-      err++
-      kitFiles = null
+    const kitFiles = manifest.data
+    if (manifest.format === 'psd1-legacy') {
+      // Kit era-v1 (masih .psd1). BUKAN error - cukup ajak update ke format baru.
+      L('INFO  Kit era-v1 terdeteksi (manifest masih lib/kit-files.psd1 format lama).')
+      L('      Saran lunak: jalankan `npx lintasai update` untuk pindah ke kit 100% Node (v2).')
     }
     if (kitFiles) {
-      const groups = ['core_prompts', 'universal_rules', 'scripts', 'lib_files', 'node_lib',
+      const groups = ['core_prompts', 'universal_rules', 'workflows', 'scripts', 'lib_files', 'node_lib',
         'templates', 'docs', 'tests', 'ci', 'meta']
       const merged = []
       for (const g of groups) { if (Array.isArray(kitFiles[g])) merged.push(...kitFiles[g]) }
       wajibAda = merged.map((f) => String(f).replace(/\//g, '\\'))
+      // Carve-out "suite Pester opsional-per-jalur" = SEMATA kompat-mundur kit era-v1 (.psd1).
+      // Kit v2 = 100% Node: tak ada tes .ps1 sama sekali + grup `tests` kit-files.json KOSONG, jadi
+      // testsGroup di jalur JSON selalu [] (tak ada yang di-carve-out -> tak ada risiko salah-vonis).
+      // Carve-out HANYA aktif saat doctor v2 menginspeksi kit v1 klien lewat fallback .psd1: suite
+      // Pester internal (tests/*.Tests.ps1) TIDAK ikut paket npm -> jangan divonis "hilang". Pelari
+      // tes (Run-Tests.ps1, preflight.mjs, smoke-*.ps1/mjs) IKUT paket npm era-v1 -> TETAP wajib ada.
+      if (manifest.format === 'psd1-legacy') {
+        testsGroup = (Array.isArray(kitFiles.tests) ? kitFiles.tests : [])
+          .map((f) => String(f).replace(/\//g, '\\'))
+          .filter((f) => /\.tests\.ps1$/i.test(f))
+      }
     }
   }
 
@@ -254,14 +260,28 @@ function invokeDoctor(kitDir, projectRoot, extra = []) {
     for (const f of wajibAda) {
       if (!fs.existsSync(path.join(kitDir, f))) missing.push(f)
     }
-    if (missing.length === 0) {
-      L(`OK    ${wajibAda.length} file inti utuh`)
+    // (Kompat-mundur kit era-v1 saja; testsSet selalu kosong untuk kit v2 100% Node.) Di kit v1,
+    // suite Pester internal (tests/*.Tests.ps1) SENGAJA tidak ikut paket npm (files[] era-v1 hanya
+    // membawa pelari tesnya) - padahal npm = jalur resmi client. SEMUA suite absen = ciri pemasangan
+    // npm yang sehat -> INFO, bukan vonis "kit rusak" (integritas berkas yang benar-benar terpasang
+    // tetap dijaga cek manifest sha256 di 2b). Suite absen SEBAGIAN = korupsi nyata -> tetap ERROR
+    // (jalur repo/git membawa suite lengkap).
+    const testsSet = new Set(testsGroup)
+    const missingTests = missing.filter((f) => testsSet.has(f))
+    const allTestsAbsent = testsSet.size > 0 && missingTests.length === testsSet.size
+    const effMissing = allTestsAbsent ? missing.filter((f) => !testsSet.has(f)) : missing
+    const utuhCount = allTestsAbsent ? wajibAda.length - testsSet.size : wajibAda.length
+    if (effMissing.length === 0) {
+      L(`OK    ${utuhCount} file inti utuh`)
       ok++
     } else {
-      L(`ERROR ${missing.length} file missing:`)
-      for (const m of missing) L(`        - ${m}`)
+      L(`ERROR ${effMissing.length} file missing:`)
+      for (const m of effMissing) L(`        - ${m}`)
       err++
-      L('      Saran: .\\.claude-kit\\kit.ps1 update (re-clone fresh)')
+      L('      Saran: npx lintasai update (re-clone fresh)')
+    }
+    if (allTestsAbsent) {
+      L(`INFO  ${testsSet.size} berkas tes internal kit tidak ikut terpasang (normal untuk pemasangan via paket npm; jalur repo/git yang membawanya)`)
     }
   }
 
@@ -290,7 +310,10 @@ function invokeDoctor(kitDir, projectRoot, extra = []) {
       }
       switch (sigStatus) {
         case 'verified': L('OK    Manifest: tanda-tangan VALID (daftar berkas terverifikasi asli)'); ok++; break
-        case 'invalid': L('WARN  Manifest: tanda-tangan TIDAK COCOK - daftar mungkin diubah; hasil integrity di bawah BELUM tentu bisa dipercaya.'); warn++; break
+        case 'invalid':
+          L('WARN  Manifest: tanda-tangan TIDAK COCOK - daftar mungkin diubah; hasil integrity di bawah BELUM tentu bisa dipercaya.')
+          L('      Kemungkinan lain (kit era-lama): segel format LAMA pra-2026-06-22 yang tak terbaca kit Node -> jalankan `npx lintasai update` untuk menyegel ulang format baru.')
+          warn++; break
         case 'unsigned': L('INFO  Manifest: tanpa tanda-tangan (legacy) - integrity di bawah = cek sha256 saja, keaslian daftar belum diverifikasi.'); break
         default: L('INFO  Manifest: verifikasi tanda-tangan dilewati (helper tidak tersedia).'); break
       }
@@ -351,13 +374,136 @@ function invokeDoctor(kitDir, projectRoot, extra = []) {
     L('INFO  Integrity check skipped: .install-manifest.json tidak ada (kit pre-manifest atau belum di-install)')
   }
 
+  // 2c. Laporan migrasi artefak klien (Mesin 2 rencana STRATEGI_UPDATE_v2 Langkah 3) - Node-only,
+  //     SELALU jalan (bukan opt-in kayak --env): health-check boleh HIJAU hanya kalau SEMUA artefak
+  //     klien ber-penanda >= versi-diharapkan kit; ada yang tertinggal/rusak -> ERROR ("Selesai
+  //     sebagian" §4.7), BUKAN "aman penuh". Dijalankan sebagai PROSES ANAK dari
+  //     kitDir/lib/migration-state.mjs (bukan import statis) supaya PETA versi-diharapkan yang
+  //     dipakai = milik kit yang DIINSPEKSI (kasus npx: kit.mjs bisa berjalan dari cache npm yang
+  //     versinya beda dari .claude-kit project). Kit lama tanpa robot -> INFO lewati (bukan error).
+  //     --skip-migrasi = untuk alat banding exit-code parity-check (detail + batas byte: header atas).
+  const skipMigrasi = extra.some((a) => String(a).toLowerCase() === '--skip-migrasi')
+  const migrationRobot = path.join(kitDir, 'lib', 'migration-state.mjs')
+  if (skipMigrasi) {
+    L('INFO  Laporan migrasi dilewati (--skip-migrasi - pemanggil menjalankan laporannya terpisah / sedang banding PS==Node).')
+  } else if (!fs.existsSync(migrationRobot)) {
+    L('INFO  Laporan migrasi dilewati: kit yang diinspeksi belum punya lib/migration-state.mjs (kit lama).')
+  } else {
+    // Tangkap keluaran (bukan stdio inherit) supaya bisa MEMBEDAKAN "robot crash" vs "robot
+    // melapor N artefak tertinggal" - dua-duanya keluar kode !=0. Pembedanya: baris penanda
+    // laporan (kontrak string dgn lib/migration-state.mjs, jangan diganti sepihak). Tanpa ini,
+    // crash (mis. salinan kit rusak sebagian) salah-didiagnosis "1 artefak belum termigrasi" +
+    // saran migrasi yang salah arah (temuan cek-silang 2026-07-09). stderr (jejak-error Node
+    // mentah, bisa memuat path komputer) SENGAJA tak ditampilkan - cermin pesan-tetap manifest-rusak.
+    const r = spawnSync(process.execPath, [migrationRobot, '--project-root', projectRoot, '--kit-dir', kitDir], { encoding: 'utf8', timeout: 60000 })
+    const robotOut = r.stdout || ''
+    if (robotOut.trim()) process.stdout.write(robotOut) // teruskan laporan robot ke layar
+    const reportPrinted = robotOut.includes('Robot laporan-migrasi artefak klien')
+    if (r.error || r.status == null || (r.status !== 0 && !reportPrinted)) {
+      // FAIL-HONEST: robot gagal jalan / berhenti sebelum melapor != artefak sehat -> WARN
+      // (jangan diam-diam dianggap OK; jangan pula divonis "artefak belum termigrasi").
+      L('WARN  Robot laporan-migrasi gagal dijalankan / berhenti sebelum melapor (dilewati).')
+      L('      Kemungkinan salinan kit tidak lengkap - coba pasang ulang / update kit, atau jalankan')
+      L('      manual untuk lihat detailnya: node .claude-kit/lib/migration-state.mjs')
+      warn++
+    } else if (r.status === 0) {
+      L('OK    Artefak klien sesuai versi yang diharapkan kit (laporan migrasi di atas).')
+      ok++
+    } else {
+      L(`ERROR ${r.status} artefak klien belum/tak terbukti termigrasi (lihat laporan di atas) - status "Selesai sebagian", belum "aman penuh".`)
+      err++
+    }
+  }
+
+  // 2d. Deteksi kartu identitas legacy (.psd1 tersisa / kartu ganda) - Fase 1e v2.
+  //     INFO/WARN saja (bukan error gerbang); migrator terpisah: npx lintasai migrate-project-card.
+  const legacyRobot = path.join(kitDir, 'lib', 'project-card-migrate.mjs')
+  if (!fs.existsSync(legacyRobot)) {
+    L('INFO  Deteksi kartu legacy dilewati: kit belum punya lib/project-card-migrate.mjs (kit lama).')
+  } else {
+    const r = spawnSync(process.execPath, [legacyRobot, '--project-root', projectRoot, '--detect-only'], { encoding: 'utf8', timeout: 60000 })
+    const legacyOut = r.stdout || ''
+    if (legacyOut.trim()) process.stdout.write(legacyOut)
+    if (r.error || r.status == null) {
+      L('WARN  Robot deteksi kartu legacy gagal dijalankan (dilewati).')
+      warn++
+    } else if (legacyOut.includes('Robot deteksi kartu identitas legacy')) {
+      const actionable = (legacyOut.match(/\[PERLU\]/g) || []).length + (legacyOut.match(/\[MASALAH\]/g) || []).length
+      const leftover = (legacyOut.match(/\[INFO\]/g) || []).length
+      if (actionable > 0) {
+        L(`WARN  Kartu identitas legacy perlu migrasi (${actionable} temuan - lihat laporan di atas).`)
+        L('      Saran: npx lintasai migrate-project-card (SIMULASI) lalu --apply')
+        warn++
+      } else if (leftover > 0) {
+        L('INFO  Kartu .psd1 lama masih ada setelah migrasi - bisa dibersihkan manual bila .jsonc sudah benar.')
+      }
+    }
+  }
+
+  // 2e. Deteksi artefak PowerShell yatim milik klien (v2.0.0 3e). Kit kini 100% Node -> berkas
+  //     .ps1/.psd1 di LUAR .claude-kit adalah sisa era-PS (mis. .github/scripts/setup-branch-protection.ps1,
+  //     docs/consistency-map.example.psd1). INFO + tawaran bersihkan (read-only) - BUKAN error: berkas
+  //     ini tak lagi dipakai kit, tapi menghapusnya keputusan klien. Kartu project.lintas.psd1 di akar
+  //     SUDAH ditangani deteksi kartu legacy (2d) -> tak diulang di sini.
+  const orphanScan = [
+    ['.github\\scripts', /\.ps1$/i],
+    ['docs', /\.psd1$/i],
+  ]
+  const orphanHits = []
+  for (const [rel, re] of orphanScan) {
+    let entries = []
+    try { entries = fs.readdirSync(path.join(projectRoot, rel)) } catch { entries = [] }
+    for (const name of entries) { if (re.test(name)) orphanHits.push(`${rel}\\${name}`) }
+  }
+  if (orphanHits.length > 0) {
+    L(`INFO  ${orphanHits.length} artefak PowerShell era-lama terdeteksi (kit kini 100% Node - aman dibersihkan):`)
+    for (const h of orphanHits) L(`        - ${h}`)
+    L('      Opsional: hapus manual bila tak dipakai (mis. ganti setup-branch-protection.ps1 dengan `npx lintasai protect-main`).')
+  }
+
+  // 2e-bis. Deteksi sisa alat PowerShell v1 DI DALAM .claude-kit (v2.4.1). Kit v2 hanya mengirim SATU
+  //     .ps1 = stub penyelamat setup-pola-b.ps1. Kalau client meng-"update" lewat jalur init-merge
+  //     (`npm create lintasai@latest` menimpa-tumpuk, BUKAN `npx lintasai update` yang cadangkan-lalu-segar),
+  //     alat v1 lama (kit.ps1/update-kit.ps1/uninstall.ps1/install-windows.ps1/team-setup.ps1 + lib/*.ps1)
+  //     TERTINGGAL di .claude-kit -> footgun: client refleks menjalankan update-kit.ps1 v1 yang setengah-jadi.
+  //     INFO ajakan bersihkan (read-only, bukan error) - selaras detektor 2e. Stub setup-pola-b.ps1 DIKECUALIKAN.
+  const stalePsHits = []
+  for (const sub of ['', 'lib']) {
+    const dir = sub ? path.join(kitDir, sub) : kitDir
+    let entries = []
+    try { entries = fs.readdirSync(dir) } catch { entries = [] }
+    for (const name of entries) {
+      if (!/\.ps(1|m1|d1)$/i.test(name)) continue
+      if (!sub && /^setup-pola-b\.ps1$/i.test(name)) continue // stub penyelamat = sah
+      stalePsHits.push(sub ? `${sub}/${name}` : name)
+    }
+  }
+  if (stalePsHits.length > 0) {
+    L(`INFO  ${stalePsHits.length} sisa alat PowerShell v1 di .claude-kit/ (kit v2 = 100% Node, hanya stub setup-pola-b.ps1 yang sah):`)
+    for (const h of stalePsHits) L(`        - .claude-kit/${h}`)
+    L('      Aman dibersihkan manual. JANGAN jalankan update-kit.ps1/kit.ps1 lama - pakai `npx lintasai update`.')
+  }
+
+  // 2f. Deteksi docs/UPDATE_GUIDE.md era-PowerShell (v2.0.0 3e). Salinan lama menyuruh `kit.ps1 update`
+  //     dan tak pernah tersegarkan (deploy lewati-kalau-ada). INFO ajakan update (read-only, bukan error) -
+  //     penyegaran sungguhan + cadangan ber-cap-waktu dilakukan `npx lintasai update` (setup-pola-b.mjs).
+  const guidePath = path.join(projectRoot, 'docs', 'UPDATE_GUIDE.md')
+  if (fs.existsSync(guidePath)) {
+    try {
+      if (isLegacyUpdateGuide(fs.readFileSync(guidePath, 'utf8'))) {
+        L('INFO  docs/UPDATE_GUIDE.md masih menyebut perintah PowerShell lama (kit.ps1 / update-kit.ps1).')
+        L('      Saran lunak: `npx lintasai update` akan menyegarkannya otomatis + menyimpan cadangan ber-cap-waktu.')
+      }
+    } catch { /* baca gagal -> lewati senyap (bukan error gerbang) */ }
+  }
+
   // 3. AGENTS.md di root proyek
   if (fs.existsSync(path.join(projectRoot, 'AGENTS.md'))) {
     L('OK    AGENTS.md ada di root proyek')
     ok++
   } else {
     L('WARN  AGENTS.md belum di-copy ke root proyek')
-    L('      Saran: .\\.claude-kit\\kit.ps1 setup')
+      L('      Saran: npx lintasai init')
     warn++
   }
 
@@ -369,7 +515,7 @@ function invokeDoctor(kitDir, projectRoot, extra = []) {
     ok++
   } else {
     L('WARN  docs/ belum dibuat')
-    L('      Saran: .\\.claude-kit\\kit.ps1 setup')
+      L('      Saran: npx lintasai init')
     warn++
   }
 
@@ -392,12 +538,13 @@ function invokeDoctor(kitDir, projectRoot, extra = []) {
     ok++
   }
 
-  // 7. Lingkungan eksekusi (OPT-IN via --env). Robot lib/env-check.mjs memotret versi runtime client
-  //    (Node/PowerShell/OS/Git) + node_modules/lockfile -> menutup akar "terasa beda di client" (parity).
-  //    HANYA jalan kalau diminta -> `kit doctor` polos tetap byte-identik dgn cadangan kit.ps1
-  //    (gerbang output-identik ADR-003). Fitur Node-only (kit.ps1 = cadangan perilaku LAMA).
-  const wantEnv = extra.some((a) => String(a).toLowerCase() === '--env')
-  if (wantEnv) {
+  // 7. Lingkungan eksekusi (parity). v2.0.0: jadi BAGIAN DEFAULT doctor (janji §7.6 poin 6) - gerbang
+  //    output-identik ADR-003 GUGUR bersama kit.ps1 (kit 100% Node, tak ada lagi yang harus disamakan
+  //    byte-per-byte). Robot lib/env-check.mjs memotret runtime client (Node/OS/Git) + node_modules/
+  //    lockfile -> menutup akar "terasa beda di client". Matikan dengan --no-env untuk keluaran ringkas.
+  //    Catatan: --env lama tetap diterima (alias no-op) demi kompat perintah/dokumen era-v1.
+  const skipEnv = extra.some((a) => String(a).toLowerCase() === '--no-env')
+  if (!skipEnv) {
     L('')
     L('--- Lingkungan eksekusi (parity) ---')
     try {
@@ -449,7 +596,7 @@ function invokeScan(kitDir, projectRoot) {
   L('')
   L(`=== Kit Scan - Universal Adaptive Scan (kit ${versionDisplay(getKitVersion(kitDir))}) ===`)
   L('')
-  L('Catatan: kit.ps1 scan = scan ringan untuk count kandidat.')
+  L('Catatan: kit scan = scan ringan untuk count kandidat.')
   L('        Untuk bulk-bootstrap actual, paste JALANKAN_KIT.md ke Claude Code (yang trigger AI workflow).')
   L('')
 
@@ -623,7 +770,7 @@ function invokeStatus(kitDir, projectRoot) {
   }
 
   L('')
-  L('Untuk detail lebih lengkap: .\\.claude-kit\\kit.ps1 doctor')
+  L('Untuk detail lebih lengkap: npx lintasai doctor')
   L('')
   return 0
 }
@@ -648,9 +795,8 @@ function invokeDiff(projectRoot) {
   try {
     manifest = readManifestJson(manifestPath)
   } catch (e) {
-    // Manifest RUSAK (gagal parse JSON). kit.ps1 kini juga menangkap ini + cetak peringatan SAMA
-    // (dulu kit.ps1 membocorkan jejak-error .NET teknis ke staf - langgar prinsip non-programmer).
-    // Pesan dibuat TANPA detail-error runtime supaya identik PS==Node.
+    // Manifest RUSAK (gagal parse JSON) -> cetak peringatan rapi. Pesan dibuat TANPA detail-error
+    // runtime demi prinsip non-programmer (jangan bocorkan jejak-error teknis ke staf).
     console.error('WARNING: Manifest .install-manifest.json rusak / tak terbaca (cek format JSON).')
     return 1
   }
@@ -695,10 +841,8 @@ function delegateNode(kitDir, scriptName, args) {
   return r.status == null ? 1 : r.status
 }
 
-// CATATAN (migrasi PS->Node 2026-06-25): dulu ada delegatePsKit (shim ke `kit.ps1 bump`) karena
-// penulis cap-versi masih PowerShell. Kini bump DIPORT ke Node (lib/consistency-check.mjs
-// invokeLintasVersionBump, dipanggil langsung di case 'bump') -> shim itu tak diperlukan lagi.
-// Cadangan PowerShell `kit.ps1 bump` TETAP ada sebagai jalur manual (lihat PS_FALLBACK / kit.ps1).
+// CATATAN: bump ditangani Node murni (lib/consistency-check.mjs invokeLintasVersionBump, dipanggil
+// langsung di case 'bump').
 
 // ---- Router ----
 function main(argv) {
@@ -714,7 +858,7 @@ function main(argv) {
   // CATATAN: 'rollback' DIKELUARKAN di sini - sejak CUTOVER ke port Node (2026-06-23) ia jadi orkestrator
   // yang mencetak header sendiri ("lintasAI rollback - balikin..."), sama seperti setup/update/uninstall
   // yang juga TIDAK ikut baris "Inspecting" (konvensi: cuma perintah inspeksi cuma-baca yang cetak
-  // "Inspecting"). Cadangan kit.ps1 rollback tetap cetak "Inspecting" sendiri (jalur PowerShell).
+  // "Inspecting").
   if (['doctor', 'version', 'scan', 'status', 'diff'].includes(command)) {
     console.log(`Inspecting kit at: ${kitDir}`)
   }
@@ -744,13 +888,12 @@ function main(argv) {
       // CUTOVER Gelombang 6 (aksi MERUSAK, sesi-khusus owner 2026-06-23): rollback kini pakai port Node
       // lib/rollback.mjs (dulu shim ke kit.ps1). Suntik --project-root supaya rollback menyasar manifest +
       // .claude-kit di project (cermin delegasi setup/update/uninstall). NON-INTERAKTIF: butuh --yes untuk
-      // benar-benar menimpa (default-batal). Cadangan PowerShell: `kit.ps1 rollback` -> lib/rollback.ps1.
+      // benar-benar menimpa (default-batal).
       return delegateNode(kitDir, 'lib/rollback.mjs', ['--project-root', projectRoot, ...extra])
     case 'bump': {
       // CUTOVER (migrasi PS->Node 2026-06-25, owner-gated): penulis cap-versi kini Node murni
-      // (lib/consistency-check.mjs invokeLintasVersionBump). Cermin kit.ps1 case 'bump': stamp dulu,
-      // lalu jalankan pemeriksaan kecocokan MODE KIT (verifikasi hasil), exit = jumlah ketakcocokan.
-      // Cadangan PowerShell: `kit.ps1 bump` -> Invoke-LintasVersionBump di consistency-check.ps1.
+      // (lib/consistency-check.mjs invokeLintasVersionBump): stamp dulu, lalu jalankan pemeriksaan
+      // kecocokan MODE KIT (verifikasi hasil), exit = jumlah ketakcocokan.
       const newVer = extra && extra.length >= 1 ? extra[0] : ''
       if (!newVer) {
         console.log('Pemakaian: kit bump <versi>   (mis. node kit.mjs bump 1.42.0)')

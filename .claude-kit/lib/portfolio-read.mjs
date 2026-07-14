@@ -3,9 +3,9 @@
 //
 // MIGRASI grup [A] (ADR-003 / docs/plans/keputusan-per-elemen-node-vs-ps.md): robot baca-saja,
 // parser YAML BARIS-PER-BARIS untuk STRUKTUR DIKENAL (portfolio/access_groups/repos). C4 nol.
-// Strangler Fig = BERDAMPINGAN: versi .ps1 TETAP hidup. 100% READ-ONLY (cuma baca + ringkas).
+// 100% READ-ONLY (cuma baca + ringkas).
 //
-// Catatan: bukan parser YAML umum - hanya field tak-ambigu (mirip versi PS). Untuk RINGKASAN.
+// Catatan: bukan parser YAML umum - hanya field tak-ambigu. Untuk RINGKASAN.
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

@@ -1,6 +1,6 @@
 # templates/OBSERVABILITY_PRODUKSI.md - Pasang "Alarm" supaya App Tak Error Diam-Diam di Produksi
 
-> Versi 1 · 2026-06-27 · Untuk app produksi (Next.js / Python / Supabase, deploy Vercel/Railway/Render).
+> Versi 1.1 · 2026-07-14 · Untuk app produksi (Next.js / Python / Supabase, deploy Vercel/Railway/Render). · v1.1: + Pilar 4 pemantauan kejadian keamanan (SIEM-lite)
 > Pelengkap, BUKAN pengganti: setup tool dasar = `SPLIT_REPO_TOOLS_SETUP.md` §12 (Sentry 3-baris) · backup DB = `backup-schemas.yml` · standar log = `CLAUDE_universal_v1.md` §5. File ini **mengangkat observability jadi standar wajib-sebelum-online** + langkah konkret 3 pilar.
 
 ## Tujuan & kapan dipakai
@@ -18,7 +18,7 @@ App tanpa observability = **terbang tanpa instrumen**: kelihatan jalan, tapi saa
 
 ---
 
-## 3 Pilar (pasang berurutan, dari yang paling penting)
+## 3 Pilar inti + 1 pilar keamanan (pasang berurutan, dari yang paling penting)
 
 ### Pilar 1 — Error Tracking (tangkap error user otomatis) 🥇
 
@@ -60,6 +60,15 @@ export async function GET() {
 }
 ```
 - Daftarkan URL `/api/health` ke uptime monitor (UptimeRobot/BetterStack/Vercel) → dapat alert kalau app mati. (Railway/Render: set healthcheck path di config deploy.)
+- **Butuh lebih dalam?** Untuk validasi env fail-fast (zod) + health check BERLAPIS (`/health` cepat + `/health/detailed` cek DB, balikan 503 kalau sakit) + probe Kubernetes → lihat `workflows/stack/4.14-4-deploy.md` §health.
+
+### Pilar 4 — Pemantauan kejadian KEAMANAN (SIEM-lite) 🔒
+
+- 👨‍🎓 **SIEM** (*Security Information & Event Management*) = sistem yang mengumpulkan log keamanan dari semua komponen ke SATU tempat + membunyikan alarm saat ada pola serangan. Versi enterprise (Elastic Security/Wazuh/Splunk) = **OPSIONAL** untuk tim skala ini; yang WAJIB = versi ringannya di bawah — pilar 1-3 menjaga app dari RUSAK, pilar 4 menjaga dari DISERANG.
+- **Catat kejadian keamanan kunci** (audit log §8, ini daftar konkretnya): login gagal & sukses, ganti role/password, aksi admin (hapus/ekspor massal), permintaan ditolak (401/403), reset password. Sumbernya SUDAH ada di stack tanpa alat baru (dicek 2026-07): **Supabase** — log Auth/Postgres/API bisa di-query SQL di dashboard (Logs Explorer; lama simpan mengikuti plan); **Cloudflare** — Security Events dari WAF (§4.14-4); **Sentry** — bisa dipasangi aturan alert kustom, bukan cuma error.
+- **Alarm otomatis pada anomali — mulai 3-5 aturan saja, jangan 50** (alarm kebanyakan = semua diabaikan): (1) login gagal beruntun dari 1 IP (tanda brute force); (2) lonjakan 401/403 (ada yang meraba-raba pintu); (3) aksi admin di jam janggal; (4) lonjakan error rate; (5) lonjakan penggunaan/biaya (denial-of-wallet §4.14-4). Kirim ke jalur yang sama dengan alert error (Slack/email owner).
+- **Retensi + ekspor:** log keamanan = bukti forensik saat insiden (`SECURITY_INCIDENT_PLAYBOOK.md`) — tahu batas simpan plan-mu; butuh lebih lama/terpusat → teruskan keluar (mis. Vercel **Drains**, plan Pro+ — dicek 2026-07) atau ekspor berkala.
+- 🙂 **Non-programmer:** pilar 1-3 = alarm "toko rusak"; pilar 4 = alarm "toko DIBOBOL" — satpam mencatat siapa mencoba dobrak pintu berapa kali dan langsung membunyikan lonceng saat mencurigakan, bukan baru sadar seminggu kemudian dari kabar pelanggan.
 
 ---
 
@@ -69,6 +78,7 @@ export async function GET() {
 - [ ] Log terstruktur + `trace-id` di entry point & jalur error; level benar; **tak ada secret/PII** ter-log.
 - [ ] Endpoint `/health` ada + terdaftar di uptime monitor.
 - [ ] Alert routing jelas (siapa dapat notif saat GENTING — email/Slack owner).
+- [ ] Kejadian keamanan kunci ter-log (login gagal, ganti role, aksi admin) + minimal 3 alarm anomali aktif (Pilar 4).
 - [ ] (Opsional) error-rate threshold → alert kalau lonjakan error.
 
 ---

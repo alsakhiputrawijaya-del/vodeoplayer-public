@@ -2,9 +2,8 @@
 // lib/template-deploy.mjs - Helper deploy template (port Node dari template-deploy.ps1).
 //
 // MIGRASI grup [A] (ADR-003): robot PENULIS PENUH (salin template + placeholder + backup).
-// Strangler Fig = BERDAMPINGAN: versi .ps1 TETAP hidup (dipakai setup-pola-b/update-kit PS).
 //
-// Kontrak penting (byte-identik dgn versi PS):
+// Kontrak penting:
 //  - Substitusi LITERAL via split/join (bukan regex) -> value ber-karakter $0/$1/$ tak corrupt.
 //  - Tulis UTF-8 NO-BOM (fs writeFileSync utf8). Strip BOM saat baca (cermin Get-Content -Encoding UTF8).
 //  - SHA256 file TARGET (post-substitution), hex UPPERCASE (cermin Get-FileHash.Hash).
@@ -85,5 +84,35 @@ export function copyStaticTemplate({ sourcePath, targetPath, ifExists = 'Skip', 
   return { copied: true, action: targetExists ? 'updated' : 'created', sha256: sha }
 }
 
+// --- Refresh UPDATE_GUIDE.md era-PowerShell (v2.0.0 Fase 3e) --------------------------------------
+// Salinan docs/UPDATE_GUIDE.md milik klien di-deploy "lewati-kalau-ada" -> versi lama (menyuruh
+// `kit.ps1 update`) tak pernah tersegarkan. Mekanisme ini: kalau salinan klien masih era-PS DAN
+// template kit sudah BEBAS-PS -> cadangkan (ber-cap-waktu) lalu timpa. Idempoten + aman lintas-urutan
+// rilis: selama template kit sendiri masih era-PS (pra-sapuan dokumen 3f), guard sumber-bebas-PS
+// mencegah backup-spam (tak ada yang lebih baik untuk ditawarkan).
+
+// Penanda isi era-PowerShell: dokumen menyebut perintah/berkas .ps1 kit lama.
+export const UPDATE_GUIDE_LEGACY_MARKERS = [/\bkit\.ps1\b/i, /\bupdate-kit\.ps1\b/i, /\bsetup-pola-b\.ps1\b/i]
+
+export function isLegacyUpdateGuide(text) {
+  if (!text || typeof text !== 'string') return false
+  return UPDATE_GUIDE_LEGACY_MARKERS.some((re) => re.test(text))
+}
+
+// refreshUpdateGuideIfLegacy -> { status, backupPath?, action? }.
+//   status: 'no-target' (klien tak punya file) | 'already-current' (bukan era-PS) |
+//           'no-source' (template kit hilang) | 'source-still-legacy' (template belum bebas-PS -> tunda) |
+//           'simulated' (dryRun) | 'refreshed' | 'failed'.
+export function refreshUpdateGuideIfLegacy({ sourcePath, targetPath, dryRun = false } = {}) {
+  if (!targetPath || !fs.existsSync(targetPath)) return { status: 'no-target' }
+  if (!isLegacyUpdateGuide(readTemplate(targetPath))) return { status: 'already-current' }
+  if (!sourcePath || !fs.existsSync(sourcePath)) return { status: 'no-source' }
+  if (isLegacyUpdateGuide(readTemplate(sourcePath))) return { status: 'source-still-legacy' }
+  if (dryRun) return { status: 'simulated' }
+  const suffix = backupStamp(new Date())
+  const r = copyStaticTemplate({ sourcePath, targetPath, ifExists: 'Backup', backupSuffix: suffix })
+  return { status: r.copied ? 'refreshed' : 'failed', backupPath: `${targetPath}.backup-${suffix}`, action: r.action }
+}
+
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-if (isMain) console.log('lib/template-deploy.mjs - library (import getSupportedPlaceholder/copyTemplateWithPlaceholder/copyStaticTemplate).')
+if (isMain) console.log('lib/template-deploy.mjs - library (import getSupportedPlaceholder/copyTemplateWithPlaceholder/copyStaticTemplate/refreshUpdateGuideIfLegacy).')

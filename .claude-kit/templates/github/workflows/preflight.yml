@@ -41,8 +41,16 @@ jobs:
         shell: pwsh
         run: if (Test-Path package.json) { npm ci }
 
-      # --skip-ps: lewati cek khusus PowerShell (Pester/smoke kit) - di project klien yang dijaga
-      # = robot mutu Node (kecocokan versi, Unicode, tes klien, perf, registry). Lihat docs/preflight.md.
+      # Build kondisional (v2.0.0): robot anggaran-halaman (perf-budget) butuh hasil build (.next/)
+      # untuk menimbang berat halaman — tanpa build ia auto-lewat diam-diam. Hanya jalan kalau ini
+      # project Next.js; gagal build TIDAK mematikan gerbang (continue-on-error) — robot mutu di
+      # langkah berikutnya yang melaporkan masalahnya dengan bahasa awam.
+      - name: Build (kalau project Next.js — supaya anggaran halaman terukur)
+        shell: pwsh
+        continue-on-error: true
+        run: if ((Test-Path next.config.js) -or (Test-Path next.config.mjs) -or (Test-Path next.config.ts)) { npm run build --if-present }
+
+      # Robot mutu Node: kecocokan versi, Unicode, tes klien, perf, registry. Lihat docs/preflight.md.
       - name: Jalankan robot mutu lintasAI (preflight)
         shell: pwsh
-        run: npx --yes lintasai preflight --skip-ps
+        run: npx --yes lintasai preflight

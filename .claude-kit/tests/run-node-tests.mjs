@@ -3,7 +3,7 @@
 // WHY: `npm test` lama = `echo ... && exit 0` (rasa-aman-palsu: "lulus" tanpa menjalankan apa pun -
 // menyesatkan kontributor lokal, selaras larangan §12 "melemahkan config mutu agar lulus"). `node --test
 // <dir>` tak andal lintas-versi Node (dir dikira modul) -> pakai daftar berkas eksplisit, cermin CI validate.yml.
-// Catatan: tes PowerShell (Pester) terpisah - jalankan ./tests/Run-Tests.ps1.
+// v2.0.0: kit 100% Node - tak ada lagi tes PowerShell/Pester terpisah.
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -27,6 +27,6 @@ if (files.length === 0) {
 // Runner ini menemukan berkas sendiri (fs.readdirSync) -> tahan lintas-OS + lintas-versi-Node.
 const passthroughFlags = process.argv.slice(2).filter((a) => a.startsWith('--'))
 
-console.error(`Menjalankan ${files.length} berkas tes Node (node:test). Tes PowerShell/Pester terpisah: ./tests/Run-Tests.ps1`)
+console.error(`Menjalankan ${files.length} berkas tes Node (node:test). Kit 100% Node (v2.0.0).`)
 const r = spawnSync(process.execPath, [...passthroughFlags, '--test', ...files], { stdio: 'inherit' })
 process.exit(r.status == null ? 1 : r.status)

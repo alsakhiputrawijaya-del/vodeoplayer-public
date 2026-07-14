@@ -10,10 +10,6 @@
 // (keputusan owner 2026-06-22): pemasang Node menulis format BARU .jsonc (sesuai pembaca di atas +
 // ADR-003a), BUKAN .psd1 seperti pemasang PowerShell lama. Lihat bagian "PENULIS BOOTSTRAP" di bawah.
 //
-// Robot REGISTRY (architecture_auto.md) = cuma-baca, baca .md, tak terkait kartu .jsonc. KINI DIPORT
-// ke Node (lihat getLintasRegistryFinding/invokeLintasRegistryCheck di bawah) supaya client Node-only
-// (tanpa pwsh) juga dapat teguran saat daftar-isi docs melenceng. SETIA ke project-manifest.ps1:436-521.
-//
 // KEHATI-HATIAN port (pelajaran cek-silang skeptis 2026-06-21, diterapkan + diperketat ronde-2):
 //   - PS `-like "*x*"` (cocok framework) = CASE-INSENSITIVE -> Node lowercase KEDUA sisi.
 //   - PS hashtable .ContainsKey() = CASE-INSENSITIVE -> lookup package_manager pakai toLowerCase.
@@ -39,8 +35,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readLintasConfig } from './config-loader.mjs'
 import { stripBom } from './fs-text.mjs'
+import { getLintasExpectedSchemaVersion } from './expected-schema.mjs'
 
 const MANIFEST_FILENAME = 'project.lintas.jsonc' // Node/Fase-3 membaca .jsonc (PS membaca .psd1)
+// Versi skema kartu yang DIHARAPKAN kit versi ini (Mesin 1 STRATEGI_UPDATE_v2 Langkah 2) - dari
+// peta sumber-tunggal lib/expected-schema.mjs. Dipakai pemeriksa (getLintasManifestSchemaFinding)
+// DAN penulis starter (getLintasManifestStarterContentJsonc) -> keduanya tak bisa selisih.
+const EXPECTED_SCHEMA_VERSION = getLintasExpectedSchemaVersion(MANIFEST_FILENAME)
 const LOCKFILES = { pnpm: 'pnpm-lock.yaml', npm: 'package-lock.json', yarn: 'yarn.lock', bun: 'bun.lockb' }
 
 // Cermin PS `@(x)`: array -> apa adanya; null/undefined -> []; lainnya (objek/string tunggal) -> [x].
@@ -68,28 +69,54 @@ export function readLintasProjectManifest(p) {
   }
 }
 
-// Cek schema dasar (schema_version ada + integer >= 1). Return array temuan (Kind='Schema').
-export function getLintasManifestSchemaFinding(manifest) {
+// Cek schema dasar: schema_version ada + integer >= versi-diharapkan kit ini (peta Mesin 1,
+// lib/expected-schema.mjs - bukan lagi angka mati `>= 1`). Kartu format-lama di bawah kit yang
+// mengharap format-baru -> MISMATCH (artefak basi, perlu migrasi), BUKAN "OK" palsu selamanya
+// (rencana STRATEGI_UPDATE_v2 Langkah 2 + §5 risiko #3). Return array temuan (Kind='Schema').
+// `expectedVersion` bisa dioper eksplisit (untuk tes mensimulasikan "kit masa depan yang mengharap
+// v2"); default = angka peta untuk kartu project.
+export function getLintasManifestSchemaFinding(manifest, { expectedVersion = EXPECTED_SCHEMA_VERSION } = {}) {
+  const expectedText = `integer >= ${expectedVersion}`
   if (!Object.prototype.hasOwnProperty.call(manifest, 'schema_version')) {
-    return [{ Kind: 'Schema', Field: 'schema_version', Expected: 'integer >= 1', Found: '(tidak ada)', Status: 'MISMATCH' }]
+    return [{ Kind: 'Schema', Field: 'schema_version', Expected: expectedText, Found: '(tidak ada)', Status: 'MISMATCH' }]
   }
   const sv = manifest.schema_version
-  const isValid = typeof sv === 'number' && Number.isInteger(sv) && sv >= 1
-  return [{ Kind: 'Schema', Field: 'schema_version', Expected: 'integer >= 1', Found: String(sv), Status: isValid ? 'OK' : 'MISMATCH' }]
+  const isValid = typeof sv === 'number' && Number.isInteger(sv) && sv >= expectedVersion
+  return [{ Kind: 'Schema', Field: 'schema_version', Expected: expectedText, Found: String(sv), Status: isValid ? 'OK' : 'MISMATCH' }]
 }
 
-// Baca semua nama dependency (deps + devDeps) dari package.json. Return array nama; [] kalau tak ada.
-export function getLintasPackageJsonDependency(repoRoot) {
+// Baca + PARSE package.json. Return { present, ok, pkg, error }. Sengaja MEMISAHKAN "tak ada"
+// (present:false, sah) dari "ada tapi RUSAK" (present:true, ok:false) -> pemanggil bisa fail-CLOSED
+// atas yang rusak, BUKAN menelannya jadi "[] = bersih". Menelan parse-error di sini dulu (`catch{return[]}`)
+// bikin cek stack di hilir LEWAT diam-diam -> gerbang lapor "aman" palsu (celah version-skew senyap,
+// rencana STRATEGI_UPDATE_v2 §4 Mesin 3 + §5 risiko #2).
+function readPackageJson(repoRoot) {
   const pkgPath = path.join(repoRoot, 'package.json')
-  if (!fs.existsSync(pkgPath)) return []
+  if (!fs.existsSync(pkgPath)) return { present: false, ok: true, pkg: null, error: null }
+  let raw
+  try { raw = stripBom(fs.readFileSync(pkgPath, 'utf8')) }
+  catch (e) { return { present: true, ok: false, pkg: null, error: `tak terbaca (${e.message})` } }
   let pkg
-  try {
-    const raw = stripBom(fs.readFileSync(pkgPath, 'utf8'))
-    pkg = JSON.parse(raw)
-  } catch { return [] }
+  try { pkg = JSON.parse(raw) }
+  catch (e) { return { present: true, ok: false, pkg: null, error: `bukan JSON valid (${e.message})` } }
+  if (pkg === null || typeof pkg !== 'object' || Array.isArray(pkg)) {
+    return { present: true, ok: false, pkg: null, error: 'akar package.json bukan objek' }
+  }
+  return { present: true, ok: true, pkg, error: null }
+}
+
+// Baca nama dependency (deps + devDeps) dari package.json. Return array nama; [] kalau package.json TAK ADA.
+// FAIL-CLOSED: package.json ADA tapi RUSAK -> LEMPAR error (jangan diam-diam kembalikan [] -> itu bikin
+// cek stack di hilir dilewati = "aman" palsu). Pemanggil GERBANG (getLintasManifestFinding) menangkap
+// lalu melapor MISMATCH; pemanggil BOOTSTRAP (getLintasDerivedStack) menangkap lalu degradasi + PERINGATAN
+// keras. (rencana STRATEGI_UPDATE_v2 §4 Mesin 3.)
+export function getLintasPackageJsonDependency(repoRoot) {
+  const r = readPackageJson(repoRoot)
+  if (!r.present) return []
+  if (!r.ok) throw new Error(`package.json ${r.error} - perbaiki dulu sebelum robot bisa memverifikasi kecocokan stack.`)
   const names = []
   for (const section of ['dependencies', 'devDependencies']) {
-    if (pkg[section] && typeof pkg[section] === 'object') names.push(...Object.keys(pkg[section]))
+    if (r.pkg[section] && typeof r.pkg[section] === 'object') names.push(...Object.keys(r.pkg[section]))
   }
   return names
 }
@@ -112,7 +139,7 @@ export function getLintasManifestFinding(repoRoot, manifest) {
 
   // PathExists: refs.* (pointer ke artefak prosa)
   if (manifest.refs && typeof manifest.refs === 'object') {
-    for (const key of ['architecture', 'glossary', 'registry']) {
+    for (const key of ['architecture', 'glossary']) {
       if (manifest.refs[key]) {
         const rel = String(manifest.refs[key])
         const ok = exists(rel)
@@ -123,7 +150,14 @@ export function getLintasManifestFinding(repoRoot, manifest) {
 
   // DeriveMatch: stack vs package.json (konservatif)
   if (manifest.stack && typeof manifest.stack === 'object') {
-    const deps = getLintasPackageJsonDependency(repoRoot)
+    let deps = []
+    try {
+      deps = getLintasPackageJsonDependency(repoRoot)
+    } catch (e) {
+      // FAIL-CLOSED: package.json ADA tapi RUSAK -> JANGAN lewati cek stack diam-diam (itu "aman" palsu).
+      // Catat MISMATCH -> MismatchCount naik -> gerbang GAGAL sampai package.json diperbaiki/dimigrasi.
+      findings.push({ Kind: 'DeriveMatch', Field: 'package.json', Expected: 'bisa dibaca (JSON valid) untuk verifikasi stack', Found: `RUSAK: ${e.message}`, Status: 'MISMATCH' })
+    }
     // frameworks: substring (case-insensitive, cermin PS -like). SKIP kalau tak ada deps.
     // asArray: string tunggal pun diperiksa (cermin PS @()).
     const fws = asArray(manifest.stack.frameworks)
@@ -192,98 +226,6 @@ export function invokeLintasManifestCheck(repoRoot, { manifestPath = null, quiet
 }
 
 // ============================================================================
-// ROBOT REGISTRY - anti-basi architecture_auto.md (port dari project-manifest.ps1:436-521).
-// WHY: registry docs di-maintain AI manual (§7.4); AI bisa LUPA daftarkan .md baru -> registry tak
-// cocok isi docs/ nyata. Robot bandingkan docs/**/*.md vs registry deterministik (~detik, ~0 token):
-//   MISSING = ada .md belum terdaftar di architecture_auto.md.
-//   ORPHAN  = link registry menunjuk berkas yang sudah tak ada.
-// SETIA ke versi PS: boundary non-alfanumerik di depan nama (auth.md != oauth.md); link eksternal/
-// parent/absolut dilewati (anti alarm-palsu); berkas indeks (architecture_auto.md + architecture.md)
-// tak dihitung sebagai pendamping yang harus terdaftar.
-// ============================================================================
-
-const LINTAS_REGISTRY_RELPATH = 'docs/architecture_auto.md'
-const LINTAS_REGISTRY_EXCLUDE = ['architecture_auto.md', 'architecture.md']
-
-// Escape metakarakter regex (cermin [regex]::Escape PS).
-function escapeRegExpLiteral(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
-
-// Kumpul semua docs/**/*.md (rekursif). Walker manual (kompat semua Node) -> { name, full }.
-function walkDocsMarkdown(docsDir) {
-  const out = []
-  const walk = (dir) => {
-    let entries
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return }
-    for (const e of entries) {
-      const full = path.join(dir, e.name)
-      if (e.isDirectory()) walk(full)
-      else if (e.isFile() && e.name.toLowerCase().endsWith('.md')) out.push({ name: e.name, full })
-    }
-  }
-  walk(docsDir)
-  return out
-}
-
-// Kumpulkan temuan Registry (MISSING + ORPHAN). Registry/docs opsional -> [] kalau tak ada.
-export function getLintasRegistryFinding(repoRoot) {
-  const registryPath = path.join(repoRoot, LINTAS_REGISTRY_RELPATH)
-  const docsDir = path.join(repoRoot, 'docs')
-  const findings = []
-  if (!fs.existsSync(registryPath)) return findings // registry opsional
-  if (!fs.existsSync(docsDir)) return findings
-
-  const registryText = stripBom(fs.readFileSync(registryPath, 'utf8'))
-
-  // MISSING: tiap docs/**/*.md (kecuali indeks) harus disebut (basename) di registry. Boundary
-  // non-alfanumerik di depan supaya 'auth.md' TIDAK keliru cocok di dalam 'oauth.md' (cermin PS).
-  for (const df of walkDocsMarkdown(docsDir)) {
-    if (LINTAS_REGISTRY_EXCLUDE.includes(df.name)) continue
-    const registered = new RegExp('(?<![A-Za-z0-9])' + escapeRegExpLiteral(df.name)).test(registryText)
-    findings.push({
-      Kind: 'Registry', Field: `docs/${df.name}`, Expected: 'terdaftar di architecture_auto.md',
-      Found: registered ? 'terdaftar' : '(belum terdaftar)',
-      Status: registered ? 'OK' : 'MISSING',
-    })
-  }
-
-  // ORPHAN: tiap link [text](target.md) -> target (relatif ke docs/) harus ada. Lewati eksternal/parent/absolut.
-  for (const m of registryText.matchAll(/\]\(([^)]+\.md)\)/g)) {
-    const target = m[1]
-    if (/^(https?:|\.\.\/|\/)/.test(target)) continue
-    if (!fs.existsSync(path.join(docsDir, target))) {
-      findings.push({
-        Kind: 'Registry', Field: `link:${target}`, Expected: 'berkas tertaut ada di disk',
-        Found: '(berkas tak ada -> entri yatim)', Status: 'ORPHAN',
-      })
-    }
-  }
-  return findings
-}
-
-// Orkestrasi: jalankan + (opsional) cetak. Cermin Invoke-LintasRegistryCheck (PS).
-export function invokeLintasRegistryCheck(repoRoot, { quiet = false } = {}) {
-  const registryPath = path.join(repoRoot, LINTAS_REGISTRY_RELPATH)
-  if (!fs.existsSync(registryPath)) {
-    if (!quiet) console.log(`[INFO] Tidak ada ${LINTAS_REGISTRY_RELPATH} - registry docs belum dibuat (opsional).`)
-    return { Present: false, Ok: true, Findings: [], MismatchCount: 0 }
-  }
-  const findings = getLintasRegistryFinding(repoRoot)
-  const bad = findings.filter((f) => f.Status !== 'OK')
-  if (!quiet) {
-    console.log('\nRobot pemeriksa registry docs (architecture_auto.md, Node)')
-    console.log('-'.repeat(64))
-    for (const f of findings) {
-      if (f.Status === 'OK') console.log(`  [OK]              ${f.Field}`)
-      else if (f.Status === 'MISSING') console.log(`  [BELUM TERDAFTAR] ${f.Field}`)
-      else if (f.Status === 'ORPHAN') console.log(`  [YATIM]           ${f.Field} ${f.Found}`)
-    }
-    console.log('-'.repeat(64))
-    console.log(bad.length === 0 ? 'BERSIH: registry cocok dengan isi docs/.' : `${bad.length} ketidakcocokan registry - perbarui architecture_auto.md.`)
-  }
-  return { Present: true, Ok: bad.length === 0, Findings: findings, MismatchCount: bad.length }
-}
-
-// ============================================================================
 // PENULIS BOOTSTRAP - tulis kartu identitas project KALAU belum ada (idempoten).
 // Port dari project-manifest.ps1 (Get-LintasDerivedStack + Get-LintasManifestStarterContent +
 // Write-LintasProjectManifestIfMissing). BEDA DISENGAJA (owner 2026-06-22): pemasang Node menulis
@@ -313,7 +255,15 @@ const KNOWN_FRAMEWORKS = [
 export function getLintasDerivedStack(repoRoot) {
   const pkgPath = path.join(repoRoot, 'package.json')
   if (!fs.existsSync(pkgPath)) return { type: 'unknown', package_manager: null, frameworks: [] }
-  const deps = getLintasPackageJsonDependency(repoRoot)
+  let deps = []
+  try {
+    deps = getLintasPackageJsonDependency(repoRoot)
+  } catch (e) {
+    // BOOTSTRAP (penulis kartu, BUKAN gerbang): package.json rusak -> tulis stack minimal + PERINGATAN
+    // keras (bukan telan diam). Gerbang (getLintasManifestFinding) fail-CLOSED atas kerusakan yang sama
+    // -> tetap tertangkap sebelum rilis. Jangan gagalkan seluruh pemasangan cuma krn package.json cacat.
+    console.warn(`[project-manifest] PERINGATAN: package.json tak bisa dibaca untuk deteksi stack (${e.message}). Kartu ditulis dgn frameworks kosong; perbaiki package.json lalu jalankan cek ulang.`)
+  }
   let pm = null
   for (const k of Object.keys(LOCKFILES)) {
     if (fs.existsSync(path.join(repoRoot, LOCKFILES[k]))) { pm = k; break }
@@ -347,9 +297,9 @@ export function getLintasManifestStarterContentJsonc({ stack, refs = {}, environ
   const fwText = (stack.frameworks && stack.frameworks.length)
     ? '[' + stack.frameworks.map((f) => jsonStr(f)).join(', ') + ']'
     : '[]'
-  // Entri refs: kit_version SELALU (pertama), lalu architecture/glossary/registry yang ada.
+  // Entri refs: kit_version SELALU (pertama), lalu architecture/glossary yang ada.
   const refLines = ['    ' + jsonStr('kit_version') + ': ' + jsonStr('.claude-kit/.install-manifest.json#metadata.kit_version')]
-  for (const k of ['architecture', 'glossary', 'registry']) {
+  for (const k of ['architecture', 'glossary']) {
     if (refs[k]) refLines.push('    ' + jsonStr(k) + ': ' + jsonStr(refs[k]))
   }
   // CAP LINGKUNGAN (opsional): kalau environment null -> blok TAK ditulis (keluaran identik versi lama -> tes
@@ -370,7 +320,9 @@ export function getLintasManifestStarterContentJsonc({ stack, refs = {}, environ
     '  // Sumber-tunggal mesin-baca: AI baca 1 tempat (tak meraba tiap sesi). Dijaga robot anti-basi.',
     '  // Kolom stack diisi OTOMATIS dari package.json; intent diisi AI di sesi pertama.',
     '',
-    '  ' + jsonStr('schema_version') + ': 1,',
+    // Angka dari peta versi-diharapkan (lib/expected-schema.mjs) - kartu yang baru lahir SELALU
+    // lulus pemeriksa kit yang menulisnya (penulis & pemeriksa satu sumber, tak bisa selisih).
+    '  ' + jsonStr('schema_version') + ': ' + String(EXPECTED_SCHEMA_VERSION) + ',',
     '',
     "  // DEKLARASI: tujuan project (AI isi sesi pertama - ganti 'pending').",
     '  ' + jsonStr('intent') + ': {',
@@ -421,7 +373,6 @@ export function writeLintasProjectManifestIfMissing(repoRoot, { force = false, d
   const refCandidates = [
     { key: 'architecture', file: 'docs/architecture.md' },
     { key: 'glossary', file: 'docs/glossary.md' },
-    { key: 'registry', file: 'docs/architecture_auto.md' },
   ]
   for (const rc of refCandidates) {
     if (fs.existsSync(path.join(repoRoot, rc.file))) refs[rc.key] = rc.file
@@ -439,10 +390,7 @@ if (isMain) {
   const get = (flag) => { const i = args.indexOf(flag); return i >= 0 && i + 1 < args.length ? args[i + 1] : null }
   const repoRoot = get('--repo-root') || process.cwd()
   const quiet = args.includes('--quiet')
-  // --registry = jalankan robot REGISTRY (architecture_auto.md) alih-alih cek kartu identitas.
-  const r = args.includes('--registry')
-    ? invokeLintasRegistryCheck(repoRoot, { quiet })
-    : invokeLintasManifestCheck(repoRoot, { manifestPath: get('--manifest-path'), quiet })
+  const r = invokeLintasManifestCheck(repoRoot, { manifestPath: get('--manifest-path'), quiet })
   // exit = jumlah ketidakcocokan (0 = cocok). process.exitCode (bukan process.exit) supaya stdout
   // selesai di-flush saat di-pipa (cermin pola aman lib/risk-gate.js).
   process.exitCode = r.MismatchCount

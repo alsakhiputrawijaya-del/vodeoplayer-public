@@ -1,6 +1,7 @@
-# project-manifest.md — Kartu Identitas Project (`project.lintas.jsonc` / `project.lintas.psd1`)
+# project-manifest.md — Kartu Identitas Project (`project.lintas.jsonc`)
 
-> Versi 2 · 2026-06-24 · Pendamping `lib/project-manifest.ps1` + `lib/project-manifest.mjs` + catatan keputusan desain.
+> Versi 4 · 2026-07-10 · Pendamping `lib/project-manifest.mjs` + catatan keputusan desain. v4: kit 100% Node — kartu = `.jsonc` (kit era-v1 `.psd1` dimigrasi via `npx lintasai migrate-project-card`).
+> v3: cek `schema_version` sisi Node kini dibanding ke **peta versi-diharapkan** `lib/expected-schema.mjs` (Mesin 1 rencana `plans/STRATEGI_UPDATE_v2.md` — bukan lagi angka mati `>= 1`), penulis kartu menulis angka dari peta yang sama.
 > v2: tambah bagian **"Cara Isi untuk staff non-programmer"** (panduan 3-lapis analogi — supaya kartu jadi pengetahuan bersama AI + staff, bukan artefak AI-saja).
 
 ## Tujuan
@@ -16,26 +17,25 @@ Berbeda dari `docs/architecture.md` (narasi **prosa** untuk manusia, gampang bas
 
 > Project kecil/solo tanpa banyak modul **boleh tanpa kartu ini** — `architecture.md` prosa sudah cukup.
 
-> **Transisi PowerShell→Node (ADR-003a):** pemasang **Node** (kini default, `npx lintasai init`) menulis
-> kartu ini sebagai **`project.lintas.jsonc`** (JSONC = JSON + komentar) yang dibaca robot
-> `lib/project-manifest.mjs`. Pemasang **PowerShell** lama menulis **`project.lintas.psd1`** yang dibaca
-> `lib/project-manifest.ps1`. Selama transisi keduanya berlaku; **1 project = 1 format** (sesuai jalur
-> pasangnya). Dokumen ini menjelaskan format `.psd1`; **isi & maksud field identik** di `.jsonc`.
+> **Format (v2.0.0, kit 100% Node):** pemasang Node (`npx lintasai init`) menulis kartu sebagai
+> **`project.lintas.jsonc`** (JSONC = JSON + komentar) yang dibaca robot `lib/project-manifest.mjs`.
+> Kit era-v1 memakai **`project.lintas.psd1`** — kalau kartu itu masih ada, jalankan
+> `npx lintasai migrate-project-card` untuk mengonversinya ke `.jsonc`.
 
 ## Cara Pakai
 
-- **AI baca DULU** `project.lintas.psd1` saat mulai kerja (aturan `CLAUDE_universal_v1.md` §7.9).
-- **Lahir otomatis saat pasang**: pemasang menulis kartu ini (`setup-pola-b.mjs` → `.jsonc`, atau `setup-pola-b.ps1` lama → `.psd1`) — kolom `stack` diisi
+- **AI baca DULU** `project.lintas.jsonc` saat mulai kerja (aturan `CLAUDE_universal_v1.md` §7.9).
+- **Lahir otomatis saat pasang**: pemasang (`setup-pola-b.mjs`) menulis kartu ini — kolom `stack` diisi
   otomatis dari `package.json`; `intent` ditandai `'pending'`. **Idempoten**: kalau sudah ada, tak ditimpa.
-- **AI isi `intent` di sesi pertama** (ganti `'pending'`) + **AUTO-SYNC `modules`** tiap struktur berubah.
+- **AI isi `intent` di sesi pertama** (ganti `'pending'`) + **perbarui `modules`** tiap struktur berubah.
 - **Robot pemeriksa** (di Gerbang Pra-Rilis §4.6, atau manual):
-  `pwsh .claude-kit/lib/project-manifest.ps1 -RepoRoot .`
+  `node .claude-kit/lib/project-manifest.mjs --repo-root .`
 
 ## Field (skema v1)
 
 | Field | Jenis sumber | Arti |
 |---|---|---|
-| `schema_version` | declared | Versi skema kartu (mulai 1). |
+| `schema_version` | declared | Versi skema kartu (mulai 1). Angka yang **diharapkan kit versi ini** dideklarasikan di peta `lib/expected-schema.mjs` (sumber tunggal penulis + pemeriksa Node); kartu ber-versi **di bawah** angka peta divonis TAK COCOK = perlu migrasi (rencana `plans/STRATEGI_UPDATE_v2.md` Langkah 2). |
 | `intent.purpose` / `intent.domain` | **declared** | Tujuan project + domain bisnis. Non-derivable → AI isi sesi pertama. |
 | `stack.{type,package_manager,frameworks}` | **derive** | Diturunkan dari `package.json` + lockfile. **Jangan salin daftar dependency** — ringkasan saja. Robot cek cocok (DeriveMatch). |
 | `environment.{recorded_node,recorded_node_major,recorded_os}` | **derive** | "Cap lingkungan" runtime saat pasang (versi Node + platform). Pembanding dev vs client — dibaca `kit doctor --env` ([env-check.md](env-check.md)). Bebas-rahasia (versi saja, bukan hostname/user). |
@@ -66,24 +66,24 @@ Robot pemeriksa otomatis mengecek `path`-nya **benar-benar ada** di disk; kalau 
 
 ## Robot anti-basi (kenapa kartu ini ≠ catatan mati)
 
-`lib/project-manifest.ps1` memeriksa kartu vs **kenyataan**, deterministik (~detik, ~0 token):
-- **PARSE-OK** — berkas bisa dibaca (tidak rusak) + punya `schema_version`.
+`lib/project-manifest.mjs` memeriksa kartu vs **kenyataan**, deterministik (~detik, ~0 token):
+- **PARSE-OK** — berkas bisa dibaca (tidak rusak) + punya `schema_version`. Membanding
+  `schema_version` ke **peta versi-diharapkan** (`lib/expected-schema.mjs`, Mesin 1): kartu
+  format-lama di bawah kit yang butuh format-baru → TAK COCOK (bukan "OK" palsu selamanya). Selisih
+  dijaga tes pengunci `tests/expected-schema.test.mjs`.
 - **PathExists** — tiap `modules[].path` + `refs[]` yang dideklarasikan **ada di disk**.
 - **DeriveMatch** — `stack.frameworks` ada di `package.json`; `stack.package_manager` cocok lockfile.
 - **Konservatif** (anti alarm-palsu, §8.2): hanya MISMATCH bila bukti jelas; SKIP kalau tak bisa verifikasi.
 
 Tanpa robot ini, kartu cuma "niat" yang akan basi diam-diam — persis nasib `portfolio.yml`
-(lihat [PETA_SUMBER_KEBENARAN.md](PETA_SUMBER_KEBENARAN.md)).
+(lihat [PETA_SUMBER_KEBENARAN.md](PETA_SUMBER_KEBENARAN.md) — internal, hanya di repo GitHub kit).
 
 ## Keputusan desain (ringkas — kenapa begini)
 
-- **Kenapa berkas `.psd1` (bukan JSON/YAML)?** PowerShell 5.1 membaca `.psd1` **native**
-  (`Import-PowerShellDataFile`) + bisa **komentar `#`** per baris (ramah non-programmer). YAML
-  **tak** punya parser native di PS 5.1 → itu yang membuat `portfolio.yml` gagal jadi sumber.
-  *(JSON dipertimbangkan; dipilih `.psd1` karena pembaca utama = AI + PowerShell. Kalau kelak
-  perlu dibaca Node/JavaScript juga, JSON jadi kandidat.)* **Update (ADR-003a):** "kelak" itu sudah
-  tiba — pemasang Node (kini default) menulis varian **`.jsonc`** (JSON + komentar) yang dibaca
-  `lib/project-manifest.mjs`; `.psd1` tetap untuk jalur PowerShell lama.
+- **Kenapa `.jsonc` (JSON + komentar)?** Dibaca Node native (`JSON.parse` setelah strip komentar) +
+  bisa **komentar** per baris (ramah non-programmer). *(Riwayat: kit era-PowerShell memakai `.psd1`
+  karena PS 5.1 membacanya native via `Import-PowerShellDataFile`; sejak kit 100% Node, `.jsonc`
+  menggantikannya — migrator mengonversi kartu `.psd1` lama.)*
 - **Kenapa berkas terpisah (bukan menempel di `architecture.md`)?** Batas kepemilikan jelas:
   prosa = manusia, kartu = mesin/AI. Mencegah staff tak sengaja merusak blok mesin → kartu mati senyap.
 - **Kenapa derive/reference, bukan salin?** Menyalin fakta yang sudah ada (versi kit, dependency)
@@ -91,22 +91,15 @@ Tanpa robot ini, kartu cuma "niat" yang akan basi diam-diam — persis nasib `po
 
 ## Dependensi
 
-- `lib/project-manifest.ps1` — pembaca + robot + penulis bootstrap. Sumber: `lib/project-manifest.ps1:1`.
-- `setup-pola-b.ps1` — menulis kartu saat pasang (blok sebelum `Save-Manifest`). Sumber: `setup-pola-b.ps1` (`Write-LintasProjectManifestIfMissing`).
-- Contoh terisi: `templates/project.lintas.example.psd1`.
-- Tes: `tests/project-manifest.Tests.ps1`.
+- `lib/project-manifest.mjs` — pembaca + robot + penulis bootstrap. Sumber: `lib/project-manifest.mjs:1`.
+- `setup-pola-b.mjs` — menulis kartu saat pasang. Migrator kartu era-v1: `lib/project-card-migrate.mjs`.
+- Contoh terisi: `templates/project.lintas.example.jsonc`.
+- Tes: `tests/project-manifest.test.mjs` + `tests/project-manifest-registry.test.mjs`.
 
 ## Catatan
 
-- **Edge case**: project tanpa `package.json` → `stack.type='unknown'`, `package_manager=$null`,
-  `frameworks=@()` → robot tetap BERSIH (cek stack di-SKIP, bukan alarm-palsu).
+- **Edge case**: project tanpa `package.json` → `stack.type='unknown'`, `package_manager=null`,
+  `frameworks=[]` → robot tetap BERSIH (cek stack di-SKIP, bukan alarm-palsu).
 - **Uninstall**: kartu dilacak via hash — kalau sudah diisi (AI/user), uninstall **tidak** menghapus
   (knowledge aman); stub murni boleh dibersihkan.
-- **Robot registry docs** (`Invoke-LintasRegistryCheck`, read-only): memastikan tiap `docs/*.md`
-  **terdaftar** di `architecture_auto.md` (MISSING) + entri/link tak menunjuk berkas hilang (ORPHAN) —
-  anti registry-basi (drift yang diakui di [PETA_SUMBER_KEBENARAN.md](PETA_SUMBER_KEBENARAN.md)).
-- **Auto-daftar entri hilang** (`Add-LintasMissingRegistryEntry`): **APPEND** entri `docs/*.md` yang
-  belum tercatat ke registry (ringkasan placeholder, AI lengkapi) — append-only, tak pernah menimpa;
-  **bukan read-only** → TIDAK dipanggil di gerbang verifikasi, dipanggil eksplisit saat merapikan.
-- **Ditunda (backlog)**: migrasi `.split-state` ke `split` (multi-repo); buat registry awal dari nol
-  bila belum ada + tulis ringkasan otomatis (bukan cuma placeholder). Belum dikerjakan (keputusan terpisah).
+- **Ditunda (backlog)**: migrasi `.split-state` ke `split` (multi-repo). Belum dikerjakan (keputusan terpisah).

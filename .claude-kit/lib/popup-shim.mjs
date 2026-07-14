@@ -8,22 +8,20 @@
 // OTOMATIS: tiap "pertanyaan" langsung dijawab NILAI-AMAN (default), tanpa menampilkan apa pun.
 // Pilihan sebenarnya dilakukan lewat AI di chat sesudah pemasangan.
 //
-// SIFAT NON-PERUSAK: window WinForms TETAP ADA di lib/popup-helpers.ps1 untuk alat PowerShell yang
-// masih live (setup/update/uninstall/rollback .ps1). Ia ikut pensiun saat PowerShell-nya pensiun
-// (Gelombang 7) - TIDAK dibawa ke Node. Jembatan Node->PS lama (popup-shim.ps1) sudah dihapus.
+// Window GUI (WinForms) tidak pernah diport ke Node (ADR-004). v2.0.0: seluruh berkas .ps1 (termasuk
+// popup-helpers.ps1) sudah dihapus dari kit.
 //
-// Yang disisakan modul ini: resolvePowerShellExe (dipakai jalur CADANGAN PowerShell: penjaga junction
-// reparse-guard.mjs + fallback pemasang/doctor update-kit.mjs; MOTW git-helpers.mjs sudah Node murni) + deteksi
-// mode keyboard manusia (isInteractiveInput, untuk pesan info) + 5 fungsi "tanya" yang selalu balas
-// aman. Tanda tangan 5 fungsi DIPERTAHANKAN supaya orkestrator tak perlu diubah; kalau suatu hari
-// perlu input konsol, cukup ubah modul INI (orkestrator tetap).
+// Isi modul ini: deteksi mode keyboard manusia (isInteractiveInput, untuk pesan info) + 5 fungsi
+// "tanya" yang selalu balas aman. Tanda tangan 5 fungsi DIPERTAHANKAN supaya orkestrator tak perlu
+// diubah; kalau suatu hari perlu input konsol, cukup ubah modul INI (orkestrator tetap).
+// resolvePowerShellExe = utilitas pencari executable PowerShell (pwsh/powershell.exe). Sejak kit 100%
+// Node tak ada lagi pemanggil produksi; disisakan untuk diagnostik CLI (di bawah) + kemungkinan shim
+// Windows-asli. Diuji tests/popup-shim.test.mjs.
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // Pilih PowerShell: pwsh7 dulu (lebih cepat/lintas-OS) lalu powershell.exe. Katup LINTASAI_FORCE_WINPS=1.
-// Cermin bin/lintasai.js resolvePowerShellExe (jangan divergensi). Dipakai jalur CADANGAN PowerShell:
-// reparse-guard.mjs (penjaga junction) + update-kit.mjs (pemasang/doctor fallback). JANGAN hapus.
 export function resolvePowerShellExe() {
   const force = process.env.LINTASAI_FORCE_WINPS
   if (force && force !== '0' && force !== 'false') return 'powershell.exe'

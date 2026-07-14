@@ -12,7 +12,7 @@
 //    klien RUSAK/terkunci -> JANGAN tulis (lapor + lewati; pemasangan tetap sukses) - cegah hapus
 //    kunci kustom mereka (permissions.deny / env / apiKeyHelper).
 //  - NON-MEMAKSA: hook lang-reminder selalu exit 0 (tak pernah blokir) -> aman dinyalakan otomatis
-//    (beda dari risk-gate yang OPT-IN karena ia MEMAKSA konfirmasi).
+//    (risk-gate juga default NYALA sejak v1.61.0 walau ia MEMAKSA konfirmasi - lihat lib/ensure-risk-gate-hook.mjs).
 //  - TULIS ATOMIK: temp + rename, supaya tak ada settings.json setengah-tertulis kalau proses mati.
 //
 // Dijalankan dari setup-pola-b.mjs (init) -> otomatis ikut saat UPDATE juga (update-kit menjalankan

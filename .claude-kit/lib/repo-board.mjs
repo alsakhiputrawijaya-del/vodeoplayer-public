@@ -2,7 +2,7 @@
 // lib/repo-board.mjs - "Papan Status Lintas-Repo" (port Node dari repo-board.ps1; cuma-baca, ~0 token).
 //
 // MIGRASI grup [A] (ADR-003): robot cuma-baca. Fungsi inti getLintasRepoRisk = PURE (skor risiko
-// dari fakta git) -> mudah dites tanpa repo nyata. Strangler Fig = BERDAMPINGAN: versi .ps1 hidup.
+// dari fakta git) -> mudah dites tanpa repo nyata.
 //
 // Skor risiko (TERTINGGI menang): GENTING (.env belum aman) > PENTING (commit belum dikirim /
 // perubahan belum disimpan) > RAPIKAN (behind/detached/no-upstream) > OK (bersih+sinkron).

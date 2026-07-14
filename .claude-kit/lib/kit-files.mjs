@@ -1,16 +1,13 @@
 #!/usr/bin/env node
-// lib/kit-files.mjs - Pembaca daftar-file kit (kit-files.psd1) untuk Node.
+// lib/kit-files.mjs - Pembaca daftar-file kit (SSOT). v2.0.0: SSOT = lib/kit-files.json (kit 100%
+// Node). Parser .psd1 DIPERTAHANKAN sebagai fallback dua-format (kit klien era-v1 saat doctor
+// lintas-versi) + dipakai migrator kartu (lib/project-card-migrate.mjs). Lihat readKitManifest.
 //
-// GELOMBANG 4 (ADR-004 / migrasi orkestrator besar ke Node, BERTAHAP + BERDAMPINGAN):
-// `setup-pola-b.ps1` (pemasang), `kit.ps1 doctor`, `uninstall.ps1`, dan `smoke-fast.ps1`
-// membaca `lib/kit-files.psd1` (SUMBER TUNGGAL daftar file kit) via `Import-PowerShellDataFile`
-// — yang HANYA ada di PowerShell. Supaya orkestrator versi Node bisa baca daftar yang SAMA,
-// modul ini mem-parse `.psd1` (subset data-file) jadi objek JavaScript yang IDENTIK hasilnya
-// dengan `Import-PowerShellDataFile`.
-//
-// SIFAT NON-PERUSAK (Strangler Fig): modul ini cuma MEMBACA `kit-files.psd1` apa adanya —
-// TIDAK mengubah `.psd1`, TIDAK menyentuh skrip PowerShell. PowerShell tetap baca `.psd1`
-// secara native; Node baca lewat pembaca ini. Berdampingan, satu sumber kebenaran.
+// Kenapa parser `.psd1` masih ada: kit era-v1 memakai `lib/kit-files.psd1` sebagai SSOT (dibaca dulu
+// oleh orkestrator PowerShell via `Import-PowerShellDataFile`). Di v2.0.0 SSOT pindah ke JSON, tapi
+// parser ini DIPERTAHANKAN agar doctor v2 bisa membaca daftar file kit klien yang MASIH era-v1
+// (jendela lintas-versi) + dipakai migrator kartu. Ia mem-parse subset data-file `.psd1` jadi objek
+// JavaScript yang identik hasilnya dengan `Import-PowerShellDataFile`.
 //
 // Lingkup parser = subset DATA-FILE PowerShell (yang aman tanpa mengeksekusi PS): tabel
 // `@{ ... }`, array `@( ... )`, string kutip-tunggal `'...'` (escape `''`) + kutip-ganda
@@ -185,18 +182,48 @@ export function parseKitFilesPsd1(text, label = '<psd1>') {
   }
 }
 
-// Baca berkas kit-files.psd1 -> objek. Lempar kalau tak ada / rusak.
+// Baca berkas daftar-file kit -> objek. DUA-FORMAT (v2.0.0, D1):
+//   - `.json` = SSOT baru (kit 100% Node). JSON.parse (buang BOM dulu).
+//   - `.psd1` = format LAMA (kit era-v1). parseKitFilesPsd1 DIPERTAHANKAN untuk (a) membaca kit
+//     klien lama saat doctor lintas-versi, (b) migrator kartu `.psd1` (lib/project-card-migrate.mjs).
+// Lempar kalau tak ada / rusak (gagal-nyaring, bukan diam-salah).
 export function readKitFiles(filePath) {
   if (!fs.existsSync(filePath)) throw new Error(`kit-files: berkas tidak ditemukan: '${filePath}'`)
-  return parseKitFilesPsd1(fs.readFileSync(filePath, 'utf8'), filePath)
+  const raw = fs.readFileSync(filePath, 'utf8')
+  if (filePath.toLowerCase().endsWith('.json')) {
+    try {
+      return JSON.parse(stripBom(raw))
+    } catch (e) {
+      throw new Error(`kit-files: gagal baca '${filePath}' (${e.message}). Cek sintaks JSON.`)
+    }
+  }
+  return parseKitFilesPsd1(raw, filePath)
 }
 
-// Gabung daftar "file wajib ada" persis seperti setup-pola-b.ps1 ($wajibAda): 9 grup,
+// Resolver manifest dua-format untuk sebuah kit-dir. Prefer lib/kit-files.json (SSOT v2); fallback
+// lib/kit-files.psd1 (kit era-v1 klien). Return { data, format, path } atau null kalau dua-duanya
+// tak ada. `format` = 'json' | 'psd1-legacy'. Inilah penutup jebakan doctor lintas-versi (§2.3):
+// doctor v2 atas kit v1 TETAP bisa membaca daftar (via fallback .psd1) -> INFO lunak, BUKAN ERROR.
+export function readKitManifest(kitDir) {
+  const jsonPath = path.join(kitDir, 'lib', 'kit-files.json')
+  const psd1Path = path.join(kitDir, 'lib', 'kit-files.psd1')
+  if (fs.existsSync(jsonPath)) {
+    return { data: readKitFiles(jsonPath), format: 'json', path: jsonPath }
+  }
+  if (fs.existsSync(psd1Path)) {
+    return { data: readKitFiles(psd1Path), format: 'psd1-legacy', path: psd1Path }
+  }
+  return null
+}
+
+// Gabung daftar "file wajib ada" persis seperti verifikasi setup-pola-b.mjs ($wajibAda): 10 grup,
 // urutan SAMA. Path dikembalikan apa adanya (forward-slash seperti di .psd1) — pemanggil
 // yang menormalkan separator sesuai kebutuhan (PS pakai backslash; Node lintas-platform).
+// Grup 'workflows' (v2.4.0, rak rujukan on-demand) aman untuk kit lama: grup tak ada -> dilewati.
 export const REQUIRED_GROUPS = [
   'core_prompts',
   'universal_rules',
+  'workflows',
   'scripts',
   'lib_files',
   'templates',

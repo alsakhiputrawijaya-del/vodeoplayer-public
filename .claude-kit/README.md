@@ -5,12 +5,12 @@
 
 ---
 
-## 🌟 Versi stabil sekarang: **v1.61.0** (2026-06-24)
+## 🌟 Versi stabil sekarang: **v2.6.0** (2026-07-14)
 
 > Ringkasan ini = "pinned message" untuk staff IT non-programmer. Detail lengkap per versi ada di [CHANGELOG.md](CHANGELOG.md).
 
 > ### ⚠️ Status fitur (jujur — baca sebelum pakai)
-> - ✅ **INTI — STABIL & teruji**: pasang kit, aturan AI auto-load, dokumentasi, audit, refactor, workflow non-programmer. **Aman dipakai sehari-hari.** (ratusan cek otomatis lulus — jalankan `tests/Run-Tests.ps1` untuk jumlah terkini — + dipakai sendiri di repo kit ini.)
+> - ✅ **INTI — STABIL & teruji**: pasang kit, aturan AI auto-load, dokumentasi, audit, refactor, workflow non-programmer. **Aman dipakai sehari-hari.** (ratusan cek otomatis lulus — jalankan `npm test` untuk jumlah terkini — + dipakai sendiri di repo kit ini.)
 > - 🧪 **Split-repo + robot lintas-repo — BETA (sedang diuji)**: pecah monorepo jadi 3 repo + robot otomatis (terbit paket bersama, auto-gabung update, kunci pengaman). **Belum diuji menyeluruh di GitHub sungguhan.** Boleh dicoba di **repo uji**, tapi **jangan** diandalkan untuk produksi tim sampai lulus `.claude-kit/templates/ROBOT_CI_TESTING_PLAYBOOK.md`. Naik "stabil" **setelah robot lulus uji di repo nyata** (panduan `.claude-kit/templates/ROBOT_CI_TESTING_PLAYBOOK.md`) — bukan dipatok di nomor versi tertentu.
 
 ### Cara pasang (1 perintah)
@@ -30,7 +30,7 @@ Kit akan otomatis memasang aturan AI tim + menyalin dokumentasi + mengatur izin 
 > 🎚️ Sebelum daftar fitur di bawah, ini **inti** kit lintasAI:
 > - ✅ **WAJIB & otomatis (tak bisa dimatikan):** **8 ahli IT profesional** — backend, frontend, database, webdesain, kenyamanan-pakai (UI/UX), pengiriman-ke-server (DevOps), keamanan, biar-ketemu-di-Google (SEO) — ikut menjaga mutu **tiap kali kamu prompt**, tanpa kamu mengetik apa pun. Ditambah **pagar keselamatan** (anti-bocor rahasia, anti-ngarang, bahasa awam). 🏢 Seperti 8 satpam tetap di tiap cabang — boleh kamu tambah, tak bisa dipecat.
 > - 🎛️ **Sisanya = REKOMENDASI yang DITAWARKAN (bukan keharusan):** semua fitur di tabel bawah + standar kode/dokumentasi/proses = AI **menyarankan & menjalankan default**, tapi **kamu yang pilih** — boleh pakai/lewati/matikan per project.
-> - 📈 **Kamu tumbuh sendiri:** tiap jawaban AI ditulis **2 versi** (👨‍🎓 untuk yang sedang belajar koding + 🙂 bahasa sehari-hari) — sengaja, supaya kamu makin paham sendiri dari waktu ke waktu (non-programmer → junior-programmer), bukan selamanya bergantung.
+> - 📈 **Kamu tumbuh sendiri:** tiap jawaban AI ditulis **2 versi** dengan label profesi mengikuti topik (👨‍🎓 Junior-Backend / Junior-SEO / … untuk yang sedang belajar + 🙂 bahasa sehari-hari), dan tiap jawaban berisi ditutup mini-pelajaran **"📚 Belajar dari task ini"** (arti awam · kenapa penting · jebakan umum · 🚀 jalan ke senior) — sengaja, supaya kamu naik kelas dari waktu ke waktu (non-programmer → junior-profesi → senior-profesi), bukan selamanya bergantung.
 
 ### Apa yang kit kasih (10 highlight versi stabil)
 
@@ -74,8 +74,9 @@ Bingung mulai dari mana? Cari niatmu di kolom kiri, lalu buka/paste file di kolo
 
 ### Roadmap dekat
 
-- **Penyempurnaan kecil berkelanjutan** — perbaikan perilaku AI + dokumen + tes. Tidak merusak yang sudah jalan; staff cukup jalankan `kit.ps1 update`.
-- **v2.0.0 (target ke depan)** — dukungan lintas-platform (macOS + Linux). Ditandai perubahan-besar karena sekarang khusus Windows.
+- **Penyempurnaan kecil berkelanjutan** — perbaikan perilaku AI + dokumen + tes. Tidak merusak yang sudah jalan; staff cukup minta AI "update kit" (atau jalankan `npx lintasai update`).
+- **v2.0.0** — kit **100% Node** (seluruh alat PowerShell dihapus). Rilis BREAKING: semua perintah lewat `npx lintasai <perintah>`.
+- **v2.1 (target ke depan)** — dukungan lintas-platform (macOS + Linux). Ditandai perubahan-besar karena sekarang khusus Windows.
 
 ---
 
@@ -87,7 +88,8 @@ claude-ai-rules-kit/
 ├── CONTRIBUTING.md                        ← panduan usul perubahan aturan
 ├── LICENSE                                ← MIT (bebas pakai/modif/distribusi)
 ├── CLAUDE_universal_v1.md                 ← aturan utama (auto-load tiap sesi, Pola A)
-├── LINTASAI_WORKFLOWS_v1.md               ← rujukan workflow on-demand (§4.2-4.5, §8.3) — tiering hemat token
+├── LINTASAI_WORKFLOWS_v1.md               ← PENGALIH tipis (v2.4.0: isi pindah ke workflows/)
+├── workflows/                             ← rak rujukan on-demand pecah-per-seksi (1 seksi = 1 berkas; INDEX.md = daftar isi)
 ├── PROJECT_LIFECYCLE_PROMPT_v1.md         ← prompt 4-stage (Kickoff / Bootstrap / Update Docs / Migration) - AI auto-route
 ├── UPDATE_KIT_PROMPT_v1.md                ← prompt update kit ke versi baru (AI auto-classify tier)
 ├── AUDIT_POST_SETUP_PROMPT_v1.md          ← prompt audit komprehensif setelah setup awal
@@ -96,18 +98,17 @@ claude-ai-rules-kit/
 ├── AGENTS.md.template                     ← template AGENTS.md untuk root proyek (Pola B)
 ├── JALANKAN_KIT.md                        ← prompt SINGLE-PASTE Pola B (default T = Team Mode / skip) + verifikasi setup
 ├── bin/lintasai.js                        ← ENTRY-POINT RESMI: dispatcher Node (`npm create lintasai` / `npx lintasai`)
-├── lib/                                   ← helper engine (Node `*.mjs` DIUTAMAKAN + PowerShell `*.ps1` cadangan)
-├── install-windows.ps1  (+ .mjs)          ← installer Pola A global — Node utama (.mjs), PowerShell cadangan
-├── setup-pola-b.ps1     (+ .mjs)          ← auto-setup Pola B (5 skeleton docs + auto-copy 35 file tim) — Node utama, PS cadangan
-├── update-kit.ps1       (+ .mjs)          ← auto-update kit (re-clone + backup + setup, rollback-safe) — Node utama, PS cadangan
-├── uninstall.ps1        (+ .mjs)          ← safe uninstall via manifest sha256 diff — Node utama, PS cadangan
-├── kit.ps1              (+ kit.mjs)       ← router perintah kit (doctor/scan/version/help) — Node utama, PS cadangan
+├── lib/                                   ← helper engine (Node `*.mjs`)
+├── install-windows.mjs                    ← installer Pola A global (Node)
+├── setup-pola-b.mjs                       ← auto-setup Pola B (5 skeleton docs + auto-copy 33 file tim) (Node)
+├── update-kit.mjs                         ← auto-update kit (re-clone + backup + setup, rollback-safe) (Node)
+├── uninstall.mjs                          ← safe uninstall via manifest sha256 diff (Node)
+├── kit.mjs                                ← router perintah kit (doctor/scan/version/help) (Node)
 └── templates/
     ├── architecture.md                    ← template peta proyek
     ├── glossary.md                        ← template kamus istilah domain
     ├── _PATTERNS.md                       ← aturan dokumentasi tim profesional generic
     ├── _EXAMPLE.md                        ← contoh format .md pendamping siap-copy
-    ├── architecture_auto.md               ← registry TOC AI-maintained (skeleton)
     ├── CLAUDE_TEAM_GUIDE.md               ← panduan tim AI-first (workflow harian, branching, review)
     ├── PROMPT_LIBRARY.md                  ← 22 prompt pattern siap-pakai (tambah fitur, fix bug, SEO, deploy + chat-driven workflow)
     ├── ONBOARDING.md                      ← playbook dev baru hire (Day 0 - Day 14)
@@ -140,7 +141,7 @@ Hai, bro/sis! Paket ini isinya **aturan kerja AI** yang aku pakai sehari-hari bi
 > *Claude Code* = CLI (Command Line Interface) resmi Anthropic buat ngobrol sama AI Claude langsung dari terminal. Mirip ChatGPT tapi bisa baca/tulis file di komputer kamu.
 
 ## Apa isi paket ini?
-"Pola A install" = ke-copy ke `%USERPROFILE%\.claude\` saat jalanin `install-windows.ps1`. "Pola B kit-only" = stay di folder kit (untuk embed `.claude-kit/` di proyek). "Meta" = file pengantar, tidak ke-copy ke `~/.claude/` tapi penting di kit folder.
+"Pola A install" = ke-copy ke `%USERPROFILE%\.claude\` saat jalanin `npx lintasai install-windows`. "Pola B kit-only" = stay di folder kit (untuk embed `.claude-kit/` di proyek). "Meta" = file pengantar, tidak ke-copy ke `~/.claude/` tapi penting di kit folder.
 
 | File | Fungsi singkat | Kategori |
 |---|---|:-:|
@@ -154,13 +155,12 @@ Hai, bro/sis! Paket ini isinya **aturan kerja AI** yang aku pakai sehari-hari bi
 | `templates/glossary.md` | Template kamus istilah proyek | Pola A install |
 | `templates/_PATTERNS.md` | **Standar dokumentasi tim profesional** (kapan wajib ada `.md`, format, anti-pattern) | Pola A install |
 | `templates/_EXAMPLE.md` | Contoh konkret 1 file `.md` pendamping siap-copy (reference format) | Pola A install |
-| `templates/architecture_auto.md` | Registry TOC AI-maintained (auto-tracker semua `.md` di `docs/`) | Pola A install |
 | `templates/TEAM_FLOW_SKETCH_v1.md` | Flow kerja tim end-to-end (siapa ngapain, serah-terima, staging→prod, deploy aman) - bahasa non-programmer | Pola A install |
 | `templates/CROSS_REPO_TYPES_PIPELINE.md` | Pipeline auto-generate types lintas-repo (backend ubah schema → shared publish → frontend auto-PR) | Pola A install |
 | `AGENTS.md.template` | Template `AGENTS.md` untuk dicopy ke root proyek (Pola B) | Pola B kit-only |
-| `JALANKAN_KIT.md` | Prompt **SINGLE-PASTE** Pola B - AI tanya cara pasang (LENGKAP/CEPAT/PILIH-SENDIRI) + audit + ukuran tim & bentuk kode + setup + 4 aturan + 35 file tim profesional + verifikasi | Pola B kit-only |
-| `setup-pola-b.ps1` | Script auto-setup Pola B di root proyek (copy AGENTS.md + 5 skeleton docs/) | Pola B kit-only |
-| `install-windows.ps1` | Script auto-install Windows untuk Pola A (global) | Meta |
+| `JALANKAN_KIT.md` | Prompt **SINGLE-PASTE** Pola B - AI tanya cara pasang (LENGKAP/CEPAT/PILIH-SENDIRI) + audit + ukuran tim & bentuk kode + setup + 4 aturan + 33 file tim profesional + verifikasi | Pola B kit-only |
+| `setup-pola-b.mjs` | Script auto-setup Pola B di root proyek (copy AGENTS.md + 5 skeleton docs/) | Pola B kit-only |
+| `install-windows.mjs` | Script auto-install Windows untuk Pola A (global) | Meta |
 | `README.md` | File ini - baca dulu | Meta |
 | `CHANGELOG.md` | Log perubahan per versi | Meta |
 | `CONTRIBUTING.md` | Panduan anggota tim untuk usul perubahan aturan | Meta |
@@ -200,7 +200,7 @@ Biarkan **AI yang menjalankan** perintah ini (lewat chat). Pemasang versi Node b
 
 Untuk update, cukup minta AI di chat: **"tolong update kit"** (AI yang jalankan). Atau manual dari dalam project:
 ```bash
-.\.claude-kit\kit.ps1 update
+npx lintasai update
 ```
 
 ### Cara 2: Git Clone (untuk owner / advanced)
@@ -215,14 +215,11 @@ Lihat section **"Distribusi via GitHub repo"** di bawah untuk detail git clone, 
 
 ### Cara 3: Otomatis post-clone (cepat, ~10 detik)
 
-Buka PowerShell di folder paket ini, jalanin:
-```powershell
-# Allow script jalan di sesi ini saja (aman, mati saat PowerShell ditutup)
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-# Install
-.\install-windows.ps1
+Buka terminal di folder paket ini, jalanin (jalur Node — tak perlu ExecutionPolicy):
+```bash
+npx lintasai install-windows
 ```
-Script otomatis nge-`Unblock-File` (handle Mark-of-the-Web kalau zip didownload dari internet). Mau cek tanpa nimpa apapun? Tambah flag `-DryRun`.
+Script otomatis menangani Mark-of-the-Web (buka-blokir berkas kalau zip didownload dari internet). Mau cek tanpa nimpa apapun? Tambah flag `--dry-run`.
 
 Kalau di folder profil udah ada `CLAUDE.md`, **script otomatis backup** ke `CLAUDE.md.backup-YYYYMMDD-HHMMSS` sebelum nimpa - jadi file lamamu aman.
 
@@ -235,14 +232,14 @@ Mapping file:
 | Dari (paket) | Ke (folder profil) |
 |---|---|
 | `CLAUDE_universal_v1.md` | `%USERPROFILE%\.claude\CLAUDE.md` *(rename!)* |
-| `LINTASAI_WORKFLOWS_v1.md` | `%USERPROFILE%\.claude\LINTASAI_WORKFLOWS_v1.md` |
+| `LINTASAI_WORKFLOWS_v1.md` *(pengalih)* | `%USERPROFILE%\.claude\LINTASAI_WORKFLOWS_v1.md` |
+| `workflows\` *(rak rujukan per-seksi)* | `%USERPROFILE%\.claude\workflows\` |
 | `PROJECT_LIFECYCLE_PROMPT_v1.md` | `%USERPROFILE%\.claude\PROJECT_LIFECYCLE_PROMPT_v1.md` |
 | `TEAM_ROLLOUT_GUIDE_v1.md` | `%USERPROFILE%\.claude\TEAM_ROLLOUT_GUIDE_v1.md` |
 | `templates\architecture.md` | `%USERPROFILE%\.claude\templates\architecture.md` |
 | `templates\glossary.md` | `%USERPROFILE%\.claude\templates\glossary.md` |
 | `templates\_PATTERNS.md` | `%USERPROFILE%\.claude\templates\_PATTERNS.md` |
 | `templates\_EXAMPLE.md` | `%USERPROFILE%\.claude\templates\_EXAMPLE.md` |
-| `templates\architecture_auto.md` | `%USERPROFILE%\.claude\templates\architecture_auto.md` |
 
 > WARNING: Kalau folder profil udah ada `CLAUDE.md`, **backup dulu manual** (rename jadi `CLAUDE.md.backup-20260530-093000` - pakai timestamp sekarang) sebelum nimpa. Format ini sama persis dengan yang dipakai script otomatis, biar konsisten.
 
@@ -252,7 +249,7 @@ Di PowerShell:
 Get-ChildItem $env:USERPROFILE\.claude\
 Get-Content $env:USERPROFILE\.claude\CLAUDE.md -TotalCount 3
 ```
-Harus kelihatan: `CLAUDE.md`, 3 file panduan (`LINTASAI_WORKFLOWS_v1.md`, `PROJECT_LIFECYCLE_PROMPT_v1.md`, `TEAM_ROLLOUT_GUIDE_v1.md`), dan folder `templates\`. Baris pertama `CLAUDE.md` harus nampilin header versi (mis. `v1 · 2026-05-30`) - itu tandanya file bener-bener ke-copy. Mau yakin AI baca aturannya? Buka Claude Code, lalu tanya: *"Kamu baca aturan dari file apa? Sebutin versi di header."* Kalau dia jawab `%USERPROFILE%\.claude\CLAUDE.md` + versi yang sama, sukses.
+Harus kelihatan: `CLAUDE.md`, 3 file panduan (`LINTASAI_WORKFLOWS_v1.md`, `PROJECT_LIFECYCLE_PROMPT_v1.md`, `TEAM_ROLLOUT_GUIDE_v1.md`), folder `workflows\` (rak rujukan per-seksi), dan folder `templates\`. Baris pertama `CLAUDE.md` harus nampilin header versi (mis. `v1 · 2026-05-30`) - itu tandanya file bener-bener ke-copy. Mau yakin AI baca aturannya? Buka Claude Code, lalu tanya: *"Kamu baca aturan dari file apa? Sebutin versi di header."* Kalau dia jawab `%USERPROFILE%\.claude\CLAUDE.md` + versi yang sama, sukses.
 
 ## Pakai sehari-hari - 1 prompt, 4 stage
 
@@ -283,7 +280,7 @@ Kit ini dirancang jadi **standar tim IT 3-10 orang**. Filosofi: hemat energi, ko
 - **Semua anggota pakai versi yang sama** - taruh kit di Git repo private internal dengan tag versi (`v1`, `v1.1`, dst). Bukan Google Drive bebas yang versinya nyasar.
 - **1 owner standar** (mis. pemimpin tim) yang approve perubahan aturan + rilis versi baru. Anggota lain usul via issue/PR di repo standar.
 - **Channel diskusi tunggal** (`#it-standard` di Slack/Discord/WA) untuk usulan, announce update, troubleshooting.
-- **Update otomatis backup** - saat owner rilis v1.2, anggota jalanin `install-windows.ps1` lagi. Script backup file lama dengan timestamp, gak rusak setting existing.
+- **Update otomatis backup** - saat owner rilis v1.2, anggota jalanin `npx lintasai install-windows` lagi (atau minta AI). Pemasang backup file lama dengan timestamp, gak rusak setting existing.
 - **Exception per-proyek dicatat** - kalau proyek X opt-out aturan Y, catat di `exceptions.md` di repo standar dengan sunset date. Review tiap bulan.
 - **Adopsi per-proyek pakai `PROJECT_LIFECYCLE_PROMPT_v1.md`** - 1 prompt, AI auto-route ke Stage 1 (Proyek Baru / Kickoff) / 2 (Bikin Catatan Proyek / Bootstrap Docs) / 3 (Perbarui Catatan / Update Docs) / 4 (Rapikan ke Standar Tim / Migration) sesuai kondisi proyek.
 
@@ -300,9 +297,8 @@ Kit ini di-publish di **`github.com/ojokesusu/lintasAI`** (private repo standar 
 git clone --depth 1 https://github.com/ojokesusu/lintasAI.git .claude-kit
 # Hapus .git/ supaya tidak konflik dengan git proyek user:
 Remove-Item .claude-kit\.git -Recurse -Force
-# Setup
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\.claude-kit\setup-pola-b.ps1
+# Setup (jalur Node — tak perlu ExecutionPolicy):
+node .\.claude-kit\setup-pola-b.mjs
 # Buka Claude Code, paste isi .claude-kit\JALANKAN_KIT.md
 ```
 
@@ -313,8 +309,8 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```powershell
 git clone --depth 1 https://github.com/ojokesusu/lintasAI.git .claude-kit
 Remove-Item .claude-kit\.git -Recurse -Force
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\.claude-kit\setup-pola-b.ps1
+# Setup (jalur Node — tak perlu ExecutionPolicy):
+node .\.claude-kit\setup-pola-b.mjs
 # Buka Claude Code, paste isi .claude-kit\JALANKAN_KIT.md
 ```
 
@@ -326,8 +322,8 @@ Buka Claude Code di root proyek, prompt:
 
 ```
 Mohon clone https://github.com/ojokesusu/lintasAI ke folder .claude-kit
-(hapus .git/ setelahnya), lalu jalankan setup-pola-b.ps1, lalu eksekusi
-isi JALANKAN_KIT.md.
+(hapus .git/ setelahnya), lalu jalankan setup Node `node .claude-kit/setup-pola-b.mjs`,
+lalu eksekusi isi JALANKAN_KIT.md.
 ```
 
 AI akan handle git clone + cleanup + setup + JALANKAN_KIT workflow end-to-end.
@@ -338,56 +334,48 @@ Kalau staff IT tidak install git / Node.js, download zip dari [Releases](https:/
 
 ### Update kit ke versi baru
 
-**Cara termudah & disarankan:** minta AI di chat — **"tolong update kit"** — atau jalankan `npm create lintasai` (jalur Node, default sejak migrasi PS→Node). AI memetakan tier perubahan + konfirmasi sebelum jalan. Setara langsung: `.\.claude-kit\kit.ps1 update`.
+**Cara termudah & disarankan:** minta AI di chat — **"tolong update kit"** — atau jalankan `npx lintasai update` (jalur Node). AI memetakan tier perubahan + konfirmasi sebelum jalan.
 
-> Bagian di bawah = **referensi developer** untuk jalur git-clone manual. Sejak migrasi PS→Node, mesin update utama = `update-kit.mjs` (dipanggil otomatis oleh jalur di atas); `update-kit.ps1` di bawah = **jalur PowerShell langsung (cadangan)**, hasilnya setara (parity-tested).
+> Bagian di bawah = **referensi developer** untuk jalur git-clone manual. Mesin update = `update-kit.mjs` (dipanggil otomatis oleh `npx lintasai update`).
 
-#### Opsi A - Auto-update langsung via `update-kit.ps1` (jalur PowerShell cadangan)
+#### Opsi A - Auto-update langsung via `npx lintasai update`
 
-Kit punya **script auto-update** yang handle re-clone fresh + backup + setup script + version detection dalam 1 command:
+Kit punya **alat auto-update** yang handle re-clone fresh + backup + setup + version detection dalam 1 perintah:
 
-```powershell
+```bash
 # Dari root proyek (folder yang ada .claude-kit/ di dalamnya):
-.\.claude-kit\update-kit.ps1
+npx lintasai update
 ```
 
-Script otomatis lakukan:
+Perintah otomatis lakukan:
 1. ✅ **Backup** `.claude-kit/` lama ke `.claude-kit.backup-<timestamp>` (rollback-safe).
 2. ✅ **Clone fresh** dari `github.com/ojokesusu/lintasAI` (depth 1, hemat bandwidth).
 3. ✅ **Hapus `.git/` internal** (cegah konflik dengan git proyek user).
-4. ✅ **Re-run `setup-pola-b.ps1 -Force`** (anti-overwrite preserve `docs/` existing).
+4. ✅ **Re-run pemasang Node** (`setup-pola-b.mjs --force`, anti-overwrite preserve `docs/` existing).
 5. ✅ **Detect versi lama vs baru** + tampilkan action items.
 
-**Parameter opsional**:
-- `-NoBackup` - skip backup (irreversible). Akan minta konfirmasi dulu; untuk unattended/CI tambah `-Force`.
-- `-RepoUrl <url>` - override default (untuk fork private kamu sendiri).
-- `-Branch <name>` - clone branch lain (default: `main`).
-- `-DryRun` - preview tindakan tanpa eksekusi.
+**Bendera opsional**:
+- `--no-backup` - skip backup (irreversible). Akan minta konfirmasi dulu; untuk unattended/CI tambah `--yes-delete-no-backup`.
+- `--repo-url <url>` - override default (untuk fork private kamu sendiri).
+- `--branch <name>` - clone branch lain (default: `main`).
+- `--dry-run` - preview tindakan tanpa eksekusi.
+- `--cleanup-backups` - sekalian bersihkan cadangan lama (> 30 hari / di luar 3 terbaru).
 
-**Kalau git clone gagal** (network/auth issue): script auto-rollback restore backup. Zero half-state risk.
+**Kalau git clone gagal** (network/auth issue): perintah auto-rollback restore backup. Zero half-state risk.
 
-#### Opsi B - Manual re-clone (kalau update-kit.ps1 tidak available di kit kamu)
+#### Opsi B - Manual re-clone (fallback tanpa `npx`)
 
 ```powershell
 cd <project-root>
 Remove-Item .claude-kit -Recurse -Force
 git clone --depth 1 https://github.com/ojokesusu/lintasAI.git .claude-kit
 Remove-Item .claude-kit\.git -Recurse -Force
-.\.claude-kit\setup-pola-b.ps1 -Force
+node .\.claude-kit\setup-pola-b.mjs --force
 ```
 
 Sama hasilnya dengan Opsi A, tapi manual + tidak ada backup otomatis.
 
-#### Opsi C - git clone manual (fallback)
-
-```powershell
-Remove-Item .claude-kit -Recurse -Force
-git clone --depth 1 https://github.com/ojokesusu/lintasAI.git .claude-kit
-Remove-Item .claude-kit\.git -Recurse -Force
-.\.claude-kit\setup-pola-b.ps1 -Force
-```
-
-**PENTING - selalu re-run `setup-pola-b.ps1` setelah update kit** (otomatis lewat Opsi A; manual di Opsi B/C). Itu yang trigger copy file skeleton BARU dari kit ke `docs/` (anti-overwrite tetap aktif → file `docs/*.md` user existing AMAN, tidak ditimpa).
+**PENTING - selalu re-run `node .\.claude-kit\setup-pola-b.mjs --force` setelah update kit manual.** Itu yang trigger copy file skeleton BARU dari kit ke `docs/` (anti-overwrite tetap aktif → file `docs/*.md` user existing AMAN, tidak ditimpa).
 
 **Action items setelah update**:
 1. Baca `CHANGELOG.md` section `[vX.Y.Z]` untuk overview perubahan.
@@ -415,21 +403,18 @@ Selain install global di `%USERPROFILE%\.claude\` (Pola A) atau clone dari GitHu
 
 ### Cara setup otomatis
 
-Buka PowerShell dan `cd` ke **root proyek** dulu (tempat `package.json` / `.git` berada). Semua perintah di bawah asumsikan cwd = root proyek.
+Buka terminal dan `cd` ke **root proyek** dulu (tempat `package.json` / `.git` berada). Semua perintah di bawah asumsikan cwd = root proyek.
 
 ```powershell
-# 1. Allow script di sesi ini saja (aman, mati saat PowerShell ditutup)
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-
-# 2. Extract zip kit jadi folder .claude-kit\ di root proyek
+# 1. Extract zip kit jadi folder .claude-kit\ di root proyek
 #    Ganti <path-ke-zip-kamu> dengan lokasi zip yang kamu download (Slack/email/Downloads).
 Expand-Archive -Path "<path-ke-zip-kamu>" -DestinationPath ".\.claude-kit" -Force
 
-# 3. Jalankan setup script
-.\.claude-kit\setup-pola-b.ps1
+# 2. Jalankan setup (jalur Node — tak perlu ExecutionPolicy)
+node .\.claude-kit\setup-pola-b.mjs
 ```
 
-Script otomatis: (a) **deteksi nested extract** dan tawarkan auto-flatten; (b) **unblock Mark-of-the-Web** untuk semua file kit (cegah block kalau zip didownload via browser); (c) **deteksi CLAUDE.md existing** dan tanya: rename ke `.legacy-<timestamp>` / biarkan dua-duanya / batal; (d) copy `AGENTS.md.template` jadi `AGENTS.md`, isi placeholder; (e) auto-backup `AGENTS.md` lama kalau ada.
+Script otomatis: (a) **deteksi nested extract** dan tawarkan auto-flatten; (b) **tangani Mark-of-the-Web** untuk semua file kit (cegah block kalau zip didownload via browser); (c) **deteksi CLAUDE.md existing** dan tanya: rename ke `.legacy-<timestamp>` / biarkan dua-duanya / batal; (d) copy `AGENTS.md.template` jadi `AGENTS.md`, isi placeholder; (e) auto-backup `AGENTS.md` lama kalau ada.
 
 ### Cara setup manual
 
@@ -460,21 +445,21 @@ Workflow sama persis dengan Pola A (paste `PROJECT_LIFECYCLE_PROMPT_v1.md`, AI a
 
 ### Hapus kit dari proyek (uninstall yang aman)
 
-Mau hapus lintasAI dari proyek? **JANGAN delete folder `docs/` atau `.github/` mentah-mentah** - folder itu kemungkinan campur antara file kit dan file proyek kamu sendiri. Pakai `uninstall.ps1` yang tahu mana file kit vs mana file proyek.
+Mau hapus lintasAI dari proyek? **JANGAN delete folder `docs/` atau `.github/` mentah-mentah** - folder itu kemungkinan campur antara file kit dan file proyek kamu sendiri. Pakai perintah uninstall bawaan (`npx lintasai uninstall`) yang tahu mana file kit vs mana file proyek.
 
 **Alur disarankan untuk user baru (3 langkah):**
 
 **Langkah 1 - Preview dulu (WAJIB, supaya tahu apa yang akan dihapus):**
 ```powershell
-.\.claude-kit\kit.ps1 uninstall -DryRun
+npx lintasai uninstall
 ```
 Script tampilkan: daftar file PRISTINE (akan dihapus), MODIFIED (akan DILEWATI), SYMLINK/BLOCKED/LOCKED (SKIP dengan alasan), dan ringkasan total. Tidak ada satu pun file yang dihapus di langkah ini.
 
 **Langkah 2 - Hapus beneran (konservatif, RECOMMENDED):**
-```powershell
-.\.claude-kit\kit.ps1 uninstall
+```bash
+npx lintasai uninstall --yes
 ```
-Jawab `Y` saat ditanya konfirmasi. Script hapus cuma file PRISTINE. File yang sudah kamu edit TETAP ada.
+`--yes` = konfirmasi hapus (tanpa itu, perintah cuma menampilkan rencana lalu berhenti aman). Perintah hapus cuma file PRISTINE. File yang sudah kamu edit TETAP ada.
 
 **Langkah 3 - Hapus folder `.claude-kit\` sendiri (manual):**
 Script tidak bisa hapus folder yang sedang dia jalankan dari sana. Setelah langkah 2 selesai, **TUTUP semua VSCode / editor yang membuka file di `.claude-kit\`**, lalu jalankan di PowerShell baru:
@@ -483,29 +468,27 @@ Remove-Item -Recurse -Force .\.claude-kit
 ```
 
 **Opsi tambahan (advanced):**
-```powershell
+```bash
 # Hapus juga file kit yang sudah kamu edit (backup .bak dulu, jadi rollback-able):
-.\.claude-kit\kit.ps1 uninstall -Force
+npx lintasai uninstall --yes --allow-modified
 
 # Hapus juga AGENTS.md (default skip karena heavy customization):
-.\.claude-kit\kit.ps1 uninstall -DeleteAgents
+npx lintasai uninstall --yes --delete-agents
 
 # Suppress instruksi self-delete .claude-kit\ (kalau memang mau retain folder kit):
-.\.claude-kit\kit.ps1 uninstall -KeepKit
-
-# CI / automation auto-confirm (PAKAI cuma kalau sudah lihat hasil SIMULASI / dry-run - jalan pura-pura, tidak menghapus apa pun):
-.\.claude-kit\kit.ps1 uninstall -Yes
+npx lintasai uninstall --yes --keep-kit
 
 # Folder proyek di-rename setelah install (manifest project_root tidak match):
-.\.claude-kit\kit.ps1 uninstall -AllowProjectRootMismatch
+npx lintasai uninstall --yes --allow-project-root-mismatch
 ```
+> Catatan: tanpa `--yes`, perintah cuma menampilkan rencana lalu berhenti aman (SIMULASI — jalan pura-pura, tidak menghapus apa pun). `--force` versi lama = alias usang untuk `--allow-modified`.
 
 **Setelah selesai, kamu akan dapat konfirmasi:**
 - File proyek asli di `docs/`, `src/`, `package.json`, dll. AMAN tidak disentuh.
 - File kit yang kamu edit (tanpa `-Force`) masih ada di tempatnya.
 - Verifikasi: jalankan `git status` - file proyek tidak boleh muncul sebagai deleted.
 
-**Cara kerja:** setup-pola-b.ps1 tulis `.claude-kit/.install-manifest.json` yang berisi sha256 hash setiap file yang kit copy. Uninstall classify tiap file:
+**Cara kerja:** pemasang (`setup-pola-b.mjs`) tulis `.claude-kit/.install-manifest.json` yang berisi sha256 hash setiap file yang kit copy. Uninstall classify tiap file:
 
 - **PRISTINE** (hash match) → auto-delete, file persis sama dengan kit.
 - **MODIFIED** (hash beda) → kamu sudah edit; default SKIP. `-Force` → backup ke `.pre-uninstall-<timestamp>.bak` lalu hapus.
@@ -527,10 +510,10 @@ Remove-Item -Recurse -Force .\.claude-kit
 
 #### Kalau manifest TIDAK ADA (kit lama / corrupt)
 
-Untuk install pakai versi < v1.0.0 (sebelum manifest support) atau manifest hilang, script `uninstall.ps1` keluar dengan instruksi fallback manual. Daftar file yang kit deploy di Pola B:
+Untuk install pakai versi < v1.0.0 (sebelum manifest support) atau manifest hilang, perintah `npx lintasai uninstall` keluar dengan instruksi fallback manual. Daftar file yang kit deploy di Pola B:
 
 - `AGENTS.md` (root proyek) - heavy customized, **JANGAN hapus tanpa baca dulu**
-- `docs/architecture.md`, `docs/glossary.md`, `docs/architecture_auto.md`, `docs/_PATTERNS.md`, `docs/_EXAMPLE.md`
+- `docs/architecture.md`, `docs/glossary.md`, `docs/_PATTERNS.md`, `docs/_EXAMPLE.md`
 - `docs/CLAUDE_TEAM_GUIDE.md`, `docs/PROMPT_LIBRARY.md`, `docs/ONBOARDING.md`, `docs/STACK_GUIDE.md`, `docs/STACK_MIGRATION_GUIDE.md`
 - `docs/MCP_SETUP.md`, `docs/RLS_SETUP_PROMPT.md`, `docs/DB_SCHEMA_SCAN_PROMPT.md`, `docs/GLOSSARY_NON_PROGRAMMER.md`, `docs/SECURITY_INCIDENT_PLAYBOOK.md`, `docs/feature-flags-advanced.md`
 - `docs/decisions/_TEMPLATE.md`, `docs/decisions/README.md`
@@ -541,11 +524,7 @@ Review tiap file sebelum hapus - `docs/` dan `.github/` kemungkinan campur denga
 
 ## Troubleshooting Pola B (kalau setup error)
 
-**Error: `cannot be loaded because running scripts is disabled` (Execution Policy)**
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-```
-Cuma berlaku di sesi PowerShell saat ini. Re-run setup script.
+> Pemasang kit versi Node (`node .\.claude-kit\setup-pola-b.mjs`) **tidak perlu** `Set-ExecutionPolicy` — itu hanya relevan untuk skrip `.ps1` era lama yang sudah dihapus.
 
 **Error: `Expand-Archive: Cannot find path '<path-ke-zip-kamu>'`**
 Ganti `<path-ke-zip-kamu>` dengan path PENUH dari zip kit kamu, contoh:
@@ -553,8 +532,8 @@ Ganti `<path-ke-zip-kamu>` dengan path PENUH dari zip kit kamu, contoh:
 Expand-Archive -Path "$HOME\Downloads\claude-ai-rules-kit.zip" -DestinationPath ".\.claude-kit" -Force
 ```
 
-**Error: script ke-block "this file is not digitally signed" / SecurityError**
-Mark-of-the-Web (MOTW) - Windows nge-tag file dari internet. Setup script otomatis nge-unblock, tapi kalau gagal:
+**Error: file ke-block "this file is not digitally signed" / SecurityError saat buka file**
+Mark-of-the-Web (MOTW) - Windows nge-tag file dari internet. Pemasang otomatis menanganinya, tapi kalau gagal, buka-blokir manual di terminal:
 ```powershell
 Get-ChildItem .\.claude-kit\ -Recurse | Unblock-File
 ```
@@ -571,7 +550,7 @@ Pastikan kamu jalankan Claude Code dari **root proyek** (folder tempat `AGENTS.m
 ## FAQ singkat
 
 **Q: Aku udah punya `CLAUDE.md` global, gimana?**
-A: Pakai install global otomatis (`install-windows.ps1` — Cara 3 di bagian "Cara Install Manual" di atas): script otomatis backup ke `CLAUDE.md.backup-<timestamp>` sebelum nimpa. Habis itu kamu bisa merge bagian yang mau dipertahankan.
+A: Pakai install global otomatis (`npx lintasai install-windows` — Cara 3 di bagian "Cara Install Manual" di atas): pemasang otomatis backup ke `CLAUDE.md.backup-<timestamp>` sebelum nimpa. Habis itu kamu bisa merge bagian yang mau dipertahankan.
 
 **Q: AI-nya bandel, gak ikut aturan?**
 A: Tegur langsung: *"kamu ngelanggar aturan poin X di CLAUDE.md, ulangi"*. Biasanya nurut. Kalau sering, cek dia baca file yang bener: tanya *"path CLAUDE.md yang kamu baca apa?"*

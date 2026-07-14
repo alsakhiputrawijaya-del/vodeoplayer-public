@@ -184,7 +184,7 @@ Banyak kemampuan terkuat lintasAI terbuka cukup dengan **mengetik kalimat ke Cla
 | **`update kit`** atau *"ada versi lintasAI baru?"* | AI cek versi baru + jelaskan perubahannya sebelum memasang. |
 | **`mode co-pilot`** | AI kerja lebih otomatis untuk hal aman, tapi tetap berhenti minta izin di langkah berbahaya (default mati). |
 | **`lanjutkan setup lintasAI`** | Kalau popup pemandu setup tak muncul sendiri, kalimat ini memunculkannya. |
-| **`cek lingkungan`** atau *"kenapa di komputerku beda/error padahal di tempat lain jalan"* | AI memotret versi Node/PowerShell/OS/Git (`npx lintasai doctor --env`) untuk cari sumber beda-antar-komputer (cuma-baca, tanpa data pribadi). |
+| **`cek lingkungan`** atau *"kenapa di komputerku beda/error padahal di tempat lain jalan"* | AI memotret versi Node/OS/Git (`npx lintasai doctor`) untuk cari sumber beda-antar-komputer (cuma-baca, tanpa data pribadi). |
 | **`build error`** atau *"gagal build"* | AI menelusuri penyebab gagal-build bertahap, memperbaiki, lalu memverifikasi. |
 | **`cek tes`** atau *"coverage"* | AI memetakan bagian yang belum teruji + membuatkan tes yang kurang + menjalankannya. |
 | **`cek keamanan AI/MCP`** | AI memindai izin sambungan MCP + hook Claude Code (cuma-baca) — pastikan tak ada pintu berbahaya terbuka. |

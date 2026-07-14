@@ -7,7 +7,7 @@
 // 2026-06-28, temuan PENTING #2). Modul ini menyalin templates/github/workflows/preflight.yml ke
 // .github/workflows/ klien DALAM 1 PERINTAH -> tiap push/PR ke GitHub menjalankan robot mutu otomatis.
 //
-// OPT-IN (cermin enable-risk-gate, BUKAN dipasang otomatis di setup): hanya jalan saat user/AI minta
+// OPT-IN (BUKAN dipasang otomatis di setup): hanya jalan saat user/AI minta
 // `npx lintasai enable-preflight-ci`. Alasan opt-in: butuh GitHub Actions + alur PR; memaksanya ke
 // klien yang belum pakai GitHub = CI merah membingungkan. Owner yang putuskan (sec.1.1).
 //

@@ -52,7 +52,7 @@ Staff buka VS Code → Source Control → Clone Repository → paste URL.
 File → Open Folder → pilih folder project hasil clone.
 Claude Code panel terbuka (kalau extension aktif).
 
-> **Catatan tentang popup**: kalau **AI yang menjalankan** pemasangan (cara di dokumen ini), kamu menemui **Popup Tipe A** — kotak pilihan **DI DALAM chat** (#1/#2/#3 di `JALANKAN_KIT.md`; kalau fitur klik tak tersedia, tampil sebagai teks ketik-angka). **Popup Tipe B** (jendela Windows terpisah, klik tombol mouse) **hanya** muncul kalau kamu menjalankan perintah pasang **sendiri di terminal**. Definisi lengkap: `JALANKAN_KIT.md` > section "Klarifikasi Terminologi Popup".
+> **Catatan tentang popup**: semua interaksi = **Popup Tipe A** — kotak pilihan **DI DALAM chat** (#1/#2/#3 di `JALANKAN_KIT.md`; kalau fitur klik tak tersedia, tampil sebagai teks ketik-angka). Sejak kit 100% Node, pemasang berjalan otomatis penuh **tanpa jendela Windows** (baik lewat chat maupun terminal). Definisi lengkap: `JALANKAN_KIT.md` > section "Klarifikasi Terminologi Popup".
 
 ### Step 3: Chat ke AI
 

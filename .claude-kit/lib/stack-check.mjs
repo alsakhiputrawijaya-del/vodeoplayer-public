@@ -19,7 +19,6 @@
 // orkestrasi) di-port + diuji-banding deterministik vs PS. Reuse getStackType dari project-detect.mjs
 // (sec.5, jangan duplikasi). Bagian "jalankan alat" pakai child_process.spawnSync (padanan
 // System.Diagnostics.Process di PS; sama-sama batas-waktu + tangkap kode-keluar + stdout/stderr).
-// stack-check.ps1 TETAP HIDUP berdampingan (pemanggil masih PowerShell sampai orkestrator pindah Gel-4).
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -123,8 +122,13 @@ export function invokeLintasStackTool(root, spec, timeoutSec = 120) {
       killSignal: 'SIGTERM',
       maxBuffer: 16 * 1024 * 1024,
     }
+    // FIX v2.0.0 (temuan gerbang nyata): dengan shell:true, path ber-SPASI ("C:\Program Files\...\npm.cmd")
+    // patah di spasi -> cmd.exe error "'C:\Program' is not recognized" exit 1 -> temuan PALSU "alat
+    // melaporkan masalah". Bungkus path dengan kutip saat lewat shell (args = konstanta whitelist tanpa
+    // spasi, aman tanpa kutip). Tanpa fix ini stack-check gagal diam-diam di hampir semua Windows.
+    const shellPath = /\s/.test(resolved.path) ? `"${resolved.path}"` : resolved.path
     const r = resolved.isBatch
-      ? spawnSync(resolved.path, spec.args, { ...opts, shell: true })
+      ? spawnSync(shellPath, spec.args, { ...opts, shell: true })
       : spawnSync(resolved.path, spec.args, opts)
 
     const timedOut = !!(r.error && r.error.code === 'ETIMEDOUT')
@@ -166,12 +170,15 @@ export function getLintasStackFinding(runResult, timeoutSec = 120) {
   return findings
 }
 
-// Orkestrasi penuh. opts = { repoRoot, stack, timeoutSec=120, noRun=false, quiet=false }.
+// Orkestrasi penuh. opts = { repoRoot, stack, timeoutSec=120, noRun=false, quiet=false, excludeTools=[] }.
+// excludeTools: nama alat yang dilewati (mis. ['eslint'] saat dipanggil dari preflight yang sudah
+// menjalankan eslint sendiri — cegah alat sama jalan 2x).
 export function invokeLintasStackCheck(opts = {}) {
   let { repoRoot, stack } = opts
   const timeoutSec = opts.timeoutSec ?? 120
   const noRun = opts.noRun === true
   const quiet = opts.quiet === true
+  const excludeTools = Array.isArray(opts.excludeTools) ? opts.excludeTools : []
 
   // !repoRoot -> induk folder lib/ (cermin Split-Path -Parent $PSScriptRoot).
   if (!repoRoot) repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -184,7 +191,8 @@ export function invokeLintasStackCheck(opts = {}) {
   const skipNotConfigured = []
 
   for (const spec of specs) {
-    // Urutan: config-gate dulu -> SIMULASI (noRun) -> ketersediaan alat -> jalankan.
+    // Urutan: exclude dulu -> config-gate -> SIMULASI (noRun) -> ketersediaan alat -> jalankan.
+    if (excludeTools.includes(spec.tool)) continue
     if (!testLintasStackConfigured(repoRoot, spec)) { skipNotConfigured.push(spec.tool); continue }
     if (noRun) { ran.push(`${spec.tool} (SIMULASI)`); continue }
     if (!resolveCommand(spec.tool)) { skipMissing.push(spec.tool); continue }

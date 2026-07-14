@@ -39,8 +39,7 @@
   "refs": {
     "kit_version": ".claude-kit/.install-manifest.json#metadata.kit_version", // versi kit dibaca dari sini, bukan disalin
     "architecture": "docs/architecture.md", // narasi panjang (manusia baca); robot cek path ADA
-    "glossary": "docs/glossary.md",
-    "registry": "docs/architecture_auto.md"
+    "glossary": "docs/glossary.md"
   },
 
   // --- DEKLARASI inti: peta modul -> lokasi. Robot cek tiap 'path' ADA di disk (PathExists). ---

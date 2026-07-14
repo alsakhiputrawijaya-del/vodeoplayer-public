@@ -1,7 +1,7 @@
-# Index - Daftar Lengkap Dokumen lintasAI v1.61.0
+# Index - Daftar Lengkap Dokumen lintasAI v2.6.0
 
 > Master index untuk navigasi ~115 file kit.
-> Last updated: 2026-06-24 (v1.58.0: mode microservice + hook bahasa ke klien + tutup celah robot .env)
+> Last updated: 2026-07-14 (v2.6.0: blok belajar junior-profesi §4.1b + [SECURITY] standar profesional 2025)
 
 ---
 
@@ -22,7 +22,7 @@
 | File | Fungsi |
 |---|---|
 | CLAUDE_universal_v1.md | Universal AI rules (auto-loaded tiap sesi) |
-| LINTASAI_WORKFLOWS_v1.md | Detail on-demand (pattern, popup §14.1, update tier, dst) |
+| workflows/ (+ INDEX.md) | Rak detail on-demand pecah-per-seksi (pattern, popup, update tier, dst); LINTASAI_WORKFLOWS_v1.md = pengalih tipis |
 | AGENTS.md.template | Template AGENTS.md per project |
 | CLAUDE.md.template | Template CLAUDE.md per project |
 
@@ -37,44 +37,34 @@
 | team-setup.mjs | Setup berkas kerja-tim |
 | install-windows.mjs | Initial install ke ~/.claude |
 
-## PowerShell Scripts (root) - JALUR CADANGAN (parity, dipanggil via `kit.ps1`)
-
-| Script | Fungsi |
-|---|---|
-| kit.ps1 | Entrypoint cadangan PowerShell (jalur utama kini `kit.mjs`) |
-| setup-pola-b.ps1 | First-time setup (cadangan) |
-| update-kit.ps1 | Update kit (cadangan) |
-| uninstall.ps1 | Safe uninstall (cadangan) |
-| install-windows.ps1 | Initial install Windows (cadangan) |
-
-## Lib (Helper Modules)
+## Lib (Helper Modules — Node)
 
 | File | Fungsi |
 |---|---|
-| lib/popup-helpers.ps1 | Popup GUI/console + enforce konvensi pilihan §14.1 (RULE-1..8) |
-| lib/safety.ps1 | Security helpers (path containment, reparse check, sha256) |
-| lib/manifest-signing.ps1 | HMAC manifest signing (anti-tampering) |
-| lib/manifest.ps1 | Bangun/baca manifest file terpasang |
-| lib/rollback.ps1 | Rollback ke versi sebelumnya via backup files |
-| lib/json-merge-helpers.ps1 | Deep-merge JSON (pertahankan kunci user) |
-| lib/template-deploy.ps1 | Deploy template ke project |
-| lib/project-detect.ps1 | Deteksi jenis/stack project |
-| lib/version-detect.ps1 | Deteksi versi kit terpasang |
-| lib/agents-md.ps1 | Generate/update AGENTS.md |
-| lib/git-helpers.ps1 | Helper git (branch, identity) |
-| lib/audit-helpers.ps1 | Helper audit READ-ONLY |
-| lib/kit-files.psd1 | Single source of truth untuk file list (PS + Node) |
+| lib/popup-shim.mjs | Jawaban-aman non-interaktif untuk orkestrator (popup GUI dibuang, ADR-004) |
+| lib/safety.mjs | Security helpers (path containment, reparse check, sha256) |
+| lib/manifest-signing.mjs | HMAC manifest signing (anti-tampering) |
+| lib/manifest.mjs | Bangun/baca manifest file terpasang |
+| lib/rollback.mjs | Rollback ke versi sebelumnya via backup files |
+| lib/json-merge-helpers.mjs | Deep-merge JSON (pertahankan kunci user) |
+| lib/template-deploy.mjs | Deploy template ke project |
+| lib/project-detect.mjs | Deteksi jenis/stack project |
+| lib/version-detect.mjs | Deteksi versi kit terpasang |
+| lib/agents-md.mjs | Generate/update AGENTS.md |
+| lib/git-helpers.mjs | Helper git (branch, identity, MOTW) |
+| lib/audit-helpers.mjs | Helper audit READ-ONLY |
+| lib/kit-files.json (+ kit-files.mjs) | Single source of truth untuk file list (dibaca via JSON.parse) |
 
-> Catatan migrasi PS→Node: sebagian besar helper di atas kini punya port Node `lib/<nama>.mjs`
-> sebagai JALUR UTAMA (`.ps1` = cadangan). Daftar resmi berkas Node ada di `lib/kit-files.psd1`
-> bagian `node_lib` (±25 modul `lib/*.mjs`).
+> Kit 100% Node (v2.0.0): daftar resmi berkas Node ada di `lib/kit-files.json` bagian `node_lib`
+> (±25 modul `lib/*.mjs`).
 
 ## Templates
 
 ### Prompts Library
 | File | Berisi |
 |---|---|
-| templates/PROMPT_LIBRARY.md | 22 prompt patterns ready-to-paste |
+| templates/PROMPT_LIBRARY.md | 23 prompt patterns ready-to-paste |
+| templates/CHECKLIST_KEBUTUHAN_DOMAIN.md | Pemantik kebutuhan per-jenis-aplikasi (dipakai alur Aplikasi-Utuh §4.2c) |
 
 ### Onboarding & Workflow
 | File | Berisi |
@@ -86,7 +76,7 @@
 | templates/CLAUDE_TEAM_GUIDE.md | Team workflow guide |
 | templates/REFACTOR_STANDARD.md | Standar Tangga Refactor 3-Tingkat (in-place -> modular -> split) |
 | templates/GLOSSARY_NON_PROGRAMMER.md | Glossary istilah teknis untuk non-programmer |
-| templates/ANALOGI_LIBRARY.md | **[ACTIVE]** 32 jargon + bahan analogi tools digital (opsional; auto-deploy ke `docs/` via setup-pola-b) |
+| templates/ANALOGI_LIBRARY.md | **[ACTIVE]** 35 jargon + bahan analogi tools digital (opsional; auto-deploy ke `docs/` via setup-pola-b) |
 | templates/UPDATE_GUIDE.md | 4-tier update strategy untuk staff |
 
 ### Stack & Architecture
@@ -97,7 +87,6 @@
 | templates/STACK_MIGRATION_GUIDE.md | Migration antar versi stack |
 | templates/STACK_DETECTION_PATTERN.md | Pattern auto-detect stack |
 | templates/architecture.md | Reference architecture template (user-edited) |
-| templates/architecture_auto.md | Registry TOC `.md` pendamping (auto-maintained AI) |
 
 ### Database & Security
 | File | Berisi |
@@ -145,7 +134,6 @@
 | templates/github/workflows/secret-guard.yml | Penjaga kebocoran rahasia (tolak .env asli ter-commit; peringatan kunci asli) |
 | templates/github/workflows/audit-access.yml | Pengingat cek-akses bulanan (buka Issue, TIDAK mencabut akses) |
 | templates/github/scripts/ai-review.cjs | Skrip AI PR reviewer (dipanggil ai-review.yml; .cjs = kebal setelan "type":"module" project) |
-| templates/github/scripts/setup-branch-protection.ps1 | Setup proteksi branch (default SIMULASI, butuh -Apply) |
 
 ### Discord Integration
 | File | Berisi |
@@ -165,7 +153,7 @@
 | templates/RESEP_PERUBAHAN.md | Resep "berkas mana ikut berubah" per jenis perubahan |
 | templates/WIZARD_PENCEGAH_DRIFT_v1.md | Naskah AI: pindai project -> tulis docs/consistency-map.jsonc dgn fakta NYATA (anti alarm-palsu) |
 | templates/WIZARD_SEO_CHECK_v1.md | Naskah AI: audit SEO dasar paham framework (title/meta/OG/heading) - bukan robot regex (anti alarm-palsu) |
-| templates/consistency-map.example.psd1 | Contoh peta-konsistensi untuk robot pemeriksa project |
+| templates/consistency-map.example.jsonc | Contoh peta-konsistensi untuk robot pemeriksa project |
 | templates/decisions/_TEMPLATE.md | ADR template |
 | templates/decisions/README.md | ADR convention |
 
@@ -179,37 +167,19 @@
 | docs/FAST_SMOKE.md | SOP smoke test cepat |
 | docs/AUDIT_HISTORY.md | Riwayat audit + advisori keamanan terbuka |
 
-## Tests (suite Pester + runner + 2 skrip smoke/pre-commit — jalankan `tests/Run-Tests.ps1` untuk jumlah terkini)
+## Tests (suite Node `node --test` — jalankan `npm test` untuk jumlah terkini)
 
 | File | Berisi |
 |---|---|
-| tests/Run-Tests.ps1 | Pester test runner (jalankan untuk lihat jumlah tes terkini) |
-| tests/smoke-fast.ps1 | Gerbang CI tingkat 1 (~30 detik) |
-| tests/install-pre-commit.ps1 | Pemindai pra-commit |
-| tests/lib-safety.Tests.ps1 | Tests security boundary |
-| tests/security-guard.Tests.ps1 | Tests robot keamanan v1.15.0 (secret-guard + audit-access + threat model) |
-| tests/lib-popup-helpers.Tests.ps1 | Tests popup helpers + konvensi pilihan |
-| tests/lib-json-merge-helpers.Tests.ps1 | Tests deep-merge JSON |
-| tests/rollback.Tests.ps1 | Tests rollback |
-| tests/update-kit.Tests.ps1 | Tests update flow |
-| tests/uninstall.Tests.ps1 | Tests uninstall + manifest verify |
-| tests/setup-pola-b.Tests.ps1 | Tests setup |
-| tests/install-mapping-sync.Tests.ps1 | Tests anti-drift manifest vs disk |
-| tests/claude-md-loader.Tests.ps1 | Tests loader CLAUDE.md |
-| tests/npx-init.Tests.ps1 | Tests jalur pasang (peluncur init) |
-| tests/package-bundle.Tests.ps1 | Tests isi paket npm |
-| tests/portfolio-registry.Tests.ps1 | Tests Buku Induk portfolio N-repo |
-| tests/version-detect.Tests.ps1 | Tests deteksi versi kit dari CHANGELOG |
-| tests/consistency-check.Tests.ps1 | Tests robot pemeriksa kecocokan versi |
-| tests/template-deploy.Tests.ps1 | Tests deploy template (created/updated/skipped, no-BOM) |
-| tests/skills-divisi.Tests.ps1 | Tests 8 skill divisi WAJIB (§4.13) |
-| tests/create-lintasai.Tests.ps1 | Tests paket scaffolder create-lintasai |
+| tests/smoke-portable.mjs | Gerbang smoke Node (syntax, critical files, manifest, orphans, JSON) |
+| tests/preflight.mjs | Gerbang pra-rilis 1-perintah (`npm run preflight`) |
+| tests/*.test.mjs | Suite tes Node (perilaku lib + orkestrator + penjaga template + anti-drift). Contoh: `security-guard`/`kit-templates-guard`, `rollback`, `update-kit`, `uninstall`, `setup-pola-b-write`, `install-mapping-sync`, `package-bundle`, `version-detect`, `consistency-check`, `template-deploy`, `skills-divisi`, `create-lintasai`, `secret-precommit`, `risk-gate`, `path-leak`, `modify-workflow-rule` |
 
 ## CI
 
 | File | Berisi |
 |---|---|
-| .github/workflows/validate.yml | CI: fast-smoke + smoke-setup + pester-tests + yaml-lint + pssa |
+| .github/workflows/validate.yml | CI: fast-smoke + smoke-setup + yaml-lint + node-lint + node-test + preflight (semua Node) |
 | .github/workflows/publish-npm.yml | Terbit npm saat tag (gerbang tes WAJIB lulus dulu) |
 
 ## Project Meta
@@ -240,8 +210,8 @@
 
 **Saat masalah**:
 1. templates/SECURITY_INCIDENT_PLAYBOOK.md (incident)
-2. lib/rollback.ps1 (rollback kit version)
-3. uninstall.ps1 (kalau mau uninstall)
+2. `npx lintasai rollback` (rollback berkas project dari backup)
+3. `npx lintasai uninstall` (kalau mau uninstall)
 
 **Saat scale team**:
 1. SPLIT_REPO_MIGRATION_PROMPT_v1.md (migrate)

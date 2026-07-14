@@ -31,7 +31,7 @@ Ada **2 hal yang otomatis kamu dapat tiap kali minta sesuatu ke AI** - tanpa kam
 
 **Selebihnya cuma DITAWARKAN, bukan wajib.** Hal-hal lain (audit, rapikan kode, aturan gaya penulisan, checklist, dll) = AI cuma **menyarankan** - kamu yang pilih mau pakai atau tidak. Jadi jangan merasa "harus ikut semua aturan"; ambil yang kamu butuh, sisanya bisa bertumbuh pelan-pelan di project kamu.
 
-**Kamu akan makin paham sendiri.** Tiap jawaban AI ditulis **2 versi**: satu untuk yang sedang **belajar koding** (👨‍🎓), satu **bahasa sehari-hari** (🙂). Ini sengaja - supaya dari waktu ke waktu kamu makin ngerti, dari "sama sekali bukan programmer" pelan-pelan jadi "ngerti dasar koding". Bukan biar kamu selamanya bergantung ke AI.
+**Kamu akan makin paham sendiri.** Tiap jawaban AI ditulis **2 versi** dengan label profesi sesuai topik: satu untuk yang sedang **belajar** (👨‍🎓 mis. Junior-Backend, Junior-SEO), satu **bahasa sehari-hari** (🙂). Jawaban yang berisi juga ditutup mini-pelajaran **"📚 Belajar dari task ini"**: arti awam, kenapa penting, jebakan umum, sampai 🚀 jalan ke senior (1 langkah kecil yang bisa langsung kamu coba). Ini sengaja - supaya dari waktu ke waktu kamu naik kelas, dari "sama sekali bukan programmer" pelan-pelan jadi junior lalu senior di bidang itu. Bukan biar kamu selamanya bergantung ke AI.
 
 ---
 
