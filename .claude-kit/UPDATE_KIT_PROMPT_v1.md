@@ -15,12 +15,11 @@ Anggap aja seperti **update aplikasi WhatsApp di HP**: kamu tinggal tekan "Updat
 
 ## Prasyarat (cek sekali sebelum update pertama)
 
-Update menarik versi terbaru dari **repo standar tim di GitHub** (`github.com/ojokesusu/lintasAI`). Karena repo tim biasanya **privat**, siapkan ini sekali saja supaya update lancar:
+**Tidak ada prasyarat apa pun** (sejak v2.8.0). Update mengambil versi terbaru dari **paket npm publik** `lintasai` — **tak butuh akun GitHub, tak butuh akses repo, tak butuh git terpasang**. Kamu cukup punya Node (yang sudah pasti ada kalau kit ini terpasang).
 
-1. **Git terpasang** di komputermu. Cek: buka terminal, ketik `git --version`. Belum ada? Pasang dari https://git-scm.com/.
-2. **Akun GitHub-mu sudah diundang** ke repo tim (minta owner) **dan sudah login Git sekali** (Git Credential Manager otomatis menyimpan login saat clone pertama, atau jalankan `gh auth login`).
+Satu-satunya yang perlu diingat: **tulis `@latest`** → `npx lintasai@latest update`. Tanpa itu, komputermu bisa menjalankan versi lama dari cache dan update jadi tak berefek. Kalau itu terjadi, perintahnya **berhenti sendiri** dan memberitahu perintah yang benar — tak ada risiko salah pasang.
 
-Kalau update gagal dengan pesan **"Gagal mengambil daftar versi dari repo standar tim"**, artinya salah satu di atas belum siap — **bukan** kit-nya rusak. AI akan menampilkan langkah perbaikannya, dan kit lama kamu **tidak diubah** (aman). (Belum punya akses repo sama sekali? Pakai jalur npm — detail + peringatan cadangannya di **Step 0** di bawah.)
+> Prasyarat lama (git + diundang ke repo privat) **sudah DICABUT**. Itu hanya berlaku untuk `--from-repo`, jalur khusus owner/tim yang menguji tag pra-rilis.
 
 ---
 
@@ -29,9 +28,9 @@ Kalau update gagal dengan pesan **"Gagal mengambil daftar versi dari repo standa
 Dengan paste prompt ini, kamu (staff) **memberi izin AI untuk**:
 
 1. Baca `AGENTS.md` + `./.claude-kit/CHANGELOG.md` (cek versi kit yang lagi terpasang).
-2. Tarik info versi terbaru dari GitHub remote (`github.com/ojokesusu/lintasAI`).
-3. Jalankan update kit lewat jalur Node (`npx lintasai update`; eksternal/ragu → `npm create lintasai@latest`) kalau memang ada versi baru.
-4. Backup kit lama otomatis (`.bak` files) sebelum re-clone.
+2. Tanya versi terbaru ke npm (paket publik `lintasai`) — cuma baca, tak butuh akun apa pun.
+3. Jalankan `npx lintasai@latest update` kalau memang ada versi baru.
+4. Cadangkan kit lama otomatis ke folder `.claude-kit.backup-<cap-waktu>` sebelum menukar.
 5. Cleanup backup lama (> 30 hari atau lebih dari 3 versi terakhir).
 
 AI **tidak akan** sentuh file project kamu (kode app, `docs/`, `AGENTS.md` kamu) - itu dilindungi manifest sha256 (sama persis logic-nya kayak `uninstall.mjs`).
@@ -42,19 +41,22 @@ AI **tidak akan** sentuh file project kamu (kode app, `docs/`, `AGENTS.md` kamu)
 
 Ikuti urutan ini step-by-step. Jangan skip step kecuali user bilang skip eksplisit.
 
-### Step 0 - Tentukan JALUR update (internal vs eksternal) — PENTING, baca dulu
+### Step 0 - SATU perintah untuk semua orang (sejak v2.8.0) — baca dulu
 
-Ada 2 jenis pengguna lintasAI, dan jalur update-nya **BEDA**:
+```
+npx lintasai@latest update
+```
 
-- **Internal** (akun GitHub-nya **diundang** ke repo standar tim) → pakai **`lintasai update`** (Step 1-9 di bawah). Update halus + cadangan otomatis + banner [SECURITY].
-- **Eksternal** (TIDAK diundang ke repo) → pakai **`npm create lintasai`** (pasang-ulang dari npm, di folder project). `lintasai update` **tidak akan bisa** untuk mereka — ia menarik versi baru dari repo **privat** GitHub, jadi ditolak. Pasang-ulang npm **AMAN untuk data project**: AGENTS.md, folder `docs/`, kode app + identitas staff (`.staff-profile.md`) **tetap utuh**; yang diganti cuma isi `.claude-kit/` ke versi terbaru. ⚠️ Catatan: jalur npm **tidak** otomatis mencadangkan folder kit lama — buat salinan `.claude-kit/` manual dulu kalau mau bisa kembali cepat.
+Itu saja. Jalan untuk **SEMUA** pengguna: bahannya diambil dari paket npm publik yang sudah diunduh + diverifikasi npm sendiri — **tak butuh akun GitHub, akses repo, maupun git terpasang**. AI TIDAK perlu lagi menanyakan/menebak "kamu internal atau eksternal".
 
-**Cara AI menentukan jalur (tanpa menyusahkan staff):**
-1. Kalau owner/staff sudah memberi tahu jenisnya, pakai itu.
-2. Kalau **tidak tahu / ragu**, **default ke `npm create lintasai`** — jalur ini **pasti jalan untuk siapa pun** (tak butuh akun GitHub).
-3. Kalau sudah terlanjur mencoba `lintasai update` lalu gagal dengan pesan **"Gagal mengambil daftar versi dari repo standar tim"** (atau "network/auth issue" di kit versi lama) → itu tanda **tidak ada akses repo** → **beralih ke `npm create lintasai`**, lalu jelaskan ke staff pakai analogi: *"update lewat 'pintu internal' tak bisa karena kamu belum punya kartu akses repo; aku pakai 'toko npm' yang terbuka — hasilnya sama (dapat versi terbaru), datamu aman."*
+**Yang WAJIB AI perhatikan:**
+1. **Tulis `@latest`.** Tanpa itu `npx` bisa menjalankan versi LAMA (paket `lintasai` yang kebetulan ada di `node_modules` project menang; cache npx juga membekukan versi di npm < 11.2.0). Kalau itu terjadi, updater **berhenti sendiri** + menyebutkan perintah yang benar — ia tak akan diam-diam memasang versi lama.
+2. **Kit lama tak perlu pasang ulang.** Perintah di atas menjalankan updater versi TERBARU dari npx, bukan updater lama di `.claude-kit/`. Client di v2.6.0 pun langsung bisa.
+3. **Data project aman**: `AGENTS.md`, folder `docs/`, kode app, `.staff-profile.md` **tetap utuh** — yang diganti hanya isi `.claude-kit/`. Versi lama **otomatis dicadangkan** ke `.claude-kit.backup-<cap-waktu>`.
+4. **`--from-repo`** = jalur git lama (clone repo tim + verifikasi tanda tangan GPG). HANYA untuk owner/tim yang diundang ke repo privat, mis. menguji tag pra-rilis. Staff biasa tak pernah memerlukannya.
+5. **`npm create lintasai@latest` kini untuk PASANG BARU saja**, bukan update. Aturan lama "eksternal harus pasang ulang" **DICABUT** di v2.8.0.
 
-> Untuk staff: `npm create lintasai` dijalankan **di folder project** (yang sudah ada `.claude-kit/`). Kamu cukup bilang "update" — AI yang menjalankan + memilih jalur yang benar.
+> Untuk staff: kamu cukup bilang **"update"** — AI yang menjalankan. Tak ada lagi pilihan jalur yang perlu kamu pahami.
 
 ### Step 1 - Baca versi kit yang terpasang
 
@@ -65,10 +67,10 @@ Catat: `CURRENT_VERSION = v1.x.y`.
 
 ### Step 2 - Cek versi terbaru
 
-Pilih sesuai jalur Step 0 (dua-duanya tanpa PowerShell — v2.0.0 kit 100% Node):
+Dua cara, dua-duanya cuma-baca dan jalan untuk siapa pun:
 
-- **Internal** (punya akses repo): `npx lintasai update --check-only` — membandingkan versi terpasang vs terbaru memakai urutan semver yang benar (logika resmi `update-kit.mjs`), tanpa mengubah apa pun.
-- **Eksternal / tanpa akses repo / ragu**: `npm view lintasai version` — menampilkan versi terbaru di npm, pasti jalan untuk siapa pun. (Alternatif kalau npm bermasalah: WebFetch `CHANGELOG.md` branch `main` → entri versi paling atas.)
+- **Disarankan**: `npx lintasai@latest update --check-only` — membandingkan versi terpasang vs terbaru di npm memakai urutan semver yang benar (logika resmi `update-kit.mjs`), tanpa mengubah apa pun.
+- **Paling ringan**: `npx lintasai@latest doctor` (menyebut "KEDALUWARSA" + perintah update kalau tertinggal), atau `npm view lintasai version` untuk sekadar melihat nomor terbaru.
 
 Catat: `LATEST_VERSION = v1.x.z`. (Sumber kebenaran sebenarnya = `update-kit.mjs` sendiri saat dijalankan; deteksi manual ini hanya untuk **komunikasi ke staff**, bukan keputusan akhir.)
 
@@ -83,11 +85,11 @@ Kalau beda → lanjut step 4.
 
 ### Step 4 - Parse CHANGELOG entries di antara versi
 
-Baca `./.claude-kit/CHANGELOG.md` (lokal = versi lama) **dan** CHANGELOG terbaru dari GitHub remote. Ambil semua entry antara `CURRENT_VERSION` (exclusive) sampai `LATEST_VERSION` (inclusive).
+Baca `./.claude-kit/CHANGELOG.md` (lokal = versi lama) **dan** CHANGELOG versi terbaru dari paket npm. Ambil semua entry antara `CURRENT_VERSION` (exclusive) sampai `LATEST_VERSION` (inclusive).
 
 Contoh: current `v1.0.0`, latest `v1.2.0` → parse entry `v1.0.1`, `v1.0.2`, `v1.1.0`, `v1.2.0`.
 
-> Catatan (v2.0.0): entri era pra-npm (< v1.33.0) sudah dipindah ke `CHANGELOG_ARCHIVE.md` (hanya di repo GitHub). Kalau `CURRENT_VERSION` client lebih tua dari entri tertua di CHANGELOG utama → andalkan **entri berlabel** ([SECURITY]/[BREAKING]/[SCAN-REQUIRED]) yang sengaja dipertahankan di CHANGELOG utama; riwayat non-kritis lengkapnya ada di arsip repo.
+> Catatan: entri lama tak-berlabel sudah dihapus dari CHANGELOG (riwayat lengkap di git repo kit). Kalau `CURRENT_VERSION` client lebih tua dari entri tertua di CHANGELOG utama → andalkan **entri berlabel** ([SECURITY]/[BREAKING]/[SCAN-REQUIRED]) yang sengaja dipertahankan di CHANGELOG utama.
 
 ### Step 5 - Auto-classify per entry ke Tier 1-4
 
@@ -96,7 +98,7 @@ Logic klasifikasi:
 | Tier | Trigger label/content | Analogi tools digital |
 |------|----------------------|-----------------------|
 | **Tier 1 (Silent)** | Patch version bump tanpa label apapun. Isi: typo, fix grammar, link mati. | WhatsApp `2.23.10 → 2.23.11` auto-update di background - kamu gak ngerasa apa-apa, tau-tau udah update. |
-| **Tier 2 (AI auto-sync)** | Minor version bump tanpa label. Isi: aturan baru, template baru, section CLAUDE_universal baru. | iPhone `iOS 17.3 → 17.4` minor - fitur baru aktif setelah restart, tapi cara pakai HP-mu gak berubah. |
+| **Tier 2 (AI auto-sync)** | Minor version bump tanpa label. Isi: aturan baru, template baru, berkas rak (`rules/`) baru. | iPhone `iOS 17.3 → 17.4` minor - fitur baru aktif setelah restart, tapi cara pakai HP-mu gak berubah. |
 | **Tier 3 ([BREAKING])** | Label `[BREAKING]` di CHANGELOG. Isi: struktur file pindah, format manifest ganti, naming convention diubah. | iPhone `iOS 16 → iOS 17` major - backup wajib, ada migration screen pas booting pertama. |
 | **Tier 4 ([SCAN-REQUIRED])** | Label `[SCAN-REQUIRED]`. Isi: bulk-bootstrap logic ganti, scan rule baru yang harus apply ke project lama. | Tokopedia Seller ganti algoritma kategori - produk lama harus di-remap ulang ke kategori baru, bukan cuma update app. |
 
@@ -116,7 +118,7 @@ Yang berubah:
     tapi cara kamu pakai kit gak berubah sama sekali.
 
   [Tier 2: 1 aturan baru]
-    Section 4.5 di CLAUDE_universal_v1.md ("Audit Post-Setup Pattern").
+    Berkas aturan baru `rules/4.5-update-strategy.md` ("Update Strategy Pattern").
     Kayak iPhone dapat fitur baru di iOS minor update - AI otomatis
     mulai pakai aturan ini abis update. Kamu gak perlu hafal.
 
@@ -161,7 +163,7 @@ Tanya staff — tampilkan sebagai **kotak pilihan klik** (`AskUserQuestion`) kal
 >   [cancel] Batalkan proses update
 > (Pilih dengan KLIK [1] / [2] / [cancel] — TIDAK ada default otomatis untuk keputusan update; diam = tunggu, bukan 'Ya'.)"
 
-> ⚠️ PENTING (v1.13.1): update = mengganti file kit (re-clone). Walau ada backup + rollback, ini perubahan nyata → **WAJIB konfirmasi eksplisit** (sesuai §4.5 "jangan auto-execute update tanpa confirm" + §8.2 Aturan 5). Kalau staff **belum** memilih [1] / [2] / [cancel] → **JANGAN auto-jalan**; tunggu pilihannya (boleh ulangi popup sekali). **Diam ≠ setuju.**
+> ⚠️ PENTING: update = mengganti isi `.claude-kit/`. Walau ada backup + rollback, ini perubahan nyata → **WAJIB konfirmasi eksplisit** (sesuai §4.5 "jangan auto-execute update tanpa confirm" + §8.2 Aturan 5). Kalau staff **belum** memilih [1] / [2] / [cancel] → **JANGAN auto-jalan**; tunggu pilihannya (boleh ulangi popup sekali). **Diam ≠ setuju.**
 
 Pengecualian satu-satunya: kalau project memang **eksplisit** mengaktifkan Mode Auto-Confirm di `AGENTS.md` (§15, default MATI), baru boleh anggap silence = [1]. Kalau "[2]" / "[cancel]" → batalkan. Kalau "[1]" (atau auto-confirm aktif) → lanjut step 8.
 
@@ -169,17 +171,17 @@ Kalau "[2]" atau "[cancel]" → "Oke, update di-cancel. Kit masih di `v1.x.y`. P
 
 ### Step 8 - Execute update
 
-Jalankan (jalur Node — jalan di semua mesin ber-Node):
+Jalankan (satu perintah, jalan di semua mesin ber-Node — tak butuh git/akun GitHub):
 ```
-npx lintasai update
+npx lintasai@latest update
 ```
-> **Eksternal / tak punya akses repo / ragu** → `npm create lintasai@latest`.
+> **`@latest` wajib ditulis.** Tanpa itu `npx` bisa memakai versi lama dari cache/`node_modules` → updater menolak jalan + menyebut perintah yang benar (tak akan diam-diam memasang versi lama).
 
 Script ini yang akan:
-1. Atomic re-clone dari GitHub tag `LATEST_VERSION`.
-2. Backup folder lama ke `.claude-kit.backup-<tanggal>`.
+1. Menyiapkan kit versi terbaru (dari paket npm yang sudah diunduh + diverifikasi npm) di folder sebelah, **memeriksa kelengkapannya**, lalu menukar. Gagal sebelum tukar → kit lama **tak tersentuh**.
+2. Cadangkan folder lama ke `.claude-kit.backup-<cap-waktu>`.
 3. Cek manifest sha256 → file yang user modify (selain template) di-preserve.
-4. Cleanup `.bak` files lama — **hanya kalau** dijalankan dengan `--cleanup-backups` (default: tidak menghapus apa pun).
+4. Cleanup cadangan lama — **hanya kalau** dijalankan dengan `--cleanup-backups` (default: tidak menghapus apa pun).
 5. Versi kit dibaca **otomatis** dari baris atas `./.claude-kit/CHANGELOG.md` — **tidak perlu** edit `AGENTS.md` manual (template baru sengaja tak menyimpan nomor versi supaya tak basi). Script tidak menyentuh `AGENTS.md` (itu file project-mu).
 
 Kalau script fail di tengah jalan → auto-rollback (kit balik ke `CURRENT_VERSION`). Lapor error ke staff.

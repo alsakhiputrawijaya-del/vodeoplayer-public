@@ -19,7 +19,9 @@ Kalau kamu programmer senior dan butuh detail teknis sha256/manifest diff, langs
 
 ## 2. TL;DR (baca ini dulu kalau buru-buru)
 
-Kit `lintasAI` di-update dengan **1 perintah** - entah lewat chat AI ("lintasAI v2.0.0 rilis, update") atau jalanin `npx lintasai update` di terminal. Sistem otomatis re-clone versi terbaru, backup file kamu yang ter-modifikasi, lalu AI **auto-pakai aturan baru** di sesi berikutnya. Mirip kayak **WhatsApp auto-update di Play Store** - kamu tinggal tap, fitur baru langsung jalan, chat lama tidak hilang.
+Kit `lintasAI` di-update dengan **1 perintah** - entah lewat chat AI ("lintasAI v2.8.0 rilis, update") atau jalanin `npx lintasai@latest update` di terminal. **Tidak butuh akun GitHub, tidak butuh git** - versi terbaru diambil dari npm. Sistem otomatis menyiapkan versi baru di sebelah, memeriksanya, lalu menukar; versi lama disimpan sebagai cadangan; berkas kamu (`AGENTS.md`, `docs/`, kode app) **tidak disentuh**. Lalu AI **auto-pakai aturan baru** di sesi berikutnya. Mirip kayak **WhatsApp auto-update di Play Store** - kamu tinggal tap, fitur baru langsung jalan, chat lama tidak hilang.
+
+> **Jangan lupa tulis `@latest`.** Kalau kamu ketik perintahnya tanpa `@latest`, komputermu bisa menjalankan versi lama yang tersimpan di cache - update jadi tak ada efeknya. (Kalau itu terjadi, perintahnya berhenti sendiri dan memberitahumu perintah yang benar - jadi tak ada risiko salah pasang.)
 
 ---
 
@@ -64,7 +66,7 @@ Tidak semua update sama besarnya. Kit `lintasAI` punya **4 level**, dari yang pa
 
 | Tier | Label CHANGELOG | Contoh isi update | Analogi tools digital | Aksi staff |
 |------|-----------------|-------------------|----------------------|------------|
-| **1 - Silent** | (tanpa label) | Typo, perbaikan kalimat, fix link rusak | **WhatsApp 2.23.10 → 2.23.11** auto-update di background, kamu bahkan tidak sadar | Cukup 1 perintah `npx lintasai update`. Selesai. |
+| **1 - Silent** | (tanpa label) | Typo, perbaikan kalimat, fix link rusak | **WhatsApp 2.23.10 → 2.23.11** auto-update di background, kamu bahkan tidak sadar | Cukup 1 perintah `npx lintasai@latest update`. Selesai. |
 | **2 - AI auto-sync** | (tanpa label) | Aturan baru ditambahin, template baru, prompt baru | **iPhone iOS 17.3 → 17.4** minor - ada fitur baru tapi semua app lama tetap jalan normal | 1 perintah update. AI di sesi berikutnya auto-pakai aturan baru. Tidak perlu setup ulang. |
 | **3 - [BREAKING]** | `[BREAKING]` | Struktur file/folder berubah, format CLAUDE.md ganti, nama file di-rename | **iPhone iOS 16 → iOS 17** major - sebelum upgrade muncul layar "backup dulu ya", beberapa setting harus dicek ulang | Baca **"Migration Steps"** inline di CHANGELOG.md untuk versi itu. Biasanya 2-5 langkah. AI bisa bantu jalanin step-by-step. |
 | **4 - [SCAN-REQUIRED]** | `[SCAN-REQUIRED]` | Logic bulk-bootstrap berubah, rule scan dokumen lama ganti | **Tokopedia Seller ganti algoritma kategori** - produk lama harus di-remap ulang biar tetap muncul di pencarian | Paste ulang isi `JALANKAN_KIT.md` ke chat AI baru. AI scan ulang proyek pakai rule baru, lalu apply. |
@@ -100,11 +102,11 @@ Buka Claude Code, chat:
 > "lintasAI v1.2.0 rilis, update dong"
 
 AI akan:
-1. Fetch `CHANGELOG.md` versi baru dari GitHub `ojokesusu/lintasAI`.
+1. Ambil versi terbaru + `CHANGELOG.md`-nya dari npm (paket publik `lintasai`) - tak butuh akun GitHub.
 2. Parse label tier (Tier 1/2/3/4).
 3. Compose ringkasan Bahasa Indonesia: "ada 3 perubahan, 1 typo + 1 fitur baru + 1 BREAKING (rename folder X → Y)".
 4. Tanya konfirmasi: "lanjut update?" - kamu jawab "ya".
-5. Jalanin `npx lintasai update` otomatis.
+5. Jalanin `npx lintasai@latest update` otomatis.
 6. Kalau Tier 3/4, AI bacain "Migration Steps" satu per satu sambil tunggu kamu OK.
 
 **Analogi:** kayak **Tokopedia Seller** yang push notif "ada update aturan baru ongkir, mau lihat?" - kamu tap, dia jelasin pakai bahasa biasa, kamu tinggal setuju.
@@ -114,7 +116,7 @@ AI akan:
 Buka terminal di folder proyek, jalanin:
 
 ```bash
-npx lintasai update
+npx lintasai@latest update
 ```
 
 Perintah otomatis classify tier dan kasih output terstruktur di terminal:
@@ -125,7 +127,7 @@ Perintah otomatis classify tier dan kasih output terstruktur di terminal:
 [ACTION REQUIRED] Tier-3 migration needed:
   - Step 1: Rename folder docs/old/ -> docs/legacy/
   - Step 2: Update reference di AGENTS.md line 42
-[BACKUP] 2 files user-modified -> .claude-kit/CLAUDE_universal_v1.md.bak-20260604-1530
+[BACKUP] 2 files user-modified -> AGENTS.md.bak-20260604-1530
 ```
 
 Mode ini dipakai kalau:
@@ -140,16 +142,16 @@ Mode ini dipakai kalau:
 ## 5. Skenario sehari-hari - kapan tiap tier muncul
 
 **Skenario A: Tier 1 - Hari Senin pagi**
-> Owner kit fix typo "ANALAGI" → "ANALOGI" di `ANALOGI_LIBRARY.md`. Kamu chat "update", AI bilang "cuma typo, aman 100%, update otomatis". Kamu lanjut kerja. Tidak ada yang berubah di workflow kamu.
+> Owner kit fix typo "ANALAGI" → "ANALOGI" di `ANALOGY_LIBRARY.md`. Kamu chat "update", AI bilang "cuma typo, aman 100%, update otomatis". Kamu lanjut kerja. Tidak ada yang berubah di workflow kamu.
 
 **Skenario B: Tier 2 - Hari Rabu sore**
-> Owner kit tambah 5 prompt baru di `PROMPT_LIBRARY.md` untuk handle task "code review". Kamu update. Sesi AI besok pagi, kamu tanya "review PR ini", AI auto-pakai prompt baru tanpa kamu sadar. Mirip **Excel kasih function baru `XLOOKUP`** - formula lama (`VLOOKUP`) tetap jalan, function baru tinggal dipakai kalau mau.
+> Owner kit tambah pola kerja baru di aturan kit untuk handle task "code review". Kamu update. Sesi AI besok pagi, kamu tanya "review PR ini", AI auto-pakai pola baru tanpa kamu sadar. Mirip **Excel kasih function baru `XLOOKUP`** - formula lama (`VLOOKUP`) tetap jalan, function baru tinggal dipakai kalau mau.
 
 **Skenario C: Tier 3 [BREAKING] - Hari Jumat siang**
-> Owner kit rename `CLAUDE_universal_v1.md` → `LINTAS_AI_RULES.md`. CHANGELOG kasih Migration Steps:
+> Contoh nyata (sejarah): owner kit ganti kernel lama `CLAUDE_universal_v1.md` (kini diarsip) → `AGENTS.md` akar. CHANGELOG kasih Migration Steps:
 > 1. Tutup semua sesi Claude Code.
-> 2. Jalanin `npx lintasai update`.
-> 3. AI auto-update referensi di `AGENTS.md` kamu.
+> 2. Jalanin `npx lintasai@latest update`.
+> 3. AI auto-update referensi di `CLAUDE.md` (pemuat) kamu.
 > 4. Buka sesi baru, verifikasi AI baca file baru.
 >
 > Analogi: kayak **BCA mobile minta re-login pakai biometric** setelah update major - sedikit ribet, tapi sekali doang.
@@ -176,7 +178,7 @@ Mode ini dipakai kalau:
 2. `cd` ke folder proyek.
 3. Jalanin:
    ```bash
-   npx lintasai update
+   npx lintasai@latest update
    ```
 4. Baca output, ikuti `[ACTION REQUIRED]` kalau ada.
 5. Kalau Tier 3/4, buka `./.claude-kit/CHANGELOG.md` baca section "Migration Steps" versi itu.
@@ -187,7 +189,7 @@ Mode ini dipakai kalau:
 
 lintasAI **ikut disimpan di tiap repo** (lewat git). Jadi update-nya lewat git, BUKAN satu-satu di komputer tiap staff:
 
-1. **Owner** update kit di **tiap repo**: di folder repo, jalankan `npx lintasai update` → lalu `git commit` → `git push`. (Ulangi untuk backend, frontend, shared — 3x, tapi cuma owner.)
+1. **Owner** update kit di **tiap repo**: di folder repo, jalankan `npx lintasai@latest update` → lalu `git commit` → `git push`. (Ulangi untuk backend, frontend, shared — 3x, tapi cuma owner.)
 2. **Staff** cukup **`git pull`** di repo masing-masing → otomatis dapat versi kit terbaru yang **SAMA** dengan tim.
 
 > 💡 Jadi staff **TIDAK** update sendiri-sendiri. Owner update + push (1x per repo); staff tinggal **tarik** (`git pull`). Hasilnya: semua orang di satu repo pakai versi kit **sama persis** — tidak ada beda-beda. 🏢 Mirip **Google Drive bersama**: owner perbarui file aturan, semua anggota otomatis lihat versi terbaru yang sama.
@@ -196,7 +198,7 @@ lintasAI **ikut disimpan di tiap repo** (lewat git). Jadi update-nya lewat git, 
 
 ## 7. Apa yang ter-backup otomatis
 
-Update kit pakai **atomic re-clone** (kit lama dihapus, kit baru di-clone fresh). Tapi file yang **kamu modifikasi sendiri** tidak hilang - dilindungi pakai logic sha256 di `update-kit.mjs`:
+Update kit pakai **penyiapan-lalu-tukar** (kit baru dari paket npm disiapkan di folder sebelah, diperiksa lengkap, baru ditukar — BUKAN clone git; sejak v2.8.0). Tapi file yang **kamu modifikasi sendiri** tidak hilang - dilindungi pakai logic sha256 di `update-kit.mjs`:
 
 - Sebelum re-clone, script hitung sha256 tiap file kit.
 - Bandingkan dengan manifest versi awal install.
@@ -205,8 +207,8 @@ Update kit pakai **atomic re-clone** (kit lama dihapus, kit baru di-clone fresh)
 
 **Contoh:**
 ```
-./.claude-kit/CLAUDE_universal_v1.md          ← tidak pernah kamu edit, di-overwrite
-./.claude-kit/CLAUDE_universal_v1.md.bak-20260604-1530  ← (tidak dibuat, file aman)
+./AGENTS.md                                   ← tidak pernah kamu edit, di-overwrite
+./AGENTS.md.bak-20260604-1530                 ← (tidak dibuat, file aman)
 
 ./.claude-kit/templates/INDEX.md              ← kamu edit kemarin
 ./.claude-kit/templates/INDEX.md.bak-20260604-1530      ← BACKUP versi kamu disini
@@ -221,13 +223,13 @@ Setelah update, kamu bisa **diff manual** antara file baru vs `.bak` kamu, lalu 
 
 ## 8. Pembersihan backup (OPT-IN — TIDAK otomatis)
 
-> **Penting:** pembersihan backup **TIDAK berjalan otomatis**. Lewat cara update biasa (`npx lintasai update` atau minta AI), backup lama **dibiarkan menumpuk** — ini SENGAJA & AMAN: versi lamamu tidak ikut terhapus tanpa kamu minta.
+> **Penting:** pembersihan backup **TIDAK berjalan otomatis**. Lewat cara update biasa (`npx lintasai@latest update` atau minta AI), backup lama **dibiarkan menumpuk** — ini SENGAJA & AMAN: versi lamamu tidak ikut terhapus tanpa kamu minta.
 
 Kalau folder mulai penuh backup, ada **2 cara** membersihkan:
 
 - **Cara A — minta pembersihan (opt-in):** jalankan
   ```bash
-  npx lintasai update --cleanup-backups
+  npx lintasai@latest update --cleanup-backups
   ```
   Ini menyimpan **3 versi terbaru** + menghapus backup **lebih tua dari 30 hari**, untuk berkas `*.backup-<tanggal>` dan folder cadangan `.claude-kit.backup-<tanggal>`.
 - **Cara B — hapus manual:** hapus sendiri berkas `*.backup-*` / folder `.claude-kit.backup-*` lama saat kamu yakin sudah tidak perlu.
@@ -292,17 +294,17 @@ Aman, kit lama tetap jalan. Tapi AI mungkin tidak tahu fitur/aturan baru. Best p
 **Q2: Update bisa bikin file `docs/` proyek saya hilang?**
 **TIDAK.** Update cuma sentuh folder `./.claude-kit/`. File proyek (mis. `docs/`, `prisma/`, `app/`) tidak ke-touch sama sekali. Kit dan proyek terpisah, kayak **app WhatsApp vs chat history kamu** - update app tidak hapus chat.
 
-**Q3: Saya pernah edit `CLAUDE_universal_v1.md`, edit-an saya hilang setelah update?**
+**Q3: Saya pernah edit `AGENTS.md`, edit-an saya hilang setelah update?**
 Tidak. File user-modified auto-backup ke `.bak-YYYYMMDD-HHmm`. Bisa kamu cek + merge manual. AI bisa bantu.
 
 **Q4: Versi kit terbaru di mana saya lihat?**
-Buka `github.com/ojokesusu/lintasAI` → file `CHANGELOG.md`. Atau chat AI: "versi terbaru lintasAI berapa?".
+Chat AI: "versi terbaru lintasAI berapa?" (staff tak perlu akun GitHub — sumbernya npm). Owner/IT bisa cek langsung: `npm view lintasai version`.
 
 **Q5: Sesi AI besok pagi otomatis tahu aturan baru, atau saya perlu setting ulang?**
-Auto. Tiap kali AI start sesi, dia baca `./.claude-kit/CLAUDE_universal_v1.md` fresh. Jadi setelah update, sesi berikutnya = pakai aturan baru tanpa setting ulang. Analogi: **Notion update template** → besok kamu buka Notion, template baru langsung ada.
+Auto. Tiap kali AI start sesi, dia baca `AGENTS.md` di akar project fresh. Jadi setelah update, sesi berikutnya = pakai aturan baru tanpa setting ulang. Analogi: **Notion update template** → besok kamu buka Notion, template baru langsung ada.
 
 **Q6: Saya CI/CD, update di pipeline gimana?**
-Pakai Mode 2 (Terminal/CLI). Tambahin step `npx lintasai update` di pipeline (versi Node non-interaktif secara default). Exit code non-zero kalau ada Tier 3/4 yang butuh manual review.
+Pakai Mode 2 (Terminal/CLI). Tambahin step `npx lintasai@latest update` di pipeline (versi Node non-interaktif secara default). Exit code non-zero kalau ada Tier 3/4 yang butuh manual review.
 
 **Q7: Kalau saya cuma 1 orang (solo project), perlu update juga?**
 Perlu. Owner kit terus improve aturan, prompt, dan analogi. Update = AI kamu makin pintar. Solo project lebih gampang lagi karena tidak perlu koordinasi tim.
@@ -311,10 +313,10 @@ Perlu. Owner kit terus improve aturan, prompt, dan analogi. Update = AI kamu mak
 
 ## 11. Cross-reference
 
-- **Istilah teknis** (mis. "sha256", "manifest", "atomic re-clone") → buka `./.claude-kit/templates/ANALOGI_LIBRARY.md` untuk analogi sehari-hari.
+- **Istilah teknis** (mis. "sha256", "manifest", "atomic re-clone") → buka `./.claude-kit/templates/ANALOGY_LIBRARY.md` untuk analogi sehari-hari.
 - **Detail per versi** (apa berubah di v1.2.0 vs v1.3.0) → buka `./.claude-kit/CHANGELOG.md`.
-- **Audit setelah update besar** → ikuti pattern di `./.claude-kit/CLAUDE_universal_v1.md` section 4.4 "Audit Post-Setup".
-- **Aturan umum kerja AI-first** → `./.claude-kit/CLAUDE_universal_v1.md` (wajib baca tiap sesi).
+- **Audit setelah update besar** → ikuti pattern di `./.claude-kit/rules/4.4-audit-post-setup.md` (Audit Post-Setup).
+- **Aturan umum kerja AI-first** → `AGENTS.md` akar project (kernel, auto-dimuat tiap sesi; detail on-demand di `./.claude-kit/rules/`).
 - **Kalau bingung, chat AI**: "saya mau update lintasAI tapi tidak paham langkahnya" - AI guide step-by-step.
 
 ---

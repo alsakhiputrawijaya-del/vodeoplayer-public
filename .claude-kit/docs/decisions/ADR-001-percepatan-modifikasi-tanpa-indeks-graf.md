@@ -134,3 +134,4 @@ konsekuensi 3 hal yang **membenarkan** ketiadaannya:
 | Tanggal    | Status   | Oleh         | Catatan      |
 |------------|----------|--------------|--------------|
 | 2026-06-19 | Accepted | Tim lintasAI | Draft + keputusan awal (delegasi owner) |
+| 2026-07-15 | Accepted | owner | Cross-ref ADR-013: robot `plan-scout` selaras ADR ini — STATELESS (jalan segar tiap panggil, tanpa indeks/graf tersimpan, tanpa nomor baris); hint import-count = penghitungan sesaat, bukan graf ketergantungan. Alasan privasi (kode tak keluar mesin) memperkuat pilihan agentic-search. |

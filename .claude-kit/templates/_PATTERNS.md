@@ -93,7 +93,7 @@ Contoh pemanggilan singkat (code block kalau ada). Sebut "Dipakai di `<file>:<li
 Contoh: "Berkas ini = satpam yang cek tiket sebelum kamu masuk. Kayak petugas pintu mall yang periksa karcis parkir dulu sebelum boleh keluar."
 ```
 
-> **WAJIB 2 versi (v1.43.0):** section di atas berisi 👨‍💻 bagian teknis (Tujuan/Cara Pakai/Input-Output/Dependensi/Catatan) UNTUK programmer **DAN** blok 🙂 **Untuk non-programmer** UNTUK owner/staff awam. Keduanya ada di 1 berkas. Selaras `CLAUDE_universal_v1.md` §7.8 (dokumen 2-POV) + §4.1. Berkas ini = **sumber kebenaran format** yang dirujuk `JALANKAN_KIT.md` Bagian 6 step 22.
+> **WAJIB 2 versi (v1.43.0):** section di atas berisi 👨‍💻 bagian teknis (Tujuan/Cara Pakai/Input-Output/Dependensi/Catatan) UNTUK programmer **DAN** blok 🙂 **Untuk non-programmer** UNTUK owner/staff awam. Keduanya ada di 1 berkas. Selaras `rules/module/7-documentation.md` (dokumen 2-POV) + `rules/4.1-division-review.md`. Berkas ini = **sumber kebenaran format** yang dirujuk `JALANKAN_KIT.md` Bagian 6 step 22.
 
 **Aturan format:**
 - Max ~80 baris per file (kalau lebih, pecah ke `<basename>-<subtopic>.md`).
@@ -106,9 +106,9 @@ Contoh konkret 1 file `.md` siap-pakai ada di `_EXAMPLE.md`.
 
 ---
 
-## 4. Aturan baca dokumen (CLAUDE_universal_v1.md §7.3 READ-MINIMAL)
+## 4. Aturan baca dokumen (`rules/7.3a-read-code-before-edit.md` READ-MINIMAL)
 
-**4.1 READ-MINIMAL** (§7.3)
+**4.1 READ-MINIMAL**
 - Saat AI menerima task, baca SATU peta DULU (`project.lintas.jsonc` bila ada, atau `docs/architecture.md`), lalu cherry-pick `.md` relevan task pakai `Grep`.
 - LARANGAN: jangan baca semua `docs/*.md` di awal sesi (boros token kalau folder besar).
 - Dokumen `.md` pendamping dibuat/diperbarui **on-demand saat memang perlu**, bukan otomatis tiap edit.

@@ -20,7 +20,551 @@ Versi = `BESAR.MENENGAH.KECIL`. Saat owner/AI menaikkan versi:
 - **Fitur/aturan baru** backward-compatible (Tier 2) → naikkan **MENENGAH**: `1.7.x → 1.8.0`
 - **Breaking** (`[BREAKING]`, Tier 3) → naikkan **BESAR**: `1.x → 2.0` — **WAJIB**, jangan sembunyikan breaking di angka kecil/menengah.
 
-> **Kenapa:** staff non-programmer sering cuma melihat NOMOR. Kalau breaking nyelip di angka kecil, mereka kira aman → kaget. **Angka BESAR yang JARANG naik = sehat** (jarang merusak user); yang dihindari bukan angka besar, tapi sering-breaking. Aturan inti: `CLAUDE_universal_v1.md` §11.
+> **Kenapa:** staff non-programmer sering cuma melihat NOMOR. Kalau breaking nyelip di angka kecil, mereka kira aman → kaget. **Angka BESAR yang JARANG naik = sehat** (jarang merusak user); yang dihindari bukan angka besar, tapi sering-breaking. Aturan inti penomoran: semver kit (resep rilis: `docs/RESEP_PERUBAHAN.md`).
+
+---
+
+## [3.1.0] - 2026-07-23
+
+> **Ringkasan rilis:** kernel client resmi pindah ke **`AGENTS.md` akar project** (sumber tunggal
+> universal, ADR-032) — dibaca **native** oleh Codex/Kimi/Cursor + oleh Claude lewat loader
+> `CLAUDE.md` — dengan **auto-migrasi client lama** (nol kehilangan kustomisasi) · **5 skill
+> frontend baru** (a11y · design-direction · next-core · react-patterns · presentasi) menggantikan
+> 4 skill lama (webdesign/uiux/nextjs/frontend-lanjutan), registry kini **38 skill** · pemicu rak
+> `rilis/produksi` → skill deploy dihidupkan kembali · sapuan besar rujukan kernel lama
+> (`CLAUDE_universal_v1.md`, sudah diarsip) di seluruh dokumen/prompt/rules/templates yang dikirim
+> ke client — client tak lagi diarahkan ke berkas yang tidak ada.
+
+### Ditambah
+
+- **Kernel `AGENTS.md` akar (ADR-032).** Satu berkas aturan universal (5 seksi ramping: Bahasa ·
+  Anti-Halusinasi · Struktur · Loop Kerja · Anti-Merusak) di root project client, dibaca native
+  semua alat AI. `AGENTS.override.md` (milik client, dari template) menampung kustomisasi proyek —
+  tak pernah ditimpa saat update.
+- **Auto-migrasi client lama** (`engine/migrate-agents-md.mjs`): `AGENTS.md` gaya-lama (override
+  client pra-ADR-032) otomatis dipindah ke `AGENTS.override.md` SEBELUM kernel baru ditulis —
+  kustomisasi client selamat; idempoten + fail-safe.
+- **5 skill frontend baru**: `a11y` (WCAG 2.2 + 4 state UI) · `design-direction` (arah desain +
+  kualitas visual) · `next-core` (Next.js inti) · `react-patterns` (pola komponen + tes RTL) ·
+  `presentasi` — menggantikan `webdesign`/`uiux`/`nextjs`/`frontend-lanjutan` dengan isi yang
+  ditata ulang; seluruh rute pemicu & rujukan silang di-retarget.
+
+### Diubah
+
+- **Loader `CLAUDE.md` client**: kini meng-`@import` `./AGENTS.md` + `./AGENTS.override.md`.
+  Deteksi idempoten diperkuat 3-lapis — loader klien LAMA (yang masih menunjuk kernel arsip
+  `.claude-kit/`) kini pasti di-refresh saat update (dicadangkan dulu, aman).
+- **`.kimi-code/AGENTS.md` generated dipensiunkan** (ADR-032): Kimi Code & Codex membaca
+  `AGENTS.md` akar secara native; Cursor tetap lewat `.cursor/rules/lintasai.mdc` generated.
+  `lintasai doctor` menyesuaikan indikatornya; gitignore client tak lagi menambah entri usang.
+- **Pemicu rak `rilis/produksi` dikembalikan** ke `engine/rak-pemicu.mjs` — prompt natural
+  "mau online / rilis / deploy" kembali diarahkan ke `skills/deploy/SKILL.md`.
+
+### Diperbaiki
+
+- **Puluhan pointer mati** ke berkas terhapus/terarsip di seluruh pohon yang dikirim ke client:
+  `skills/nextjs`→`skills/next-core` (owasp/caching/galeri-folder/STACK_GUIDE), `skills/uiux`→
+  `skills/a11y` + `skills/webdesign`→`skills/design-direction` (seo/admin-panel/rules 4.13),
+  rujukan `templates/CONTENT_ANTISLOP_SKILL.md` (dicabut) dibersihkan dari skill seo, rujukan
+  `rules/stack/4.14-*` lama di-repoint ke skill penggantinya.
+- **`engine/kit-files.json`** grup `skills` dilengkapi 6 skill yang sempat hilang (admin-panel,
+  deploy, ekspor-laporan, email-notifikasi, galeri-folder, github-actions); `skills/registry.json`
+  + `PETA.md` diregenerasi dari disk (38 skill).
+- **Indeks ADR** (`docs/decisions/README.md`) dilengkapi ADR-030/031/032 + link ADR yang dicabut
+  dibersihkan; CLI standalone `engine/migrate-agents-md.mjs` kini jalan di Windows (deteksi isMain).
+
+---
+
+## [3.0.0] - 2026-07-22
+
+> **Ringkasan rilis (versi BESAR):** menyerap SEMUA perubahan sejak 2.9.0 — perampingan fitur
+> non-inti ([BREAKING], entri pertama di bawah, ADR-029) · rename folder `workflows/`→`rules/` +
+> `lib/`→`engine/` ([BREAKING], ADR-027 Task 13; dibetulkan otomatis saat update) · arsitektur
+> microkernel-plugin skills 31→37 skill · `kimi-sync`→`adapter-sync` + adapter Cursor/Codex ·
+> "KENAPA-singkat" tiap langkah AI (ADR-028) · pencabutan ritual 8-divisi ([BREAKING], ADR-023,
+> entri terbawah) · **microkernel ekstrem `CLAUDE_universal_v1.md`** 64rb→31rb char, −48,7%
+> token/sesi client, Codex akhirnya kebagian aturan ([BREAKING], ADR-030, entri pertama di bawah).
+> **Gerbang rilis:** 1533 tes hijau · preflight `--strict` GENTING 0 / PENTING 0 ·
+> consistency BERSIH · `npm pack` 281 berkas. **Catatan diterima-owner:** 1 tes flaky sekali-muncul
+> tak-reproduksi (dicatat jujur, tidak dipaksa "terpasang" di Buku Pelajaran) · plafon `MAKS_GRUP=3`
+> dispatcher dibiarkan (perilaku lama, bukan regresi) · `npm audit` 2 CVE transitif devDeps eslint
+> (kit nol runtime-dependency + lockfile tak dikirim → client TIDAK terpapar).
+
+### Diubah — [BREAKING] Microkernel ekstrem `CLAUDE_universal_v1.md`: −52% ukuran, fungsi 100% sama (ADR-030)
+
+- **Berkas aturan always-load 64.012 → 30.939 char (≈16.000 → ≈7.700 token)**; muatan sesi client
+  total 17.722 → 9.090 token (**hemat ≈8.632 token/sesi, −48,7%**). Keputusan owner: hanya 8 fungsi
+  favorit + penopang + kerangka pemicu yang dimuat tiap sesi; badan 14 seksi (§4.3b · §4.7 · §4.10 ·
+  §4.11 · §5 · §7 · §8 · §8.1 · §9 · §10 · §11 · §12 · §14.1 · §15 sepuluh-ide) pindah ke rumah
+  on-demand yang sudah ada (`rules/` + `skills/`, ADR-024/027) + **Tabel-Pemicu baru di §4.13**.
+  Susunan diurut prioritas (terpenting di atas), gaya telegram; §4.1 Tinjauan Divisi TIDAK diubah;
+  semua nomor seksi + frasa terkunci tes dipertahankan (simulasi dispatcher byte-identik).
+- **Adapter ikut ramping + Codex AKTIF:** Kimi 66.311 → 32.744 byte · Cursor 33.049 byte · blok
+  Codex di `AGENTS.md` akar **tertulis untuk pertama kalinya** (32.601 byte ≤ gerbang 32 KiB —
+  sebelumnya DITAHAN total, client jalur Codex dapat nol aturan). Catatan: client dengan `AGENTS.md`
+  besar masih bisa tertahan gerbang gabungan (dinilai jujur per-client saat `update`; ADR-030).
+- Titik pemulihan isi lama: commit `385028c` (riwayat git = arsip; detail + batas jujur di ADR-030).
+
+### Dihapus — [BREAKING] Perampingan fitur non-inti: kit fokus "bangun website & aplikasi yang kuat" (ADR-029)
+
+> **Kenapa (bahasa sehari-hari):** kit menumpuk fitur yang tidak langsung membantu AI membangun
+> website/aplikasi — panduan kerja-kelompok, integrasi Discord, dokumen cara-install berlapis,
+> perpustakaan prompt raksasa. Makin banyak lemari, makin berat dirawat. Owner memutuskan: buang
+> yang tidak menunjang tujuan inti, supaya kit ringan + mudah di-maintenance. **37 skill (manfaat
+> utama untuk client) TIDAK disentuh sama sekali.**
+
+- **Fitur kerja-kelompok DICABUT utuh:** perintah `team-setup` + `protect-main`, pembuat
+  `.github/staff-roster.yml`, dan 11 berkas tim ter-deploy (`TEAMWORK_GUIDE`, `CLAUDE_TEAM_GUIDE`,
+  `TEAM_FLOW_SKETCH`, `ONBOARDING`, `TEAM_ROLLOUT_GUIDE`, template `CODEOWNERS` + template PR,
+  robot `ai-review.yml`+`.cjs`, `audit-access.yml`, `DISCORD_BOT_INTEGRATION`). **Prinsip kerja
+  tim TETAP di aturan** (§11: kerja bareng >1 orang = branch sendiri → PR → review) — yang dicabut
+  alat + dokumennya. Kunci branch `main` kini langkah manual owner: GitHub **Settings → Branches →
+  Add branch protection rule**.
+- **Dokumen install & pustaka DICABUT:** `MULAI_DI_SINI.md` (install kini cukup
+  `npm create lintasai`, README) · `templates/MCP_SETUP.md` 63KB (esensi keamanan DB pindah rumah:
+  `skills/database` role tiering §9 + `SAFE_DATABASE_OPERATIONS` + `RLS_SETUP_PROMPT`) ·
+  `templates/PROMPT_LIBRARY.md` 46KB (tabel intent→pola kerja di `rules/4.2-pattern-driven.md`
+  kini KANON mandiri — staff cukup chat natural) · `templates/RULES_COMPLIANCE_TEST.md` (uji
+  kepatuhan kini on-demand lewat chat, cara di `rules/4.6-6.3-efficiency-doctrine.md`).
+- **CLI warisan DICABUT:** `migrate-project-card` (migrator kartu `.psd1` era-PowerShell; klien
+  era-v1 → migrasi via `npx lintasai@2.9.0` atau tulis `.jsonc` manual) + alias deprecated
+  `kimi-sync` (pakai `adapter-sync`). 4 rencana internal `docs/plans/` usang ikut dihapus
+  (tak pernah dikirim npm).
+- **Yang DIPERTAHANKAN (keputusan eksplisit owner):** sistem pelajaran §6.4 Buku Pelajaran +
+  §6.5 Rekam Pelajaran UTUH · **SEMUA adapter AI** (Claude Code / Kimi / Codex / Cursor — arah
+  produk multi-harness, memperluas ADR-018) · keluarga pecah-repo · 37 skill · dokumen keamanan
+  (`SECURITY_INCIDENT_PLAYBOOK`, `THREAT_MODEL`, `secret-guard.yml`, `backup-schemas.yml`).
+- **Penjaga BARU (perampingan tak melemahkan pagar):** robot `tool-reach-check` mengenali gagang
+  ke-4 `spawn` (perkakas yang dijalankan robot lain sebagai proses anak — kasus nyata
+  `migration-state.mjs` dipakai doctor) + 2 entri istilah-pensiun (`fitur-tim-dihapus` +
+  `pustaka-install-dihapus`) menolak rujukan fitur terhapus menyelinap balik. Angka fakta
+  "file tim" installer: 32/7/25 → **21/2/19** (dijaga robot consistency-check).
+
+**Migration Steps (klien 2.9.0 → 3.0.0):**
+1. `npx lintasai@latest update` seperti biasa — isi `.claude-kit/` diganti utuh (backup otomatis
+   ber-cap-waktu), struktur `lib/`→`engine/` dibetulkan otomatis.
+2. Salinan dokumen tim lama di project-mu (`docs/TEAMWORK_GUIDE.md`, `docs/PROMPT_LIBRARY.md`,
+   `docs/MCP_SETUP.md`, `.github/CODEOWNERS`, `.github/workflows/ai-review.yml`, dll) **TIDAK
+   dihapus otomatis** — daftar lengkap + boleh-hapus-manual: `UPGRADING.md` bagian "Fitur yang
+   DICABUT". Membiarkannya tidak merusak apa pun.
+3. Skrip/kebiasaan yang memanggil `team-setup` / `protect-main` / `migrate-project-card` /
+   `kimi-sync` akan dapat "Unknown command" — padanannya di `UPGRADING.md`.
+4. SIMULASI dulu kalau ragu: `npx lintasai@latest update` menampilkan rencana + backup sebelum
+   mengubah apa pun; rollback 1-baris ada di `UPGRADING.md`.
+
+### Diubah (repo-dev, tanpa dampak client) — rapikan `docs/plans/`: arsip → hapus 6 rencana usang + provenance ke ADR + refactor ringan
+
+> **Kenapa (bahasa sehari-hari):** Folder `docs/plans/` (rencana kerja internal repo-dev) menumpuk dokumen yang sudah selesai/tergantikan → repo makin sesak & sulit dirawat. Dibersihkan lewat proses 2 tahap yang aman (arsip dulu → buktikan hijau → baru hapus). **Nol dampak ke client** (folder ini memang tak pernah ikut ke paket npm) dan **bukan** penghematan token AI (aturan yang dimuat tiap sesi tak berubah) — murni kerapian + navigasi/maintenance lebih cepat.
+
+- **Dihapus 6 rencana usang** dari `docs/plans/`: klaster migrasi PowerShell→Node yang tuntas di v2.0.0 (`RENCANA_V2_HAPUS_POWERSHELL.md`, `migrasi-powershell-ke-node.md`, `migrasi-cetak-biru-implementasi.md`, `keputusan-per-elemen-node-vs-ps.md`, `migrasi-besar-node-program.md`) + `KONSEP_NAVIGASI_WORKFLOWS_v1.md` (konsep navigasi lama, tergantikan skills ADR-027). Isi terjaga di git history.
+- **Provenance dialihkan ke ADR permanen:** 10 komentar di `engine/*.mjs` + `tests/*` + `setup-pola-b.ps1` yang tadinya menunjuk berkas-berkas itu kini menunjuk ADR-003/004/007 → tak menggantung. Komentar-saja, 0 baris logika.
+- **Refactor ringan (behavior-preserving):** hapus konstanta mati `PLACEHOLDER_LITERAL` (`engine/feedback-scrub.mjs`; 0 rujukan, ditandai ESLint `no-unused-vars`) + betulkan 4 komentar basi `lib/*.mjs` → `engine/*.mjs` (sisa rename `lib`→`engine` ADR-027) di `feedback-scrub`/`capture`/`aggregate` + `lang-reminder`.
+- **Gerbang: tes 1639/0 hijau (sebelum & sesudah) + preflight `--strict` LULUS (GENTING 0 / PENTING 0) + rules-ref-check 0 path-putus baru.** 0 baris logika berubah.
+
+### Ditambahkan — "KENAPA-singkat" di tiap langkah AI (ADR-028): narasi/to-do/jawaban-akhir/popup jelaskan maksud + kenapa
+
+> **Kenapa (bahasa sehari-hari):** Saat AI kerja, layar menampilkan langkah-langkah (daftar *to-do* = daftar langkah kerja + *narasi antar-langkah* = kalimat AI di sela pemanggilan alat) yang sering penuh istilah pemrograman mentah (`runWorkflowsRefCheck`, `libDir`, "dispatcher"). Mayoritas staff client = non-programmer yang mengerjakan proyek **website + aplikasi** → tak paham konteksnya, jadi tak bisa ikut belajar naik kelas (non-programmer → junior → senior). Sekarang tiap langkah/pilihan wajib menyertakan **"mau ngapain + KENAPA singkat"** (istilah dipertahankan + arti awam + 1 alasan pendek), gaya RINGKAS supaya tetap hemat token.
+
+- **Aturan §2.1.1 dipertajam** (`CLAUDE_universal_v1.md`): **prinsip payung "KENAPA-singkat"** lintas 5 kategori PRE-SEND + Kat #1 (narasi antar-tool) / #2 (to-do) / #3 (jawaban akhir) / #5 (popup) kini wajibkan komponen "kenapa". **Pagar anti-upacara:** 1 klausa PENDEK **inline**, **DILARANG jadi blok penutup terpisah** (beda dari §4.1b Blok Belajar yang dicabut ADR-026), boleh menyusut hampir-nol untuk task sepele, dan dibedakan tegas dari "laporan proses" (§1/§4.1) & "dapur internal AI" (§2.1 poin 6).
+- **Pengingat per-giliran** (`engine/lang-reminder.mjs`) memuat mandat baru — **dipadatkan ulang tetap ~5 baris** (biaya token per-prompt nyaris tak berubah); dicetak TIAP prompt tanpa syarat → berlaku untuk **prompt natural apa pun**. Adapter Kimi ikut otomatis lewat `buildReminder()`.
+- **Default nyala semua client** (bukan opt-in) — sampai via `CLAUDE_universal_v1.md` (Claude `@import`) + hook `lang-reminder` (disalin + wire; Kimi/Cursor regenerate/salin).
+- **Audit konflik 2-sudut → NOL aturan dihapus** (nol bentrok keras; fitur malah sudah didasari §2.1 Term-First [ADR-025] + §2.1.1 Kat#2 + §14.1 popup + tie-breaker §0 yang menaruh "mudah dipahami" di atas hemat-token). Keputusan penuh + pagar desain: ADR-028 (repo-dev, dirujuk telanjang dari aturan client).
+- **Penjaga permanen (§6.4):** assertion baru di `tests/lang-reminder.test.mjs` (pengingat memuat "kenapa") + `tests/tingkat1-guard.test.mjs` (§2.1.1 memuat prinsip KENAPA-singkat) — fitur tak bisa hilang diam-diam saat disunting.
+- **Berkas:** `CLAUDE_universal_v1.md` (§2.1.1) · `engine/lang-reminder.mjs` (blok bahasa + komentar) · `tests/lang-reminder.test.mjs` + `tests/tingkat1-guard.test.mjs` (penjaga) · `docs/decisions/ADR-028-kenapa-singkat-tiap-langkah.md` (baru) · `docs/decisions/README.md` (daftar ADR) · `package.json` files[] (negasi ADR-028 = repo-dev).
+- **Gerbang: 1639 tes hijau (2 penjaga baru) + preflight LULUS (GENTING 0 / PENTING 0; RAPIKAN 3 template pra-existing tak terkait) + anggaran token aturan ~16.286/32.000 (aman, ~51%) + hook diverifikasi cetak "kenapa" + 3 jangkar bahasa utuh.**
+
+### Ditambahkan — Skill DOMAIN judi/fintech (ADR-027 Task 18): `wallet-ledger` (buku besar saldo) + `anti-fraud` (deteksi kecurangan)
+
+> **Kenapa (bahasa sehari-hari):** Setelah batch web-umum, geser ke DOMAIN inti tim. `wallet-ledger` = buku besar saldo internal (dompet user) untuk produk judi/fintech — **gap terkuat** (probe: 0 dari 6 konsep tercakup; `pembayaran` sendiri melempar rekonsiliasi keluar cakupan). Ini soal UANG: kalau saldo cuma "angka di satu kolom yang di-edit", satu bug/serangan = uang hilang atau tercipta dari udara.
+
+- **Skill baru** `skills/wallet-ledger/SKILL.md` (`rawan_keamanan: true` → 🔒, divisi keamanan). Isi kelas-industri: **double-entry append-only** (saldo = turunan buku besar, bukan kolom bebas-edit) + **atomik** (entri+saldo 1 transaksi) + **anti saldo-minus** (`CHECK`, hanya akun user) + **anti-race** (`FOR UPDATE`/update-bersyarat cek rowcount + **CTE** yang mengikat entri ke debit) + **idempoten** (`UNIQUE` idempotency-key) + **penarikan state-machine + hold + reversal** (beda dari deposit) + **uang integer** (bukan float) + **rekonsiliasi** (trial-balance Σ=0). Beda tegas dari `skills/pembayaran/SKILL.md` (uang eksternal gateway).
+- **Diverifikasi adversarial** (agen pemeriksa read-only, §8.2 Aturan 3): **0 kesalahan konsep**; 2 titik pengerasan ditutup sebelum commit — (a) contoh SQL diubah ke **CTE** supaya entri hanya tercipta bila debit berhasil (anti "entri-hantu" yang lolos trial-balance Σ=0, hanya tertangkap rekonsiliasi per-akun), (b) peringatan `CHECK(saldo>=0)` dikecualikan untuk akun house/suspense.
+- **Skill baru** `skills/anti-fraud/SKILL.md` (`rawan_keamanan: true` → 🔒, divisi keamanan; ditulis dari nol). Isi kelas-industri: evaluasi **server-side** (sinyal klien bisa dipalsukan) + **aksi bertingkat** (`allow`/`challenge`/`hold-review`/`block`, bukan biner buta) + **rules-engine bisa-dijelaskan** (bukan kotak-hitam ML — explainability untuk regulator/dispute) + **sinyal berlapis** (device-fingerprint/IP-VPN/velocity/graph-link/payment) + **reason-code + audit-trail** tiap keputusan + seimbang **anti false-positive** (ragu → challenge/review, bukan auto-block; pantau false-positive rate) + **jangan bocorkan logika deteksi** ke pelaku + **privasi & anti-bias** (data device/perilaku = data pribadi; hindari fitur proxy-diskriminasi). Melengkapi trio `wallet-ledger` + `anti-fraud` + `audit-trail` (fondasi keamanan-finansial teregulasi).
+- **Registry 35 → 37 skill.** POLA ATOMIK 5-titik. Aditif murni (tak sentuh kernel).
+- **Berkas:** `skills/wallet-ledger/SKILL.md` + `skills/anti-fraud/SKILL.md` (baru) · `skills/registry.json` · `PETA.md` · `engine/kit-files.json`.
+- **Gerbang: 1638 tes hijau + preflight LULUS (Format skill: 37 OK · registry+PETA sinkron · GENTING 0/PENTING 0) + rules-ref-check 0/0 (RAPIKAN 3 template pra-existing) + uji hook (🔒 wallet-ledger, 🔒 anti-fraud menyala).** Catatan: 1 tes flaky muncul sekali (di gerbang wallet-ledger) lalu hilang di run berikut (tak terkait skill; kandidat investigasi terpisah §6.4).
+
+### Ditambahkan — Skill web-umum baru (ADR-027 Task 18, bertahap): `rate-limiting` + `caching` + `realtime` + `admin-panel`
+
+> **Kenapa (bahasa sehari-hari):** Task 18 = menambah "buku panduan" (skill) untuk menutup kebutuhan nyata produk tim. Owner memilih **fokus GAP nyata (~8-15 skill), BUKAN mengejar angka 100** (angka 100 = daya-tampung arsitektur, bukan kuota belanja) + mulai dari topik **web/app umum** + tempo **"satu dulu, lihat hasil, baru lanjut"**. Skill pertama = `rate-limiting`: cara membatasi jumlah permintaan supaya endpoint sensitif (login, OTP, tarik-dana) tak bisa dijebol dengan tebak-berulang (*brute-force* = tebak password/kode berkali-kali sampai jebol) atau di-spam.
+
+- **Skill baru** `skills/rate-limiting/SKILL.md` (`rawan_keamanan: true` → ditandai 🔒 di dispatcher). Isi kelas-industri: penghitung permintaan di penyimpanan **TERBAGI** (Redis/edge, bukan memori proses yang bocor antar-server) · kunci per-**identitas tepat** (login = per-akun **dan** per-IP, bukan IP saja) · operasi hitung **ATOMIK** (anti *race condition* = dua permintaan balapan menembus batas) · balas **429 + `Retry-After`** · endpoint sensitif + lockout/captcha + tak membocorkan akun terdaftar · **fail-open vs fail-closed** ditentukan sadar · contoh Lua atomik Redis (ambil polanya) · threat-model + batas jujur ("bukan anti-DDoS penuh").
+- **`caching`** (skill #33, `rawan_keamanan: false` — optimasi kecepatan, bukan kontrol keamanan) `skills/caching/SKILL.md` — simpan-sementara hasil mahal TANPA menyajikan data basi/bocor: wajib **TTL** (masa berlaku) + **invalidasi** saat sumber berubah + **anti cache-stampede** (lock / *stale-while-revalidate* = sajikan basi sesaat sambil refresh di latar) + **kunci per-identitas** (data user A tak bocor ke user B — jebakan keamanan senyap, ditandai 🔒 di butirnya + rujuk `auth`/`owasp`) + jangan cache saldo/stok/harga-bayar tanpa invalidasi ketat + **fail-open** saat cache mati. Contoh cache-aside + SWR + single-flight.
+- **`realtime`** (skill #34, `rawan_keamanan: true` → 🔒) `skills/realtime/SKILL.md` — update langsung (chat/notif/live-betting/saldo hidup): **otorisasi per-kanal di server** (anti-nguping) + anti-**CSWSH** (*Cross-Site WebSocket Hijacking*; validasi `Origin`/token, bukan cookie) + **filter per-penerima** + **reconnect+resync** (anti data-basi) + hosting koneksi-panjang tepat (serverless TAK cocok untuk WebSocket) + heartbeat/backpressure. Dibangun dari draft arsip lama (dulu dipensiun) + rujukan direpoint `cap/*`→`skills/*`.
+- **`admin-panel`** (skill #35, `rawan_keamanan: true` → 🔒) `skills/admin-panel/SKILL.md` — panel back-office/kelola-data (daftar transaksi, kelola user): **otorisasi per-baris & per-aksi** (anti-**IDOR** admin) + **audit-trail append-only** (who/what/when/before→after; wajib judi/fintech, ditulis se-transaksi) + data sensitif **masking** + **paginasi keyset** (bukan `OFFSET` besar) + aksi destruktif **konfirmasi/soft-delete/idempoten** + **optimistic concurrency** (dua admin tak saling timpa diam) + akun admin **2FA/least-privilege**.
+- **Registry 31 → 35 skill** (regen otomatis dari disk oleh `skill-registry.mjs`; dijamin sinkron oleh `checkRegistryDrift`). `PETA.md` ikut ter-update (35 skill). Terdaftar di `engine/kit-files.json` grup `skills` → ikut terkirim ke client. **Batch web-umum tuntas** (4 skill); berikutnya geser ke domain judi/fintech.
+- **Aditif murni** — TAK menyentuh kernel `CLAUDE_universal_v1.md` (tak perlu regen adapter / locked-phrases). Dispatcher registry otomatis menyalakan skill dari pemicu; diuji: prompt fokus "throttle anti-spam / too-many-requests" → `🔒 rate-limiting` menyala tepat.
+- **Catatan (bukan regresi):** di prompt yang menyentuh BANYAK topik keamanan sekaligus (login+endpoint+rate-limit), plafon `MAKS_GRUP=3` ("tampilkan 3 panduan teratas biar tak kebanjiran") bisa memotong skill yang kalah urutan alfabet — perilaku **existing sejak Task 11**, bukan dari skill ini. Ditawarkan ke owner sebagai perbaikan terpisah (prioritas-relevansi vs alfabet).
+- **Berkas:** `skills/rate-limiting/SKILL.md` + `skills/caching/SKILL.md` + `skills/realtime/SKILL.md` + `skills/admin-panel/SKILL.md` (baru) · `skills/registry.json` · `PETA.md` · `engine/kit-files.json`.
+- **Gerbang (tiap skill): 1638 tes hijau + preflight LULUS (Format skill: 35 diperiksa semua ber-frontmatter+🔒+DoD · Registry sinkron · PETA sinkron · GENTING 0 / PENTING 0) + rules-ref-check 0/0 (RAPIKAN 3 template pra-existing) + uji hook dispatcher (skill menyala di prompt fokus: `🔒 rate-limiting`, `caching`, `🔒 realtime`, `🔒 admin-panel`).**
+
+### Diubah — [BREAKING] Rename-sweep nama warisan: perintah `kimi-sync` → `adapter-sync` + berkas generator + nama internal (ADR-027 Task 17)
+
+> **Kenapa (bahasa sehari-hari):** setelah Task 12-16, sebagian NAMA masih memakai istilah lama yang tak lagi cocok dengan isinya. Contoh terbesar: berkas `kimi-agents-gen.mjs` + perintah `kimi-sync` — dulu cuma untuk Kimi, kini melayani **3 alat AI** (Kimi + Cursor + Codex), tapi namanya masih "kimi". Task 17 merapikan nama-nama warisan itu supaya nama cocok dengan fungsinya — biar pembaca kode berikutnya tak salah paham, dan perintah tak menyesatkan.
+
+- **Perintah & berkas payung 3-adapter dinetralkan:** `kimi-sync` → **`adapter-sync`** (kini benar-benar sinkron Kimi+Cursor+Codex sekaligus, bukan cuma Kimi); berkas `engine/kimi-agents-gen.mjs` → `engine/adapter-rules-gen.mjs` (+ tesnya, via `git mv` → riwayat terjaga). **Alias `kimi-sync` MASIH JALAN** (cetak 1 baris pengingat deprecated) → kebiasaan/skrip lama tak putus.
+- **Nama per-alat SENGAJA dipertahankan (bukan warisan):** `runKimiAgentsGen`/`runCursorRulesGen`/`runCodexAgentsGen` + penanda `KIMI_AGENTS_MARKER` — masing-masing memang generator alat berbeda; menetralkan hanya Kimi malah jadi tak konsisten. Yang dinetralkan cuma **nama berkas payung + perintah**.
+- **Orkestrator baru `runAllAdaptersSync`** (testable): `adapter-sync` menyinkronkan/mengecek 3 berkas aturan adapter sekaligus + lapor status masing-masing (Codex tetap digerbang 32 KiB — ditahan kalau aturan tak muat).
+- **Nama internal warisan Task-13 dirapikan:** robot `rules-ref-check.mjs` yang isinya masih penuh `analyzeWorkflows`/`runWorkflowsRefCheck`/`wfDir` (padahal folder sudah `rules/`) → `analyzeRules`/`runRulesRefCheck`/`rulesDir`; langkah preflight `checkWorkflowsRefs` → `checkRulesRefs`; variabel `libDir` yang isinya `engine/` → `engineDir` di 5 berkas; label/pesan konsol "workflows"/"lib/" → "rules"/"engine".
+- **Bug warisan Task-13 ketemu + diperbaiki:** `tests/fs-text.test.mjs` merakit path pemindaian dengan folder `'lib'` yang **sudah tak ada** (rename Task 13) → pemindai fungsi-kembar diam-diam MELEWATKAN semua berkas `engine/`. Diperbaiki (`'lib'`→`'engine'`); guard kini benar-benar aktif (tetap hijau = tak ada duplikasi tersembunyi).
+- **Yang SENGAJA DIBIARKAN (terverifikasi bukan warisan):** label grup `node_lib`/`lib_files` di `kit-files.json` (keputusan Task 13) · fallback klien-lama `['','lib','engine']` di doctor/rollback · berkas pengalih `LINTASAI_WORKFLOWS_v1.md` (nama historis supaya rujukan lama tetap ketemu) · rujukan sejarah di CHANGELOG/ADR.
+- **Berkas:** `engine/adapter-rules-gen.mjs` (rename + orkestrator) · `bin/lintasai.js` (perintah + alias + help + peringatan) · `engine/{setup-hooks,kit-doctor-checks,kit-files.json,rules-ref-check,tool-reach-check,output-lang-check}` · `tests/{adapter-rules-gen,rules-refs,preflight,kit-files,fs-text,no-duplicate-functions,skills-divisi,mode-hemat-guard,modify-workflow-rule}` · `.gitignore` · `KIMI_CODE_SETUP.md` · `UPGRADING.md`.
+- **Gerbang: 1638 tes hijau + preflight LULUS (GENTING 0 / PENTING 0 / RAPIKAN 1) + rules-ref-check 0/0 (RAPIKAN 3 template pra-existing) + hook lang-reminder OK + smoke-test `adapter-sync --write` (3 adapter) & alias `kimi-sync` (peringatan deprecated) jalan end-to-end.**
+
+### Ditambah — Tiap asisten AI (Claude/Codex/Cursor/Kimi) diarahkan baca PETA.md dulu (ADR-027 Task 16)
+
+> **Kenapa (bahasa sehari-hari):** kit dipakai lewat beberapa asisten AI, dan tiap asisten mencari "buku panduannya" di tempat + nama berkas berbeda (Claude → `CLAUDE.md`, Codex → `AGENTS.md`, Cursor → `.cursor/rules/`, Kimi → `.kimi-code/AGENTS.md`). Semua "pintu masuk" itu sudah mengarah ke aturan yang sama, TAPI belum satu pun yang menunjuk `PETA.md` (peta "apa di mana" yang dibuat di Task 15). Task 16 menempel penunjuk **"baca PETA.md dulu"** di tiap pintu masuk — jadi pakai asisten mana pun, AI tahu letak segala sesuatu sebelum mulai (di harness tanpa hook sekalipun, navigasi manual lewat PETA tetap jalan: nol crash, cuma kurang otomatis).
+
+- **Penunjuk PETA dirujuk (bukan disalin) — anti-basi:** penunjuk memakai **path** `PETA.md` (di repo kit) / `.claude-kit/PETA.md` (di dalam project client), bukan menyalin isi PETA. Alasan: `PETA.md` dibuat otomatis + berubah tiap folder/skill berubah; salinan cepat basi (lawan tujuan Task 15). Konsisten dengan cara header adapter sudah merujuk `rules/INDEX.md`.
+- **Di mana ditempel:** header 3 generator adapter (`engine/kimi-agents-gen.mjs`: `buildKimiAgents`/`buildCursorRules`/`buildCodexAgents`, path ikut `kitPrefix`) + loader `CLAUDE.md` (repo kit) + `CLAUDE.md.template` (client Claude) + `AGENTS.md.template` (client Codex). Cursor tambahan `@.claude-kit/PETA.md` (mekanisme native Cursor menarik isi berkas sebagai konteks).
+- **Temuan saat mengaudit:** generator Cursor + Codex ternyata **sudah dibangun** (Task 10/ADR-024) dan sudah tersambung ke install/update/doctor/tes — yang benar-benar kurang cuma penunjuk PETA. Jadi Task 16 = tambah penunjuk + tes penjaga, bukan bangun generator baru.
+- **Codex tetap digerbang jujur:** Codex membatasi berkas aturan project 32 KiB (`project_doc_max_bytes`); aturan kit 63,9 KiB (2× batas) → penulisan **ditahan** (AGENTS.md client TIDAK disentuh, `doctor` lapor terus terang). Ini fail-safe yang sudah benar: aturan terpotong diam-diam lebih berbahaya daripada aturan yang jelas belum terpasang. Begitu inti diramping <32 KiB di fase lain, Codex otomatis dapat aturan penuh — penunjuk PETA sudah terpasang menunggu.
+- **Riset Cursor (sumber resmi cursor.com/docs):** `.cursor/rules/*.mdc` + frontmatter `alwaysApply: true` adalah format RESMI & terkini; `.cursorrules` (file tunggal lama) **deprecated** — format yang sudah dibangun generator sudah benar.
+- **Berkas:** `engine/kimi-agents-gen.mjs` (3 header) · `CLAUDE.md` · `CLAUDE.md.template` · `AGENTS.md.template` · `tests/kimi-agents-gen.test.mjs` (+3 tes penjaga: penunjuk PETA di 3 adapter, path root-vs-client, Cursor @-ref) + regen `.kimi-code/AGENTS.md` & `.cursor/rules/lintasai.mdc` (gitignored, dogfood). **Gerbang: 1637 tes hijau + preflight LULUS (GENTING 0 / PENTING 0 / RAPIKAN 1) + ref-check 0/0 + uji hook lang-reminder OK.**
+
+### Ditambah — PETA.md: peta "apa di mana" + aturan penempatan berkas baru, auto-generate & anti-basi (ADR-027 Task 15)
+
+> **Kenapa (bahasa sehari-hari):** kit punya banyak "daftar" terpisah (folder, skill, rak, robot). Belum ada SATU peta yang AI baca PERTAMA untuk tahu "apa di mana" + ke mana menaruh berkas baru (struktur-hygiene = kebiasaan menaruh tiap berkas di rumah yang benar). `PETA.md` mengisi itu — dibuat **otomatis** oleh robot dari kenyataan folder + daftar skill, jadi **tak bisa basi** (kalau melenceng dari kenyataan disk, gerbang pra-rilis memerah).
+
+- **Robot generator (baru):** `engine/peta-gen.mjs` (`npx lintasai peta-gen`) memindai folder top-level + `skills/` → menulis `PETA.md`. Deterministik (hasil selalu sama dari isi sama; folder + skill di-sort, tak ada waktu/acak) — syarat wajib supaya bisa dijaga anti-basi. Pola KEMBAR `engine/skill-registry.mjs` (yang menulis `registry.json`).
+- **Isi PETA.md:** (1) tabel folder + fungsi + kolom "Di `.claude-kit/` klien?" — kolom itu **di-derive dari `package.json` files[]** (sumber kebenaran "apa yang dikirim"), bukan tebakan yang bisa basi; (2) tabel 31 skill (divisi + pemicu + 🔒 penanda rawan-keamanan) dari `registry.json`; (3) aturan penempatan berkas baru per jenis (skill/rak/robot/tes/template/dokumen/berkas-root + cara mendaftarkannya); (4) rujuk-silang ke peta lain — MELENGKAPI, tak menyalin: `docs/architecture.md` (narasi makro), `docs/PETA_SUMBER_KEBENARAN.md` (fakta/angka, ditandai **INTERNAL — tak ikut ke client** supaya tak jadi rujukan mati di client), `docs/RESEP_PERUBAHAN.md`, `rules/INDEX.md`.
+- **Guard anti-basi (celah ③ ADR-027 "PETA auto-generate + anti-basi"):** `checkPetaDrift` di `tests/preflight.mjs` — bandingkan `PETA.md` dengan hasil generate-ulang (ternormalisasi BOM/CRLF supaya checkout Windows tak memicu drift palsu); melenceng → **PENTING** (blokir `--strict`); `PETA.md` tak ada (mis. di project klien, petanya ada di `.claude-kit/` bukan akar project) → dilewati (INFO). Pola KEMBAR `checkRegistryDrift`. + tes `tests/peta-gen.test.mjs` (unit generator + anti-drift disk==generate + wiring gagang gerbang).
+- **Ikut dikirim ke client:** `PETA.md` didaftar di grup `meta` `engine/kit-files.json` + `package.json` files[]; generatornya `engine/peta-gen.mjs` di grup `node_lib` (dijaga tes anti-drift `node_lib == disk`).
+- **Verifikasi adversarial (Workflow 4-pemeriksa cuma-baca) menangkap 1 PENTING sebelum commit:** kolom "Di `.claude-kit/` klien?" semula menandai `bin/`+`tests/` "hanya repo kit" — **SALAH** (keduanya ada di `package.json` files[] → benar-benar mendarat di `.claude-kit/` klien, dibuktikan pada 3 project klien nyata). Diperbaiki: kolom kini **di-derive dari files[]** + tes penjaga permanen (`bin` IKUT client). Gerbang deterministik tak menangkap ini (tak ada tes akurasi-semantik) — inilah nilai nyata verifikasi adversarial.
+- **Berkas:** `engine/peta-gen.mjs` (baru), `PETA.md` (baru, generated), `tests/peta-gen.test.mjs` (baru), `tests/preflight.mjs` (`checkPetaDrift`), `bin/lintasai.js` (perintah `peta-gen`), `engine/kit-files.json` (grup meta + node_lib), `package.json` (files[]). **Gerbang: 1634 tes hijau + preflight LULUS (GENTING 0 / PENTING 0 / RAPIKAN 1) + ref-check 0/0 + uji hook lang-reminder OK.**
+
+### Ditambah — Update mulus untuk client lama: migrasi struktur otomatis (ADR-027 Task 14)
+
+> **Kenapa (bahasa sehari-hari):** Task 13 mengganti nama folder robot dari `lib/` ke `engine/`. Client lama (v1/v2) menyimpan "alamat" robot itu di berkas pengaturan `.claude/settings.json` (baris perintah `hook` = otomatisasi yang jalan sendiri). Setelah update, alamat lama `.claude-kit/lib/...` jadi salah (folder-nya sudah pindah ke cadangan) → hook **mati diam-diam**. Task 14 membetulkan alamat itu **otomatis** saat `npx lintasai update`, jadi client lama naik ke v3.0.0 tanpa hook mati. **Inilah yang membuat rename Task 13 aman dirilis.**
+
+- **Yang dibetulkan otomatis (ber-backup):** command hook di `.claude/settings.json` + `.claude/settings.local.json` — segmen path `.claude-kit/lib/` → `.claude-kit/engine/` dan `.claude-kit/workflows/` → `.claude-kit/rules/`. Dijalankan di `update-kit.mjs` **Langkah 3b** (setelah kit baru terpasang, SEBELUM pemasang `setup-pola-b`) — kalau ditaruh sesudahnya, robot pemasang-hook keburu menganggap hook "sudah ada" (penandanya **nama-berkas**, buta segmen path) → alamat basi tak pernah dibetulkan.
+- **Aman untuk berkas yang sudah dikustom client:** penggantian **surgical** (cuma segmen path yang berubah; formatting + semua kunci user 100% utuh) + **backup ber-timestamp** (`settings.json.backup-<yyyyMMdd-HHmmss>`, bukan `.bak`) + validasi JSON dua kali (rusak/terkunci → berkas **TIDAK disentuh**, dilaporkan) + tulis atomik. Anchor `.claude-kit/` membuat folder `lib/` milik project client sendiri (`src/lib`, `@/lib`) **tak pernah** ikut kena.
+- **IDEMPOTEN:** tak ada pola lama → **no-op** senyap (aman dijalankan berulang; aman pula pada client yang sudah v3). Tak perlu buku-besar `.migration-state.json` (itu untuk artefak ber-`schema_version`; `settings.json` bukan itu).
+- **Dokumen client = LAPOR-saja (tidak diubah otomatis):** `AGENTS.md`/`CLAUDE.md`/`docs/*.md` yang memuat rujukan path lama hanya **dilaporkan** (artefak sering-dikustom + rujukan dokumentatif; basi tak merusak fungsi). Owner yang memutuskan membetulkannya. `@import` kit standar menunjuk akar `.claude-kit/CLAUDE_universal_v1.md` (tak terpengaruh rename), jadi tak perlu di-rewrite.
+- **Celah ⑤ ADR-027 ditutup penuh:** guard coverage+no-bloat (disk↔manifest↔tarball + tarball <1,25 MB) sudah ada sejak F1; sisa yang kurang = guard **dilarang-pangkas `RAK_PEMICU`** (jaring pengaman `SHIM` fallback untuk client kit-lama). Kini dikunci: id-topik keselamatan inti (auth/bayar/upload/DB/teregulasi/rilis) WAJIB tetap ada — mempensiunkannya harus keputusan **sadar**, bukan senyap.
+- **Berkas:** `engine/migrate-client-struktur.mjs` (baru), `update-kit.mjs` (Langkah 3b), `engine/kit-files.json` (daftar modul), `tests/migrasi-struktur-client.test.mjs` (baru), `tests/rak-pemicu.test.mjs` (guard celah ⑤) + rapikan komentar basi `.claude-kit/lib/` di `engine/ensure-*-hook.mjs` · `lang-hook-wiring.mjs` · `rollback.mjs` · `project-root.mjs` · `install-secret-hook.mjs`. **Gerbang: 1622 tes hijau + preflight LULUS (GENTING 0 / PENTING 0) + ref-check 0/0 + uji hook lang-reminder OK.**
+
+### Diubah — [BREAKING] Struktur folder kit: `workflows/` → `rules/` dan `lib/` → `engine/` (ADR-027 Task 13)
+
+> **Kenapa (bahasa sehari-hari):** dua folder inti kit ganti nama supaya isinya jelas dari namanya. `workflows/` (rak = panduan aturan on-demand yang dibaca saat relevan) jadi `rules/`; `lib/` (kumpulan robot pendukung berkas `.mjs`) jadi `engine/`. **Isi & fungsi TIDAK berubah — cuma nama rumahnya.** Alasan lengkap = [ADR-027](docs/decisions/ADR-027-microkernel-plugin-skills.md).
+
+- **Apa yang berubah:** folder `.claude-kit/workflows/` → `.claude-kit/rules/`, dan `.claude-kit/lib/` (tempat robot `.mjs`) → `.claude-kit/engine/`. Grup `"workflows"` di `engine/kit-files.json` → `"rules"`. Robot `workflows-ref-check.mjs` (penjaga rujukan rak) di-rename → `engine/rules-ref-check.mjs` (namanya kini cocok dengan folder yang dijaganya); tesnya → `tests/rules-refs.test.mjs`.
+- **Yang SENGAJA TIDAK tersentuh:** folder `.github/workflows/` (GitHub Actions = pipeline CI di server GitHub) TETAP — itu milik GitHub, bukan folder kit. Konvensi folder `lib/` milik project client (mis. `src/lib/`, `@/lib/db` di Next.js) juga TIDAK diubah — penggantian `lib/` dibatasi daftar-nama robot kit (allowlist), jadi tak menyentuh kode client.
+- **Migrasi client (KINI MENDARAT — lihat entri Task 14 di atas):** jalur `npx lintasai update` kini menulis-ulang command hook (`settings.json`) di project client lama secara otomatis, mendarat BERSAMA v3.0.0 di branch dev ini sebelum rilis npm — jadi client tak pernah melihat kondisi setengah. `readKitManifest` juga tetap punya fallback (`engine/` → `lib/` → `.psd1`) supaya v3 doctor bisa membaca client yang (karena apa pun) belum termigrasi penuh.
+- **Berkas:** ~275 berkas di-repoint (kernel `CLAUDE_universal_v1.md`, `rules/INDEX.md`, hub `rules/*`, semua robot `engine/*.mjs`, tes, `package.json` "files", `engine/kit-files.json`, `.kimi-code/AGENTS.md` regen). **Gerbang: 1608 tes hijau + preflight LULUS (GENTING 0 / PENTING 0) + ref-check 0/0 + uji hook lang-reminder OK.**
+
+### Ditambah — Panduan kit benar-benar dibuka sebelum menyentuh titik risiko (`Petunjuk Rak` + `Palang Rak`)
+
+> **Masalahnya diukur dulu, bukan dikira-kira.** Enam prompt client nyata dijalankan; dari **56 panduan yang relevan, cuma 8 yang benar-benar dibuka (≈14%)** — dan untuk tugas ringan **0%**. Salah satu AI bahkan mengaku (kutipan apa adanya): *"aku diam-diam menafsirkan [8 divisi OTOMATIS] sebagai 'cukup dipikirkan di kepala, tak perlu dibaca berkasnya'"*. Akibat nyatanya terekam: satu AI menuduh **74 alamat API "tidak ada pengecekan hak akses"** — padahal semuanya memakai `withAuth`. Persis jenis kesalahan yang sudah ditulis di `workflows/8.2-3b-jangan-asal-flag.md`, panduan yang tak ia buka. Alasan lengkap = [ADR-022](docs/decisions/ADR-022-petunjuk-rak-dan-palang-rak.md).
+
+- **Kenapa ini penting, bahasa sehari-hari:** aturan kit sudah lama bilang *"kalau panduan bentrok dengan kode nyata, kode yang menang"*. Kalimat itu cuma bermakna kalau **ada** bentrok — dan untuk bentrok, AI harus tahu isi panduannya. Angka 14% berarti 86% waktunya tak ada pertandingan sama sekali. Itu bukan AI yang menang, itu informasi yang tak pernah hadir.
+- **`Petunjuk Rak` (default NYALA, tak pernah menghalangi).** Dari isi prompt, pengingat tiap giliran kini menyodorkan **alamat panduan** yang relevan — bukan cuma mengingatkan bahwa panduan itu ada. Sifatnya **menambah saja**: kalau tak ada yang cocok, keluarannya **sama persis sampai ke bytenya** dengan sebelumnya (dikunci tes). Tak ada satu pun lensa yang bisa hilang karena salah tebak.
+- **`Palang Rak` (default MATI — nyalakan dengan `npx lintasai enable-rak-gate`).** Sebelum AI mengubah berkas penting (login, pembayaran, migrasi database, alamat API, unggah berkas) untuk **pertama kali dalam satu sesi**, ia ditahan sampai panduan terkait **benar-benar dibuka**.
+- **🔑 Yang diperiksa = catatan pembacaan nyata, BUKAN klaim AI.** Ini pembedanya. Palang mencatat setiap kali berkas panduan dibuka, lalu mencocokkannya — jadi **tak bisa dilewati dengan kata-kata**. Alasannya teknis: hook penjaga cuma menerima nama alat + berkas, ia **tak pernah melihat tulisan AI**; jadi syarat "sebutkan panduan yang kau baca" mustahil diperiksa mesin, dan satu-satunya wujudnya adalah "tahan sekali, lalu izinkan apa pun". Lubang persis itu masih ada di Palang Fakta (`lib/fact-gate.mjs:96-99`) dan **tidak diulang** di sini.
+- **🔑 Yang ditegakkan cuma "DIBACA", tak pernah "DIPATUHI".** Pesan palang **wajib** memuat kalimat *"bentrok dengan kenyataan kode → kenyataan kode MENANG (§4.17)"* — dikunci tes di Claude **dan** Kimi. Tanpa itu, palang perlahan terbaca sebagai "panduan = hukum", dan kit berubah dari perlengkapan jadi kerangkeng.
+- **Anti-upacara:** maksimal **2× menahan per sesi**, berkas tes/hasil-build dilewati, dan mayoritas penyuntingan biasa **tak tersentuh sama sekali**. Buntu? Buka `workflows/INDEX.md` — itu jalan keluar yang sah.
+- **Kimi Code ikut, dengan default yang sama.** `lib/kimi/rak-gate-kimi.mjs` **memakai ulang** otak keputusan yang sama (dikunci tes anti-salin — dua salinan bisa melenceng, lalu palang jadi bohong di salah satu otak). Palang sengaja **tidak** ikut bundel `enable-kimi-hooks`: kalau ikut, memilih Kimi berarti menyala diam-diam sementara pemakai Claude harus menyalakan sendiri. Satu perintah menyalakan keduanya.
+- **Kenapa default MATI, padahal rencananya NYALA.** Menyalakan pemblokir untuk semua project mengubah perilaku kerja orang **sebelum** manfaatnya terukur. Nasib "dikirim tapi mati total" seperti Palang Fakta dicegah lewat **gagang**: perintah `enable-rak-gate` + robot `tool-reach-check` yang memerah kalau ada perkakas dikirim tanpa cara memanggilnya. Default dinyalakan **setelah** angka sesudah terbukti.
+- **Cacat panduan yang ikut ketahuan (diperbaiki lebih dulu — memaksa membaca panduan yang salah = menyebarkan kesalahan):** `workflows/stack/4.14-2-supabase-prisma.md` mengklaim resepnya berlaku untuk "project APA PUN yang pakai Prisma", lalu mewajibkan `CREATE INDEX CONCURRENTLY` yang **khusus PostgreSQL** — project Prisma+MySQL yang menurut akan gagal migrasi. Ditambah catatan: ID acak `cuid()` **tidak boleh** dipakai untuk dokumen yang menurut aturan pembukuan wajib bernomor urut tanpa lompat (faktur/pajak). Panduan login juga ditambah 5 jebakan OAuth yang sebelumnya **nol** tercakup di seluruh kit (pengambilalihan akun lewat penautan email, `email_verified`, parameter `state`, PKCE, penguncian domain `hd`).
+- **Bug yang cuma ketahuan saat dicoba sungguhan** (bukan dari tes satuan): alamat folder bergaya Linux di Windows (`/d/Users/...`) membuat seluruh panduan dianggap tak ada → **palang mati diam-diam tanpa satu pun tanda**. Kegagalan senyap seperti itulah yang menghasilkan angka 14% di awal. Diperbaiki + dikunci 2 tes.
+- **Batas jujur — jangan diklaim lebih:** (1) ini pagar **kepatuhan**, bukan pagar **keamanan**; membaca lewat `Bash cat`/`Grep` tak dihitung dan tak dihalangi. (2) AI bisa saja membuka panduan **hanya untuk lolos palang** lalu mengabaikan isinya — jadi **jangan pakai persentase-dibaca sebagai bukti mutu**. (3) Angka 14% mengukur **frekuensi**, belum memisahkan "lalai" dari "sadar memutuskan melewatkan"; pengukuran ulang di project nyata **belum dikerjakan** dan itu syarat sebelum default dinyalakan.
+- **📉 HASIL UKUR (2026-07-19) — bagian LUNAK-nya TIDAK bekerja, dan itu dicatat apa adanya.** Enam prompt dijalankan ulang di project klien nyata (mode aman cuma-baca, satu-satunya yang berubah = petunjuk disuntikkan): **8 → 9 dari 56 panduan dibuka.** Datar. Yang membunuh klaimnya: prompt yang naik paling tinggi (0→2) justru **sengaja tak diberi petunjuk sama sekali** — jadi kenaikannya variasi antar-AI, bukan efek fiturnya. Dua tugas berat malah TURUN, tapi keduanya melewatkan panduan **dengan bukti** (*"isi pengerasan login-nya sudah diterapkan, bukti `src/lib/auth.ts:104-182`; panduan itu lantai, dan lantainya sudah terlampaui"*) — menurut §4.17 itu perilaku BENAR. Pelajaran metodologisnya keras: **"berapa panduan dibaca" bukan ukuran mutu.** Bagian KERAS (Palang Rak) belum terukur — butuh sesi sungguhan, dan default tetap MATI sampai itu ada.
+- **🛑 Rencana menurunkan §4.13 (8 divisi) DIBATALKAN setelah diperiksa.** Bukti awal (ritual 8-divisi kalah 21 dari 24 penilaian buta) ternyata tak cukup menopangnya: (1) tiga panduan divisi — UI/UX, Webdesign, SEO — **tak punya satu pun pemicu mesin**, jadi mencabut mandatnya membuat mereka nyaris tak terjangkau; (2) yang ikut hilang termasuk butir aksesibilitas WCAG 2.2 AA konkret yang **tak ada duanya** di aturan selalu-muat (kata "WCAG" cuma muncul **1×** di sana, tanpa isi) — padahal aksesibilitas salah satu dari 4 lensa yang wajib digali dalam; (3) seluruh uji memakai model kelas paling kuat, sedangkan kit ini **secara eksplisit merekomendasikan** model tier hemat (`KIMI_CODE_SETUP.md:26`) dan mengakui sendiri *"model lebih kuat cenderung lebih patuh"* — menurunkan perancah berdasarkan bukti dari model terkuat = memindahkan biaya ke pemakai yang paling tak mampu menanggungnya. Skalanya juga jauh di atas taksiran: **45 titik ritual · 61 penjaga robot · 48 butir butuh keputusan owner**, dan sebagian pagar keamanan (pengingat titik-risiko + rem anti-karang-temuan) ternyata **menumpang di dalam blok yang sama**.
+- **Berkas:** `lib/rak-pemicu.mjs`, `lib/rak-gate.mjs`, `lib/kimi/rak-gate-kimi.mjs`, `lib/ensure-rak-gate-hook.mjs`, `lib/lang-reminder.mjs`, `lib/kimi/lang-reminder-kimi.mjs`, `lib/kimi/ensure-kimi-hooks.mjs`, `lib/kit-files.json`, `bin/lintasai.js`, `CLAUDE_universal_v1.md` (§0 sumbu ke-5 + §4.17), `workflows/4.17-perkuat-jangan-kurung.md`, `workflows/cap/auth.md`, `workflows/stack/4.14-2-supabase-prisma.md`, `docs/decisions/ADR-022-*.md` + koreksi `ADR-017`.
+
+### Ditambah — Plan mode nyaris bebas-dialog: izin-otomatis cuma-baca (`plan-mode-gate`)
+
+> **Permintaannya "bypass total saat plan mode" — dan itu sengaja TIDAK dikerjakan.** Yang dikerjakan: hasil harian yang sama (dialog izin hilang saat AI membaca), lewat jalur yang tak melubangi pagar. Alasan lengkap + skenario gagalnya = [ADR-021](docs/decisions/ADR-021-plan-mode-izin-otomatis.md).
+
+- **Robot baru `lib/plan-mode-gate.js`** (hook `PreToolUse`, default NYALA, ikut terpasang otomatis tiap `init`/`update`). **Hanya saat plan mode**, aksi yang terbukti cuma-baca dijalankan tanpa dialog izin: baca berkas, cari teks, `git status|log|diff|show|blame`, `npm test`, `npx lintasai preflight`. Di luar plan mode robot ini **diam total** — perilaku sesi normal **nol berubah**.
+- **Kenapa bukan bypass.** Premis "plan mode cuma read" ternyata **tidak akurat**: yang dikunci keras harness hanya `Edit`/`Write`; **perintah terminal tetap jalan** (dibuktikan langsung — sesi plan-mode saat merancang fitur ini berhasil menjalankan `Bash`/`node` berkali-kali). Dokumentasi resmi Anthropic pun menyatakan mode bypass *"offers no protection against prompt injection or unintended actions"*. Skenario gagal nyata kalau bypass dipasang: AI membaca `README.md`/isu GitHub pihak lain saat menyusun rencana, di dalamnya ada titipan kalimat perintah, dan perintah itu jalan **tanpa terlihat**.
+- **Dua pagar yang membuatnya boleh default-nyala:** (1) **Palang Rem didahulukan** — `plan-mode-gate` memanggil `riskGate.decide()` **sebelum** memberi izin, jadi apa pun yang `risk-gate` tahan tak pernah bisa lolos lewat jalur ini; penilaian bahaya tetap **satu sumber**, dipakai-ulang bukan ditulis-ulang. (2) **Daftar-putih, bukan daftar-hitam** — yang tak dikenali tetap ditanya, sehingga kelalaian mendaftar berakibat "dialog masih muncul" (menjengkelkan), **bukan** "bahaya lolos" (celah).
+- **Berkas rahasia justru lebih terjaga dari sebelumnya:** `.env`, `.ssh`, `*.pem`, kredensial, token **tidak pernah** auto-izin — walau operasinya cuma membaca (boundary keras §8.1 #6). Ikut ditolak: penulisan terselubung (`>`, `>>`, `$( )`, backtick), pipa ke penerjemah (`| sh`, `| bash`), sub-perintah git yang menulis walau induknya jinak (`git branch -D`, `git config k v`, `git tag v1`, `git stash pop`), `npm run <di luar daftar>`, dan `npx <paket-asing>` (unduh-lalu-jalankan, §8.1 #2).
+- **Akar masalah yang memicu ini, dicatat apa adanya:** `permissions.allow` di mesin owner sudah menggelembung jadi **706 entri (±123 KB)** dengan `deny`/`ask` **kosong** — jejak refleks "klik izinkan" berbulan-bulan, termasuk sejumlah entri `PowerShell(...)` yang bisa menulis kini terizinkan permanen. Jadi dialog yang terlalu sering justru **menurunkan** keamanan. Fitur ini mengurangi tekanan itu di sumbernya.
+- **Yang DIBATALKAN setelah diverifikasi:** rencana awal ikut menyalakan `useAutoModeDuringPlan`. Kunci itu memang disebut dokumentasi resmi (`permission-modes`) dan bahkan **sudah default-on**, TAPI tak satu pun halaman resmi menjelaskan struktur JSON / tipe / letaknya — halaman `auto-mode-config` dan `settings` sama sekali tak memuatnya. Kesimpulan: kemungkinan besar **perilaku bawaan, bukan setelan**. Menuliskan nama kunci yang belum terbukti ke `settings.json` client = risiko tanpa imbalan → dibuang dari lingkup. Efek sampingnya baik: `plan-mode-gate` jadi jalur yang **tidak bergantung ketersediaan auto mode di akun**.
+- **Batas jujur — tidak berlaku di semua AI.** Diperiksa di dokumentasi resmi masing-masing: **Kimi Code** tak perlu (plan mode-nya **sudah** cuma-baca total — hanya `Glob`/`Grep`/`ReadFile`, tak bisa menjalankan perintah), **Codex** tak bisa (kebijakan izin berlaku se-sesi, tak ada penghubung ke plan mode), **Cursor** tak bisa (Plan Mode & Run Mode dua hal terpisah). **Nol dari tiga** menyediakan "saat plan mode izinkan semua" — polanya konsisten: plan mode dirancang **lebih ketat**, bukan lebih longgar.
+- **Berkas:** `lib/plan-mode-gate.js`, `lib/ensure-plan-mode-gate-hook.mjs`, `templates/hooks/plan-mode-gate.settings.example.json`, `lib/setup-hooks.mjs`, `lib/kit-files.json`, `docs/plan-mode-gate.md`, `docs/decisions/ADR-021-*.md`. Tes: 1405 → 1432 lulus (27 tes baru — 18 untuk robotnya, 9 untuk pemasangnya; mayoritas berupa percobaan **membujuk** robot mengizinkan hal berbahaya).
+
+### Diubah — HEMAT TOKEN + MUTU: kit berhenti menarik resep borongan sebelum melihat kode client
+
+> **Mandat tak disentuh.** Paket Stack tetap lantai wajib, 8 divisi tetap otomatis, pengecualian OWASP tetap mutlak. Yang berubah cuma **kapan** resep dibaca dan **lewat mana** berkasnya ditemukan.
+
+- **Dua aturan kit ternyata saling menabrak.** Induk `workflows/4.13-skill-divisi.md:17` berbunyi *"AI **WAJIB** baca + terapkan **Paket Stack §4.14** — **otomatis**"* tanpa syarat; anak `workflows/4.14-stack-packs.md:10` justru berbunyi *"tarik saat dibutuhkan, **bukan borongan di muka** … tugas sepele tak perlu paket"*. AI membaca yang induk lebih dulu. Akibat terukur pada skenario *"ada bug, tombol simpan error"*: **36.245 char** paket stack tertarik = **41% dari seluruh bacaan**, sementara berkas yang benar-benar menjawab cuma **1.380 char (1,5%)**. Diselaraskan ke berkas anak — yang bukan cuma menyatakan perilaku benar, tapi juga **alasannya**, dan alasannya soal **mutu**: resep yang dijejalkan sebelum AI melihat kode NYATA membuat AI mengikuti resep alih-alih pola project yang sudah benar (§4.17).
+- **Jalan pintas 3 keluarga rute** (`div/`, `pola/`, `stack/`) ditulis di berkas aturan — melengkapi capability pack yang sudah dapat jalan pintas sebelumnya. Dulu **asimetris**: `workflows/cap/` disebut 3× di berkas aturan, tiga keluarga lain **nol**, jadi wajib lewat hub. Biaya navigasinya terukur: untuk mendapat checklist keamanan **1.011 char**, AI membuka hub **6.033 char** — **86% bacaan terbuang**. Ironisnya hub itu menjual dirinya *"hemat token: baca 1 divisi, bukan 8 sekaligus"*, padahal 8 berkas divisi digabung cuma 14.037 char — **hub-nya sendiri 43% dari yang katanya dihemat**. Hub tetap ada & tetap dipakai untuk mekanika/topologi. **+537 char** ke berkas always-load (anggaran ≤550).
+- **Penjaga baru `wajib-borongan`** (pemeriksaan ke-13 di `lib/workflows-ref-check.mjs`, PENTING, ikut `preflight`): perintah "WAJIB/otomatis" atas `§id` yang menyeret >15.000 char wajib menyertakan klausa pas-ukuran. Bobot dihitung **beserta seluruh turunan `§id-*`** — jadi "§4.14" terbaca jujur sebagai **114.719 char**, bukan 4.585 char hub-nya saja.
+- **Celah drift yang ditemukan saat memasang penjaganya:** jalan pintas di berkas aturan berbentuk **pola** (`4.13-<backend|frontend|…>.md`), dan bentuk itu **tidak tertangkap** pemeriksa FORWARD (regex path berhenti di karakter `<`). Artinya jalan pintas capability pack yang dipasang sebelumnya **tak pernah dijaga kelengkapannya**. `tests/roster-sync.test.mjs` kini memeriksa berkas aturan sebagai tempat ke-4 (setelah folder, hub, INDEX) + mendaftarkan keluarga `stack` yang dulu tak terdaftar sama sekali. Penjaga ini **langsung membuktikan diri**: ia menemukan `4.14-galeri-folder.md` yang terlewat dari jalan pintas stack yang baru saja ditulis.
+- **`PROFIL_TIM.local.md:115`** disetel ke aturan aslinya — dulu menulis "§4.19 **WAJIB dibaca saat Plan mode aktif**", menghilangkan nuansa berkas aturan sendiri (*"Mandat ini cukup untuk rencana rutin"*).
+- **Pelajaran proses yang mahal (dicatat apa adanya):** percobaan pertama penjaga `wajib-borongan` menghasilkan **33 temuan, mayoritas alarm-palsu** — ia mencampur *pernyataan mandat* ("8 divisi wajib") dengan *perintah memuat*. Contoh paling telak: §10 tertangkap gara-gara frasa "**dibaca**-cepat vs dibaca-lambat" yang bicara soal kecepatan HALAMAN. Diperbaiki lewat syarat kedekatan (kata-muat ≤45 char dari `§id`) → 2 temuan, keduanya nyata. Lalu ketahuan cacat kedua: dedupe `§id` dilakukan **sebelum** menilai, sehingga kemunculan pertama yang tak bersalah membungkam yang kedua — dan bug NYATA-nya sempat lolos. Dan penjaga jalan pintas versi pertama **gagal uji-negatif** (memakai `includes()` polos; menghapus `keamanan` tetap hijau sebab kata itu muncul puluhan kali di tempat lain).
+- **Berkas:** `workflows/4.13-skill-divisi.md`, `CLAUDE_universal_v1.md` (§4.13/§4.14/§4.15), `PROFIL_TIM.local.md`, `lib/workflows-ref-check.mjs`, `tests/workflows-refs.test.mjs`, `tests/roster-sync.test.mjs`. Tes: 1391 → 1405 lulus.
+
+### Diubah — HEMAT TOKEN: satu instruksi yang bisa menarik ~46 rb token diganti jalur 80 karakter
+
+> **Nol perubahan fungsi.** Informasi yang didapat identik; yang berubah cuma jalannya. Ditemukan saat mengaudit permukaan yang belum pernah diukur: **instruksi di dalam berkas always-load yang menyuruh AI membuka berkas lain**. Kalimat 150 karakter bisa memerintahkan pembacaan 183.781 karakter.
+
+- **Rute versi kit diperbaiki** (`AGENTS.md.template`). Dulu: *"cek **baris teratas** `./.claude-kit/CHANGELOG.md`"* — kalimat ini mendarat di `AGENTS.md` **setiap client**, yang dimuat **tiap sesi**. `CHANGELOG.md` = **183.781 char (~45.945 token)**, dan AI yang memakai `Read` (tool paling wajar untuk `.md`) menariknya semua demi **satu angka versi**. Sekarang: `npx lintasai version` (keluaran **80 char**) atau `kit_version` di `.install-manifest.json`. Niat aslinya (*jangan hardcode angka, nanti basi*) dipertahankan utuh — yang salah cuma rutenya, dan rute benarnya sudah ada sejak lama.
+- **Penjaga baru `baca-raksasa`** (pemeriksaan ke-12 di `lib/workflows-ref-check.mjs`, PENTING, ikut `preflight`). Berkas always-load dilarang menyuruh membuka berkas terkirim >50.000 char tanpa **alat pembatas** (`npx lintasai …`, `Grep`, `head`, anchor `§…`). **Kunci desainnya: kata sifat BUKAN pembatas** — *"baris teratas"*, *"sekilas"*, *"bagian awal"* terdengar membatasi tapi tak memaksa apa pun; justru frasa itulah yang membuat bug ini terasa aman bertahun-tahun. Ambang 50.000 diekspor sebagai konstanta: kalau alarm-palsu bermunculan, **naikkan ambangnya, jangan matikan pemeriksanya** (pelajaran LP-012).
+- **Temuan kedua yang ikut tertutup:** `CLAUDE_universal_v1.md` §8.3 menunjuk `update-kit.mjs` (70.227 char) sebagai "Detail =" padahal penjelasannya ada di `workflows/8.3-trusted-repo.md`. Diperbaiki + diberi petunjuk `Grep`.
+- **Dedup aman di berkas aturan:** 3 gema yang rumahnya sudah jelas dipadatkan (§4.12 "Saat AKTIF" · §4.19 fragmen "IKUT INTENT" · §15 yang mengulang utuh daftar pagar §4.12). **78.954 → 78.615 char.** Pagar tak disentuh: blok WAJIB BERPAGAR §4.12, pagar akurasi ✅/❓ §4.19, dan frasa terkunci `IKUT INTENT` semuanya utuh — ketahuan lewat `npx lintasai locked-phrases` yang dipasang putaran lalu, dipakai persis sebagaimana dirancang.
+- **Yang DIBATALKAN setelah diukur:** memadatkan `lib/lang-reminder.mjs` (881 char × tiap prompt). Perkiraan awal ~30%, **angka nyatanya 11%** (98 char/prompt) sebab `tests/lang-reminder.test.mjs` mengunci 26 frasa termasuk 3 label blok verbatim. Owner membatalkan; angka nyata + 2 dugaan boros-token yang gugur (`.kimi-code/AGENTS.md` ternyata gitignored sehingga `Grep` melewatinya; `templates/INDEX.md` ternyata bukan gerbang) dicatat di **addendum ADR-019** supaya audit berikutnya tak mengulang dari nol.
+- **Berkas:** `AGENTS.md.template`, `CLAUDE_universal_v1.md` (§4.12/§4.19/§8.3/§15), `lib/workflows-ref-check.mjs`, `tests/workflows-refs.test.mjs`, `docs/decisions/ADR-019-*.md` (addendum). Tes: 1382 → 1391 lulus.
+
+### Ditambah — PANEN PELAJARAN: 3 kelas bug dari sesi refactor jadi penjaga permanen (LP-011/012/013)
+
+> **Nol perubahan perilaku untuk client yang sudah jalan.** Yang berubah: satu kemampuan yang selama ini terkirim-tapi-mati jadi bisa dipakai, dan tiga kelas bug berpindah dari ingatan ke mesin (doktrin §6.4). Alasan panen ini ada: dua putaran refactor sebelumnya menemukan 4 bug lolos tapi mencatat **nol** entri Buku Pelajaran — kebalikan doktrinnya sendiri, dan celah yang sama sudah pernah ketahuan di LP-009.
+
+- **Penjaga baru: perkakas terkirim WAJIB punya "gagang"** (`lib/tool-reach-check.mjs`, ikut `preflight`, tingkat PENTING). `lib/fact-gate.mjs` dikirim ke SETIAP client tapi mati total — nol perintah CLI, nol dipanggil, nol disebut aturan. Putaran lalu yang diperbaiki cuma **korbannya**; penjaga ini menutup **kelasnya**, dan saat pertama dijalankan langsung menemukan dua korban lain yang masih hidup: **`lib/split-guard.mjs`** dan **`lib/portfolio-write.mjs`** — keduanya cuma bisa dipanggil kalau AI kebetulan ingat membaca baris perintah di dalam sebuah dokumen. Aturannya: tiap `lib/**.mjs` yang dikirim + berdiri sendiri wajib punya ≥1 jalur pemanggil (perintah CLI / langkah preflight / hook), diverifikasi **dari kenyataan** — sengaja tanpa daftar-kecuali tulis-tangan yang pasti membusuk jadi stempel karet. Buku Pelajaran LP-012.
+- **2 perintah baru — kemampuan yang sudah ada, akhirnya bisa dipanggil:** `npx lintasai split-guard` (periksa repo hasil pecah-repo: rahasia ikut terbawa / tier akses bentrok / berkas nyasar) dan `npx lintasai portfolio-write` (tulis Buku Induk akses tanpa menyentuh YAML). Robotnya sudah lengkap & teruji sejak lama — yang hilang cuma gagangnya.
+- **Penjaga baru: aturan dilarang menabrak aturan** (pemeriksaan ke-11 `baca-utuh` di `lib/workflows-ref-check.mjs`, PENTING). Dokumen kit tak boleh memerintahkan "baca/internalisasi seluruhnya" atas berkas yang §6 tandai Grep-dulu — kelas bug yang dulu menelan **48.120 char (~12rb token) tiap sesi**. Pengecualian sah §6 (`JALANKAN_KIT.md` Bagian 1-2 saat Fase Aktivasi §4.3b) dibebaskan supaya robot tak memerahkan aturan yang benar. Buku Pelajaran LP-013.
+- **Alat baru: `npx lintasai locked-phrases`** — cetak frasa harfiah di berkas aturan yang DIKUNCI tes, dibaca **sebelum** memadatkan aturan (§4.18). Lahir dari kejadian nyata: frasa `Pengecualian 8 skill divisi WAJIB` (§4.9) ikut terpangkas saat compaction dan baru ketahuan lewat tes merah. **Bukan pemeriksa** (tak memblokir, tak ikut preflight) dan **heuristik** — daftar kosong ≠ aman; peringatan itu ikut tercetak di keluarannya sendiri, bukan cuma di dokumen. Client bisa memakainya atas berkas mereka: `--file AGENTS.md`.
+- **Buku Pelajaran LP-011** — rujukan & anchor ke rak `templates/` (penjaga `tmpl-*` sudah dipasang putaran lalu, pelajarannya baru dicatat sekarang). Inti pelajarannya: anchor `§keamanan` **bukan** nol hasil — ia mendarat di judul yang SALAH (`STACK_GUIDE.md:666` alih-alih `:567`), jadi AI membaca bab keliru lalu percaya diri. Cocok-yang-salah lebih berbahaya daripada tidak cocok sama sekali.
+- **Resep 12 di `docs/RESEP_PERUBAHAN.md` (v5)** — checklist "tambah/ubah/hapus robot penjaga di `lib/`": gagang → kirim → sebut di aturan → tes dua sisi (benar-benar merah pada kasus rusak, DAN tak beralarm-palsu pada kasus sah). Ditegakkan mesin oleh `tool-reach-check`, bukan sekadar imbauan. Plus langkah 0 `locked-phrases` di Resep 2 + alur compaction `workflows/4.18-compaction.md`.
+- **Padanan client (biar app yang dibangun client ikut aman):** 2 kode taksonomi baru di `templates/feedback/taksonomi.kit.jsonc` (`taksonomi_versi` 1→2) — **`OPS-DEAD-SHIPPED`** (kode/endpoint/feature-flag ter-deploy tanpa jalur pemanggil = kode mati yang menyamar jadi pengaman) dan **`DOC-POINTER-ROT`** (pointer mendarat di tempat salah) — plus 2 aturan keras di `templates/REFACTOR_STANDARD.md` (v4→v5).
+- **Pelajaran proses yang ikut tercatat:** versi pertama `tool-reach-check` memakai `isMain` sebagai satu-satunya penanda perkakas → **17 alarm-palsu dari 18 temuan** (banyak PUSTAKA punya `isMain` berisi "CLI tipis untuk uji-banding"). Penjaga yang beralarm-palsu lebih buruk daripada tak ada penjaga — orang belajar mengabaikannya. Diperbaiki jadi pembeda "apakah ada modul lain yang meng-import berkas ini", dengan `tests/` sengaja tak dihitung sebagai pemakai.
+- **Berkas:** BARU `lib/tool-reach-check.mjs`, `lib/locked-phrase-list.mjs`, `tests/tool-reach-check.test.mjs`, `tests/locked-phrase-list.test.mjs`; diubah `lib/workflows-ref-check.mjs` (pemeriksaan ke-11), `bin/lintasai.js` (3 perintah), `tests/preflight.mjs` (langkah `checkToolReach`), `lib/kit-files.json`, `docs/RESEP_PERUBAHAN.md` (v5), `workflows/4.18-compaction.md`, `templates/REFACTOR_STANDARD.md` (v5), `templates/feedback/taksonomi.kit.jsonc` (v2), `docs/BUKU_PELAJARAN.md` (LP-011/012/013). Tes: 1353 → 1382 lulus.
+
+### Diubah — INSTALL SENYAP: bongkar alur popup pasca-instalasi (ADR-020) · rencana bump MENENGAH (→ 2.10.0)
+
+> **Perubahan besar pengalaman-pasang untuk instalasi BARU** — bukan `[BREAKING]` (client existing tak otomatis kena; baru berubah setelah `npx lintasai update` + buka chat baru). Baca `docs/decisions/ADR-020-install-senyap-hapus-popup-onboarding.md` kalau mau migrasi manual project existing.
+
+- **Instalasi kini SENYAP: 0 popup wajib untuk pemasangan baku** (project baru tanpa konflik `AGENTS.md`). Dulu pasang kit = 3-4 popup berurutan (Setup Mode → Audit Menyeluruh → Ukuran Tim + Bentuk Kode/pecah-repo → jaminan Refactor "14d") sebelum staff bisa mulai kerja. Sekarang: pasang → aktivasi otomatis diam-diam (baca stack ringan, ukuran tim default internal, gerbang mutu CI) → **1 Laporan Penutup** yang menyebut stack terdeteksi + menu kapabilitas → langsung siap kerja.
+- **Peta struktur project = dari GIT, bukan generate docs (hemat token + waktu).** Saat install, AI TIDAK lagi men-scan seluruh project untuk mengisi `docs/architecture.md`. Struktur diambil dari fakta git deterministik (`npx lintasai project-map` / `git ls-files`, ~0 token AI) saat diperlukan. Dokumentasi per-file / denah database tetap tersedia tapi **on-demand** ("buatkan catatan file X") — bukan bulk otomatis saat pasang. Ukuran tim = default internal senyap (tak diumumkan). Scan kematangan file-counting dicabut dari install (diganti baca `package.json` ringan untuk stack-pack). Jaminan refactor 🟢🟡🔴 dikonfirmasi tetap on-demand. Detail: ADR-020 Addendum.
+- **Kapabilitas TIDAK hilang — jadi on-demand.** Audit menyeluruh, rapikan kode bertingkat, dan pecah-repo tetap 100% tersedia; tinggal diminta lewat chat kapan saja ("audit project" / "rapikan kode bertingkat" / "pecah repo sekarang"). Disebut eksplisit di Laporan Penutup + `MULAI_DI_SINI.md` supaya gampang ditemukan staff non-programmer.
+- **Yang TIDAK tersentuh (tetap wajib):** skill 8 divisi (§4.13, jalan otomatis tiap prompt via hook `lang-reminder`), Gerbang Verifikasi Pra-Rilis (§4.6), konfirmasi aksi-merusak (§8.2 Aturan 5). Popup yang tersisa semuanya gerbang keamanan: proteksi `AGENTS.md` existing, git-status sebelum rapikan, tingkat 🔴 Berat refactor, peringatan BETA split-repo, item Tier C (RLS produksi/integrasi luar, konfirmasi verbatim).
+- **Mitigasi regresi 2 bug lama** (v1.43.1 audit hilang, v1.45.0 refactor hilang — akar sama: salah-deteksi kematangan di Windows): Laporan Penutup **wajib** menyatakan 1 kalimat kondisi project (salah-deteksi jadi terlihat, bukan tersembunyi) + menu kapabilitas **selalu tercetak tanpa syarat** (menghilangkan akar bug secara struktural — dulu tawaran cuma muncul kalau deteksi bilang MATURE).
+- **Koreksi klaim keliru:** anotasi `docs/plans/install-senyap-dan-command-v1.md:3` ("sudah terwujud di kit") ternyata keliru — diverifikasi lawan `setup-pola-b.mjs:1058` yang masih mencetak blok directive lama. Diperbaiki jadi status akurat.
+- **Berkas:** `JALANKAN_KIT.md`, `POST_SETUP_CHECKLIST_PROMPT_v1.md`, `CLAUDE_universal_v1.md` (§4.3b/§4.4/§4.11 + §6), `setup-pola-b.mjs` (closing message), `MULAI_DI_SINI.md`, + sinkronisasi rujukan di `AUDIT_POST_SETUP_PROMPT_v1.md`/`PROJECT_LIFECYCLE_PROMPT_v1.md`/`workflows/4.4`/`workflows/14.1`/`templates/PROMPT_LIBRARY.md`/`docs/RESEP_PERUBAHAN.md`/`docs/CLAUDE_CODE_MEDIATED_INSTALL.md`/`templates/INDEX.md`/`README.md`. Tes: `tests/install-anchors.test.mjs` diupdate (anchor lama → anchor struktur baru); `roster-sync`/`setup-pola-b-smoke` tetap hijau.
+
+### Diperbaiki — rute rusak yang memaksa AI membaca borongan (hemat ~104 rb char TIAP tugas)
+
+> **Prioritas sebelumnya terbalik.** Putaran pemangkasan sebelumnya menggarap berkas aturan yang dibayar **sekali per sesi**. Audit lanjutan mengukur yang belum pernah diukur — jalur baca ON-DEMAND — dan menemukan satu permintaan sepele *"tambahkan login Google"* menarik **88.530 char minimum**, yaitu 1,14× berkas aturan always-load, dan **berulang tiap tugas**. Penyebabnya bukan aturan kegemukan, melainkan **rute rusak**.
+
+- **Perintah baca-utuh yang menabrak kebijakan kit sendiri.** `workflows/4.2-pattern-driven.md:7` berbunyi *"**WAJIB**: AI internalisasi semua pattern dari `PROMPT_LIBRARY.md` saat setup sesi"* — padahal `CLAUDE_universal_v1.md` §6 menamai berkas itu **secara eksplisit** sebagai "Grep dulu, jangan baca utuh". Akibatnya **48.121 char (~12 rb token)** ditelan tiap sesi untuk informasi yang tabel mapping 7 baris di bawahnya sudah memuat seluruhnya. Diganti: pakai tabel mapping → `Grep` nomor Prompt yang cocok → baca bagian itu saja.
+- **Anchor menunjuk seksi yang TIDAK ADA — bug KEBENARAN, bukan sekadar boros.** `workflows/cap/auth.md:15` menyuruh *"rujuk `templates/STACK_GUIDE.md` §keamanan"*; judul itu tak ada. Yang lebih berbahaya: `grep "keamanan"` **bukan** nol hasil — ia mendarat di `STACK_GUIDE.md:666` "Gerbang lint keamanan + a11y", padahal yang dimaksud `:567` "## 7. Security Checklist". Jadi AI membaca **seksi yang salah** saat menyusun aturan cookie login, lalu percaya diri. Diperbaiki jadi anchor literal `§7 Security Checklist` di `:15` dan `:38`.
+- **Path template salah tulis** (penunjuk mati ke-7): `workflows/stack/4.14-2-supabase-prisma.md:168` → `templates/GENERATE_TYPES_SCRIPT.md`; berkas nyatanya di `templates/github/GENERATE_TYPES_SCRIPT.md`.
+- **Jalan pintas 15 capability pack di berkas aturan** (`§4.13`): `login→cap/auth.md · bayar→cap/pembayaran.md · …`. Dulu AI **wajib** membuka `workflows/INDEX.md` (16.567 char) hanya untuk memetakan "login" ke berkasnya. Bayar **+553 char sekali per sesi**, potong **16.567 char tiap tugas kapabilitas** — impas setelah tugas pertama. ⚠️ Isi `INDEX.md` **tidak disentuh sedikit pun**: pemicu LENGKAP tetap sumber-tunggal di sana (jalan pintas ini cuma path), jadi keputusan ADR-019 tetap dihormati.
+
+**Angka jujur:** berkas aturan always-load **NAIK 1.485 char** (jalan pintas pack + aturan kecepatan + rujukan Palang Fakta) — praktis menghabiskan hemat putaran sebelumnya. Itu **pertukaran yang disengaja**: bayar sekali-per-sesi untuk memotong **104.288 char (~26 rb token) tiap tugas kapabilitas**. Untuk aplikasi utuh yang realistis dibangun 4-5 sesi, ini selisih yang jauh lebih besar daripada apa pun yang bisa diperas dari berkas aturan.
+
+### Ditambah — penjaga mesin untuk rak `templates/` (permukaan yang DULU nol dijaga)
+
+> Ketiga bug di atas lolos karena satu sebab: `lib/workflows-ref-check.mjs` hanya menjaga rujukan berawalan `workflows/`. Seluruh **26 rujukan ke `templates/`** tak diperiksa siapa pun. Penjaga ditulis **DULUAN** lalu dijalankan untuk membuktikan ia benar-benar menemukan ketiga bug itu (red→green), baru rutenya diperbaiki.
+
+- **3 pemeriksaan baru** di `lib/workflows-ref-check.mjs`: (7) `tmpl-forward` — berkas tujuan ada? **[PENTING]**; (8) `tmpl-kirim` — berkasnya ikut terkirim ke project client (dibaca dari `lib/kit-files.json`)? **[PENTING]**, menutup kelas bug "ada di repo owner, hilang di komputer client"; (9) `tmpl-anchor` — anchor `§X` menunjuk judul NYATA? **[RAPIKAN]**.
+- **Pencocokan anchor SENGAJA ketat** (`anchorCocok`): judul harus **diawali** teks anchor, bukan sekadar memuatnya di tengah. Cocok-longgar akan meloloskan `§keamanan` ke judul yang salah — persis bug di atas. Diuji lawan 6 anchor nyata: 5 anchor bernomor (`§3`, `§2.3`, `§6`, `§7`, `§2.6b`, `§8`) semua cocok, hanya `§keamanan` yang jatuh — **nol alarm-palsu**.
+- **Pemantau ukuran `templates/`** dengan ambang TERPISAH `DEFAULT_TEMPLATE_BUDGET = 25.000` (lebih longgar dari 18.000 untuk `workflows/` — templates memang wajar lebih besar karena berisi contoh siap-tempel). Level **RAPIKAN, tak pernah memblokir**. Sebelumnya 8 berkas `templates/` di atas 18.000 char lolos tanpa terpantau, yang terbesar `MCP_SETUP.md` 64.143 char.
+- **Riwayat dikecualikan** memakai daftar `LEGACY_EXEMPT` yang sudah ada (CHANGELOG/arsip/`docs/plans`) — berkas yang dulu ada lalu dihapus WAJIB tetap boleh tersebut di sejarah. +13 tes pengunci (`tests/workflows-refs.test.mjs`: 14 → 27).
+
+### Ditambah — `npx lintasai enable-fact-gate`: Palang Fakta akhirnya bisa dinyalakan
+
+- **Masalahnya:** `lib/fact-gate.mjs` dikirim ke **setiap** client dan sudah teruji, tapi **0 perintah CLI · 0 dipasang installer · 0 disebut di seluruh berkas aturan**. Robot penegak §7.3a itu mati total di tiap client, dan AI tak pernah tahu ia ada. ADR-014 sendiri mencatat *"enable-command = backlog"* — ini mengeksekusi backlog itu, bukan keputusan arah baru.
+- **`lib/ensure-fact-gate-hook.mjs`** (baru, meniru pola `ensure-risk-gate-hook.mjs` — idempoten, defensif, tulis atomik) + perintah `enable-fact-gate` + satu baris rujukan di §8.2 supaya AI tahu ia ada. Matcher `Edit|Write|MultiEdit` (**sengaja tanpa `Bash`** — beda dari risk-gate yang menjaga perintah berbahaya).
+- ⚠️ **TETAP DEFAULT MATI.** Menyalakannya otomatis = mengubah perilaku di semua client terpasang tanpa diminta. Dikunci tes: `tests/ensure-fact-gate-hook.test.mjs` memastikan installer TIDAK pernah memanggilnya (10 tes).
+
+### Diubah — panggilan alat yang tak saling bergantung dikirim BARENG (kecepatan)
+
+- `CLAUDE_universal_v1.md` §6.3: beberapa `Read`/`Grep` yang tak saling bergantung dikirim dalam SATU giliran, bukan antre — waktu tunggu jadi selama yang paling lama saja. Menutup celah nyata: §5 *"Operasi independen jalan bareng"* selama ini menargetkan **kode yang ditulis client** (`Promise.all`/`asyncio.gather`), bukan cara AI memanggil alat; akibatnya satu-satunya bentuk paralel yang dinamai kit adalah fan-out agen — yang justru default dimatikan. Ditegaskan: ini **BUKAN** izin fan-out (§4.19 tetap NOL fan-out).
+
+### Diperbaiki — 6 penunjuk berkas MATI yang sudah terkirim ke client (2 di titik paling rawan bug)
+
+> Kelas bug yang **tak terlihat dari komputer owner**: di repo kit semua berkas ada, jadi rujukan apa pun terasa benar. Di project client hanya berkas yang terdaftar `lib/kit-files.json` + `package.json files[]` yang mendarat.
+
+- **2 lubang persis di titik paling rawan bug aplikasi — ditambal dengan isi, bukan janji.** `workflows/cap/auth.md:17` dulu menyerah soal kontrol peran (*"Detail model RBAC/ABAC lanjut = peta-jalan `stack/4.14-5b` — belum tersedia"*) dan `workflows/cap/pembayaran.md:32` menyerah soal penerimaan webhook (*"peta-jalan `stack/4.14-10` — belum tersedia"*); kedua berkas peta-jalan itu **memang tidak pernah ada** (`ls workflows/stack/` = 4.14-1 s/d 4.14-9). Padahal `templates/CHECKLIST_KEBUTUHAN_DOMAIN.md:18-19` justru memancing client menyebut "peran kasir vs admin" dan "audit trail siapa void/kasih diskon" — dua-duanya bermuara ke berkas kosong. Sekarang isinya ditulis langsung di pack: **RBAC minimum** (izin sebagai kata kerja bukan jabatan · satu titik cek terpusat · default-deny · cek di server bukan sembunyikan tombol · jejak aksi sensitif) dan **4 aturan terima-webhook** (baca badan MENTAH sebelum parse · banding tanda tangan konstan-waktu `timingSafeEqual` · simpan `event_id` UNIQUE anti proses-dobel · balas 2xx dulu, kerja berat di antrean). Menutup dua kelas bug yang baru ketahuan setelah uang bergerak: izin bocor dan pembayaran terhitung dobel.
+- **4 rujukan ADR menggantung** diubah jadi sebutan telanjang (pola sah `tests/adr-rujukan-klien.test.mjs:26-30`): `workflows/4.6-6.3-doktrin-efisiensi.md:62` → ADR-008 · `workflows/6.5-rekam-pelajaran-frontier.md:8` → ADR-006 · `workflows/7.11-peta-project.md:40` → ADR-011 · `templates/PROMPT_LIBRARY.md:1031` → ADR-009. Keempat ADR itu dinegasikan di `package.json` sehingga TIDAK pernah ada di komputer client. (Rujukan `docs/decisions/ADR-002` di `workflows/8.2-anti-halusinasi.md:53` **sehat** — ADR-002 memang terkirim.)
+- **Penjaga diperluas supaya kelas bug ini berhenti senyap:** `tests/adr-rujukan-klien.test.mjs` dulu cuma memindai `['CLAUDE_universal_v1.md']` (1 berkas); sekarang memindai `workflows/` + `templates/` juga = **139 berkas**. Aturannya TIDAK berubah (tetap hanya rujukan ber-PATH; sebutan telanjang sengaja diabaikan — penjaga LP-007).
+
+### Ditambah — robot anggaran token kini MENELUSURI rantai `@import` (bukan daftar kaku)
+
+- **`lib/rules-budget-check.mjs`: `traceImports()` baru + `MAX_IMPORT_DEPTH = 4`** (sesuai batas 4 lompatan di dokumentasi resmi Claude Code). Dulu daftar berkas yang diukur disusun KAKU (`CLAUDE_universal_v1.md` + `AGENTS.md` + `CLAUDE.md`) dan tak pernah membaca baris `@import` — artinya berkas aturan **keempat** yang kelak ditambahkan lewat `@import` akan luput dari pemantauan biaya token, persis kelas celah yang baru ditutup ADR-019 untuk `AGENTS.md`. Sifatnya **ADITIF + dedup by path absolut**, jadi angka untuk struktur yang ada sekarang **identik** (79.923 char, terverifikasi sebelum-sesudah). Fail-safe total: path menggantung dilewati, siklus A→B→A berhenti. +5 tes pengunci (`tests/rules-budget.test.mjs`: 14 → 19).
+
+### Diubah — hemat token berkas aturan always-load (RINGAN + SEDANG)
+
+> **Angka jujur: 78.992 → 77.156 char (−1.836 char ≈ −459 token tiap sesi client).** Perkiraan awal rencana (−5.737) **tidak tercapai dan itu temuan, bukan kegagalan**: saat tiap kandidat disanggah satu per satu, mayoritas isi yang "kelihatan duplikat" ternyata **mandat load-bearing**, bukan detail. Contoh paling jelas: §7.7 Bus Factor justru **bertambah 4 char** karena 6 kategori file CRITICAL hanya hidup di berkas aturan (raknya sendiri menulis "aturan WAJIB-scoring tetap di sana"). Berkas aturan gemuk karena **padat pagar**, bukan bertele-tele.
+
+- **Dipadatkan (isi identik sudah ada di rak on-demand):** §8.2 Aturan 2 Humble Mode (4 tingkat keyakinan ≡ `workflows/8.2-anti-halusinasi.md:29-36`) · §8.2 Aturan 1 (analogi ≡ rak `:23`; **peringatan slopsquatting DIPERTAHANKAN** — unik, cuma ada di berkas aturan) · §6.3 (gema "robot deterministik dulu" yang sudah jadi sub-seksi penuh di §4.6) · §4 DoD 4 baris gema → 1 checkbox gabungan (§4.6 dan §7.3a **tidak disentuh** — Tingkat 1) · §4.1b 4 label mini-pelajaran → 1 baris · §15 butir ide opsional (label diterjemahkan ke Indonesia sekalian, §2.1).
+- **Dilebur:** §14.1.0 + §14.1 = dua stub popup kembar yang menyatakan aturan sama dan menunjuk rak yang SAMA dua kali → satu seksi, satu pointer. Jangkar `Klarifikasi Terminologi Popup` (dipakai `tests/install-anchors.test.mjs:31`) dan butir "destruktif → opsi paling AMAN di [1]" dipertahankan.
+- **Dipindah ke rak yang SUDAH ADA + terdaftar `workflows/INDEX.md`, menyisakan stub bernomor di tempat:** §4.3 · §4.4 · §4.5 · §4.9 · §4.10 · §7.6 · §7.7 · §7.10 · §7.11. Nomor seksi TIDAK dinomori ulang (`docs/RESEP_PERUBAHAN.md:194`) sehingga rujukan lintas-berkas dan ingatan AI di client lama tetap menemukan alamatnya. Mandat yang WAJIB tinggal: §4.9 "Pengecualian 8 skill divisi WAJIB" (pagar Tingkat-1) · §4.5 "`@latest` WAJIB" (jebakan cache npx) · §7.7 6 kategori file CRITICAL (pemicunya penilaian AI, bukan frasa user — tak kasat mata = rute tak pernah terpicu).
+- **Yang sengaja TIDAK dipangkas** (diputuskan sadar, jangan diulang analisisnya): §5/§9/§10/§11 (tingkat BERAT — dikecualikan owner) · memecah berkas aturan pakai `@import` (**`@import` dimuat penuh di awal sesi = NOL hemat**; lebih buruk, `lib/kimi-agents-gen.mjs` menyalin SATU berkas dengan janji "IDENTIK, tak ada yang dipangkas" → pengguna Kimi kehilangan aturan diam-diam) · mengganti nama `CLAUDE_universal_v1.md` (terdaftar `KIT_CORE_ENTRIES` fail-closed → membatalkan update di SEMUA client) · migrasi ke Skill native (ADR-017 masih berlaku) · throttle `lib/lang-reminder.mjs` (ditolak owner, ADR-019).
+
+### Ditambah — §4.17 "Perkuat, Jangan Kurung" punya rumah isi (kebutuhan: otak AI native menang saat kit salah)
+
+- **`workflows/4.17-perkuat-jangan-kurung.md`** (baru): doktrin 3 lapis (🧠 otak AI native menalar · 🧰 kit membekali · 🤖 robot memastikan fakta) + **4 keadaan di mana kit KALAH dari kenyataan** + **cara menyimpang yang benar** (sebut aturan mana · kenapa tak cocok di sini dengan bukti `berkas:baris` · apa gantinya) + **BATAS KERAS 7 pagar** yang klausa ini TIDAK bisa dipakai melewatinya (§8, §8.1, §8.2, §4.6, §2.1, §4.13, §7.3a — disebut satu per satu, bukan "pagar Tingkat-1" yang kabur) + klausa **"dokumen kit ≠ bukti"**.
+- Di berkas aturan, §4.17 **tetap 1 baris** (+~60 char) — yang berubah cuma cakupannya: dari "perlengkapan kit (8 divisi, stack-pack, capability pack)" jadi "SELURUH isi kit Tingkat-2 — aturan, resep pack, checklist, peta/dokumen". Ini **melaksanakan** keputusan ADR-009 ("di aturan always-load cukup 1 baris pointer di §4.17"), bukan membalikkannya.
+- **Koreksi premis:** klaim "berkas aturan punya nol klausa-keluar" tidak benar — sudah ada minimal 6 dengan diksi berbeda (§4.17 "bisa dilewati", §4.17 "otak Claude = sopir", §1.1 "ada jalan lebih baik → katakan terus terang", §7.3a "beda dokumen vs kode → percaya kode", §12 "pemeriksa salah? → lapor + minta keputusan owner", §6.1 "konflik memory vs realita → percaya realita"). Yang kurang bukan klausanya, tapi **rumah isi + cakupannya**.
+
+### Diubah — perlengkapan ditarik saat dibutuhkan, bukan borongan di muka
+
+- **`workflows/4.14-stack-packs.md`:** ditambah klausa pas-ukuran (padanan yang sudah lama ada di `workflows/cap-packs.md:15`) + `4.14-1b-frontend-lanjutan.md` (17.818 char) kini ditarik **saat benar-benar menggarap komponen/animasi**, tidak lagi otomatis bersamaan dengan `4.14-1-nextjs.md` (18.451 char). Alasan mutu, bukan cuma token: makin banyak resep dijejalkan sebelum AI melihat kode NYATA client, makin besar peluang AI mengikuti resep alih-alih pola yang sudah benar di project itu. ⚠️ **Pengecualian ditulis eksplisit:** `stack/4.14-5-owasp.md` tetap ditarik SEBELUM kontrak auth/pembayaran ditulis (§4.17 titik risiko + §4.16 kontrak duluan).
+- **`workflows/4.2c-aplikasi-utuh.md`:** langkah 6 baru — sesi pertama WAJIB menutup dengan menulis `docs/plans/<aplikasi>.md` pakai format ringkasan-mandiri 5-hal (`workflows/4.16-build-sequence.md`), dan **sesi lanjutan cukup membaca rencana itu + berkas kode target** tanpa mengulang rute pembuka. Aplikasi utuh realistis = 4-5 sesi; tiap sesi yang tak mengulang rute pembuka menambah hemat di atas angka always-load.
+
+### Ditambah — serap Ponytail (MIT): robot "Anggaran Kerumitan" + Buku Utang Teknis
+
+- **Robot "Anggaran Kerumitan"** (`npx lintasai complexity-budget`): menandai otomatis **berkas gemuk** (≥500 baris) + **fungsi/blok panjang** (≥100 baris badan) = sarang bug + boros token saat AI membacanya, TANPA kamu perlu baca kode. Deterministik, CUMA-BACA, ~0 token AI. **File auto-generate (Prisma, Supabase `database.types.ts`, `*.d.ts`) otomatis dibuang** supaya tak jadi alarm-palsu — uji lapangan: di satu project client 40 file Prisma auto-generate = ~85% derau bila tak dibuang. Level **RAPIKAN — tak pernah memblokir** gerbang (bahkan `--strict`); di repo kit sendiri turun ke INFO supaya tak menyandera Gerbang 0/0/0. Ikut otomatis di `npx lintasai preflight`. Mengisi lubang nyata: ESLint `max-lines`/`max-lines-per-function` MATI-default → mayoritas project tak punya penjaga ukuran. Adaptasi ide Ponytail (MIT © 2026 DietrichGebert). (`lib/complexity-budget.mjs`, `docs/complexity-budget.md`)
+- **Buku Utang Teknis** (`templates/BUKU_UTANG_TEKNIS.example.md` + `workflows/4.20-utang-teknis.md`): rumah on-demand untuk refactor/temuan yang **sengaja ditunda** biar tak busuk diam-diam (beda dari Buku Pelajaran §6.4 = bug yang *lolos*). Owner-gated (AI usul → owner setuju), label 2-sumbu (keseriusan × usaha, **bukan skor-angka** §8.2-3b), gate mulai kerja BERAT via `REFACTOR_STANDARD.md`. Adaptasi ide Ponytail `/debt` (MIT).
+
+### Diubah
+- `lib/swallowed-error-check.mjs`: penjelajah berkas bersama (`listCodeFiles`) kini melewati folder cadangan kit `.claude-kit.backup-*` (dulu lolos karena namanya jatuh di antara pola `\.backup-` dan `\.claude-kit\`). Menghapus derau "perkakas kit yang dicadangkan di project client" untuk SEMUA robot cuma-baca (complexity-budget, swallowed-check, dll).
+
+### Catatan serap — Caveman (MIT © 2026 Julius Brussee)
+- **Nihil diserap dari Caveman.** Nilai intinya (kompres output ~65% jadi gaya "manusia gua" + mode `wenyan`) berlawanan dengan mandat kejelasan-untuk-non-programmer (§2.1 + tie-breaker §0). Statistik token `/caveman-stats` **di-drop permanen** (cuma *melihat* token — tak menghemat; host RDP multi-user rawan bocor antar-user §8.1 #6). Detail vonis per-fitur: `docs/serap-skill/KATALOG.md` Sumber 5.
+
+### Ditambah — hemat token boros-berulang di project client (ADR-019)
+
+- **Robot "Anggaran Token GABUNGAN"** (`lib/rules-budget-check.mjs`: `findCompanionAlwaysLoadFiles()` + `runAlwaysLoadBudget()`, ADITIF — fungsi lama tak disentuh): `npx lintasai preflight` sekarang juga menghitung `AGENTS.md` + `CLAUDE.md` client (dulu cuma `CLAUDE_universal_v1.md` sendirian), karena ketiganya sama-sama ter-`@import` tiap sesi. Menutup celah pemantauan — `AGENTS.md` didesain untuk tumbuh (opt-in §15, catatan tim) dan pertumbuhannya dulu tak terpantau.
+- **`lib/hook-session-state.mjs`** (baru): util state per-sesi di `os.tmpdir()` (pola diadopsi dari `lib/fact-gate.mjs`, produksi sejak ADR-014) — fail-open total, dikunci per `session_id`.
+
+### Diubah — sekali-per-rentang-kerja untuk pengingat "rekam pelajaran"
+
+- **`lib/feedback-capture.mjs`** (+ paritas `lib/kimi/feedback-capture-kimi.mjs`): pengingat §6.5 sekarang **sekali per rentang-kerja** (dirty→commit), bukan tiap `Stop` selama git kotor seperti sebelumnya — selaras rule aslinya sendiri ("sekali per tugas, bukan tiap pesan") dan rencana yang sudah tercatat sejak awal di `docs/feedback-capture.md`. Hemat terhitung: rentang-kerja 15 giliran tanpa commit turun dari ~1.590 token jadi ~106 token (~93%). `session_id` kosong → throttle mati total (fail-safe, perilaku identik versi lama).
+- **`CLAUDE_universal_v1.md` §6:** koreksi klaim ukuran `workflows/INDEX.md` ("~2 KB" → akurat, ~16 KB/~4rb token — meleset ~8× di versi lama) + tambah pengecualian sempit untuk `JALANKAN_KIT.md` Bagian 2-7 saat dijalankan sebagai Phase 5b (§4.3b), menutup kontradiksi tertulis dengan kebijakan "Grep dulu" untuk prompt root >20 KB.
+- **`lib/lang-reminder.mjs` (hook paling boros token, ~220-321 token/giliran) SENGAJA TIDAK diubah** — dipertimbangkan (throttle agresif/konservatif), ditolak owner karena teks 8-divisi ditandai "TIAP prompt" Tingkat-1. Keputusan dicatat di `docs/decisions/ADR-019-*.md` supaya tak dianalisis ulang dari nol.
+- Detail keputusan + alternatif yang ditolak: `docs/decisions/ADR-019-hemat-token-feedback-capture-dan-anggaran-gabungan.md`.
+
+### Diperbaiki — gerbang mutu tak pernah mencoba membangun aplikasi (lubang "LULUS palsu")
+
+- **Pemeriksa baru "Build aplikasi"** (`tests/preflight.mjs::runAppBuild`): `npx lintasai preflight` sekarang menjalankan `npm run build` milik project — **GENTING kalau gagal**. Sebelum ini gerbang punya 14 pemeriksa dan **tak satu pun mengompilasi aplikasi**, sehingga robot bisa mencetak "HASIL: LULUS" di atas project yang gagal `next build`. Ini kelas kegagalan paling murah ditangkap mesin (deterministik, ~0 token AI) dan justru satu-satunya yang tak dijaga. Anti-alarm-palsu: project tanpa script `build` dilewati diam-diam (INFO), mode kit juga dilewati (kit = paket CLI).
+- **Efek samping yang ikut tertutup:** pemeriksa build sengaja dipanggil **paling awal**, sebelum "Anggaran ukuran halaman". Robot anggaran halaman selama ini **selalu auto-lewat** ("tak ada .next/ build — dilewati") karena tak ada yang pernah membangun; sekarang ia akhirnya punya hasil build untuk ditimbang.
+- **CI: janji kosong dicabut** (`templates/github/workflows/preflight.yml`). Langkah build di sana dibungkus `continue-on-error: true` dengan komentar yang menjanjikan *"robot mutu di langkah berikutnya yang melaporkan masalahnya"* — padahal langkah berikutnya (`npx lintasai preflight`) tak punya pemeriksa build sama sekali. Langkah terpisah itu dihapus; preflight sendiri yang membangun, dan kegagalannya benar-benar mematikan gerbang. Dijaga tes regresi agar `continue-on-error` tak dihidupkan lagi diam-diam.
+- **Dikunci `tests/preflight-app-build.test.mjs`** (7 tes), termasuk **uji negatif**: project dengan build yang sengaja dibikin gagal WAJIB menghasilkan GENTING. Pemeriksa yang belum pernah menolak apa pun belum terbukti bekerja.
+- **DIPERTIMBANGKAN & DITOLAK:** menaikkan temuan cek-tipe (`tsc`/`mypy`) jadi pemblokir di `--strict`. Dibatalkan karena `tests/preflight-robot-baru.test.mjs:54` mengunci kontrak "stack-check selalu non-blokir" dengan alasan tertulis *"robot baru tanpa data laju-alarm-palsu tak boleh menyandera rilis"* — melemahkan tes itu agar perubahan lolos = persis yang §12 larang. Keputusan diserahkan ke owner.
+
+### Diperbaiki — dua perintah Tingkat-1 yang saling bertabrakan di berkas aturan
+
+- **§4.1 tak lagi menyuruh menulis "Tidak relevan"** (`CLAUDE_universal_v1.md`). §4.1 mewajibkan menulis baris `**Divisi** — Tidak relevan (alasan)` untuk divisi tak terkait, sementara §4.17 **melarang** hal yang sama secara eksplisit ("DILARANG menulis laporan proses … 'divisi X tidak relevan'") dengan bukti uji buta *"versi ber-laporan-proses kalah 4-5, versi tanpa menang 9-3"*. AI dipaksa memilih, dan pilihan apa pun melanggar aturan Tingkat-1. Diselaraskan ke kalimat yang sudah ada di §4.1 sendiri: "tampilkan HANYA lensa yang punya temuan".
+- **Contoh di `workflows/4.1-tinjauan-divisi.md` dibersihkan**: 6 baris "Tidak relevan" + instruksi skeleton yang masih mengajarkan pola terlarang dihapus (−12 baris). Berkas aturan **menyusut**, tidak bertambah.
+
+### [BREAKING] Ritual "8 divisi wajib tiap prompt" DICABUT — lintasAI jadi perpustakaan rujukan (2026-07-19)
+
+**Apa yang berubah buat kamu:** AI tidak lagi menimbang daftar 8 divisi di tiap prompt. **Standarnya
+tidak hilang** — justru sebagian dinaikkan ke aturan yang PASTI dibaca AI tiap sesi. Yang hilang cuma
+ritual pencentangannya.
+
+**Kenapa:** dua uji buta di project klien nyata (prompt natural staff non-programmer, penilai buta yang
+memverifikasi langsung ke kode) menemukan ritual itu **merugikan** — sisi yang memakainya kalah **1 lawan
+11** dan **2 lawan 10**, dan justru menemukan **LEBIH SEDIKIT** aspek yang tak disebut client (11 vs 15;
+14 vs 19) padahal itu alasan keberadaannya. Dugaan mekanismenya: daftar 8 kotak **menjangkarkan**
+perhatian — AI berhenti menggali setelah kotak ke-8. Sisi tanpa ritual juga membaca **lebih banyak kode**
+(24 vs 20 berkas).
+
+**Yang TETAP aman — 4 pagar tak bisa dimatikan (dari 7 jadi 6 pagar keras):**
+- Keamanan + anti-bocor rahasia (§8, §8.1)
+- Anti-ngarang: tiap klaim wajib berbukti + konfirmasi ketik-verbatim untuk aksi merusak (§8.2)
+- Bahasa Indonesia gaya non-programmer di SETIAP jawaban (§2.1)
+- Gerbang "belum boleh bilang selesai sebelum terbukti" (§4.6) + baca-kode-sebelum-mengedit (§7.3a)
+
+**Yang DINAIKKAN ke aturan inti** (dulu cuma di rak yang terukur dibuka 14%):
+- **§10** — aksesibilitas **WCAG 2.2 AA konkret** (teks alternatif gambar, label form bukan placeholder,
+  peran ARIA, target sentuh min 24px, animasi bisa di-pause, jangan andalkan warna saja) · **larangan
+  mengirim tampilan template mentah** + tetapkan-arah-desain-dulu + daftar 6 pola yang bikin murah +
+  6 kualitas tampilan · **sitemap.xml + robots.txt** untuk situs publik
+- **§5** — desain API: bentuk respons konsisten, kode status HTTP yang benar (401/403/409/422/429),
+  versi `/v1/`
+- **§9** — RLS multi-penyewa (aturan siapa boleh baca baris mana di level database)
+
+**Yang DIHAPUS** (4 panduan yang isinya cuma mengulang aturan utama — satu fakta, satu rumah):
+`workflows/div/4.13-{frontend,database,devops,keamanan}.md`. **Keamanan tidak turun kelas** — isinya
+sudah ada di §8 yang Tingkat-1 dan dibaca tiap sesi, bukan rak yang dibuka sesekali.
+**Yang DISIMPAN** (isinya tak ada duanya): panduan webdesign anti-generik, UI/UX WCAG 2.2, desain API
+backend, SEO. Ketiganya kini punya **pemicu mesin** di `lib/rak-pemicu.mjs` supaya tetap terjangkau.
+
+**Ongkos jujur:** berkas aturan naik 81.942 → 86.610 karakter (masih 67,7% dari ambang 128.000). Kit jadi
+sedikit **lebih boros token, bukan lebih hemat** — yang dibeli mutu, ongkosnya token.
+
+**Batas jujur:** angka uji buta = jumlah aspek/temuan (bukan sesi) dari **2 uji** saja, dan semuanya
+memakai model kelas terkuat. Pemicu mesin baru **tidak terbukti** menggerakkan angka (mekanisme serupa
+sudah diukur NEGATIF) — dipasang karena murah, bukan karena terbukti. Latar lengkap: `ADR-023`.
+
+**Perlu tindakan?** Tidak ada. Jalankan `npx lintasai@latest update` seperti biasa. Kalau kamu ingin
+perilaku lama, lihat `UPGRADING.md`.
+
+## [2.9.1] - 2026-07-18
+
+### Diperbaiki — celah taksonomi Tingkat 1 (§4.6 + §7.3a) + pemadatan token berkas aturan
+
+- **§4.6 (Gerbang Verifikasi Pra-Rilis) dan §7.3a (baca-kode-sebelum-edit) kini resmi tercatat TINGKAT 1** di daftar Dua Tingkat Aturan (`CLAUDE_universal_v1.md`). Sebelumnya kedua aturan ini sudah BERPERILAKU wajib-tanpa-kecuali (§7.3a bahkan dijaga mesin lewat Read-before-Edit) tapi taksonomi resmi menandainya sebagai bagian "checklist §4 / dokumentasi §7" yang boleh ditawar Tingkat 2 — celah tafsir yang berisiko disalahartikan sebagai "boleh dimatikan per project". Ditutup tanpa mengubah isi/perilaku aturan itu sendiri, cuma menegaskan statusnya.
+- **Pemadatan §4.7, §7.3a, §2.1.1 Kategori#4**: menghapus restatement yang sebelumnya mengulang >70% isi rak on-demand (`workflows/4.7-alur-berpemandu.md`, `workflows/7.3a-modifikasi-baca-kode.md`) atau seksi lain (§4.1) — nol informasi hilang (detail lengkap tetap ada di rak, cuma dibaca saat dipicu), hemat ~630 karakter (~157 token) dari berkas aturan yang di-load penuh tiap sesi kerja.
+
+## [2.9.0] - 2026-07-17
+
+### Ditambah — kit lintasAI kini jalan native di **Kimi Code CLI** juga (bukan cuma Claude Code)
+
+- **Aturan penuh di Kimi (kualitas sama seperti Claude).** Kimi Code membaca berkas `AGENTS.md` otomatis tiap sesi (bukan `CLAUDE.md`/`@import` seperti Claude). Pemasang kini otomatis membuat **`.kimi-code/AGENTS.md`** berisi **salinan PENUH** aturan `CLAUDE_universal_v1.md` — jadi begitu project dibuka di Kimi Code, aturan yang menyetir mutu (Bahasa Indonesia non-programmer, 8 divisi, anti-ngarang, gerbang QA) **identik** dengan di Claude, tak ada yang tertinggal. Berkas ini dibuat-ulang otomatis tiap update; **tak mengganggu pengguna Claude-only** (Claude tak membaca folder `.kimi-code/`, berkasnya gitignored). Perintah manual: `npx lintasai kimi-sync`. (`lib/kimi-agents-gen.mjs`)
+- **Palang Rem keamanan versi Kimi (opsional, hybrid).** Adaptor hook memakai ULANG otak keputusan yang sama dengan Claude (`lib/risk-gate.js`), dipetakan ke kontrak hook Kimi (TOML `[[hooks]]`, bukan JSON): perintah **ekstrem/tak-bisa-dibatalkan** (`rm -rf`, `DROP/TRUNCATE`, unduh-lalu-jalankan, terobos-pagar, format disk) **ditolak keras**; yang berisiko-tapi-pulih (`DELETE ... WHERE`, `prisma migrate`, sentuh `.env`) **diperingatkan** lalu lewat dialog persetujuan **bawaan Kimi**. Pengingat bahasa/8-divisi + rekam-pelajaran juga tersedia. Pasang (OPT-IN + **wajib diuji di Kimi**): `npx lintasai enable-kimi-hooks`. (`lib/kimi/*`)
+- **Kenapa hook OPT-IN, bukan otomatis:** dokumentasi resmi Kimi memastikan hook di config GLOBAL; dukungan hook PER-PROJECT belum resmi didokumentasikan. Supaya TAK merilis perilaku yang belum teruji, pemasangan hook = perintah manual yang di-uji owner di Kimi dulu (panduan + uji-mandiri di `KIMI_CODE_SETUP.md`). Kalau hook per-project tak terpicu: aman — keamanan tetap dijaga persetujuan bawaan Kimi + aturan. Jalur aturan (di atas) TIDAK butuh hook.
+- **Model-agnostik (K3 TIDAK wajib).** Dukungan Kimi menempel ke *Kimi Code CLI* (fitur baca AGENTS.md + hook = fitur CLI berlisensi MIT), **bukan** model tertentu → jalan di **K2.7 Code (`kimi-for-coding`, tersedia semua tier), K3 (butuh Moderato+), atau model provider lain** via `config.toml`. Tier langganan hanya membatasi akses MODEL, bukan fitur kit. (`KIMI_CODE_SETUP.md`)
+- **Bonus:** Claude Code juga bisa dijalankan dengan model Kimi K2/K3 lewat `ANTHROPIC_BASE_URL` (tanpa mengubah kit) — dicatat di `KIMI_CODE_SETUP.md`.
+- Keputusan desain lengkap: `docs/decisions/ADR-015-native-kimi-code.md`. Jalur Claude Code **tak berubah sama sekali** (semua tambahan di samping; 1230 tes + jalur lama tetap hijau). Panduan pasang + verifikasi-mandiri: `KIMI_CODE_SETUP.md`.
+
+### Ditambah — kit belajar dari tiap client tanpa "mengubah dirinya sendiri": sistem **"rekam pelajaran"** (4 robot, human-in-the-loop)
+
+- **Kit kini mencatat sendiri pelajaran teknis "frontier"** (pola/standar IT profesional yang belum dijaga kit) yang muncul saat kerja di project client, ke berkas **LOKAL** ter-redaksi di `docs/pelajaran-lintasai/`. Yang mencatat = client; yang **memutuskan** jadi standar kit = **OWNER** (manusia di tengah keputusan) — bukan AI diam-diam mengubah aturannya sendiri (anti "auto-evolve" §6.4/§6.5). Kemampuan ini ikut paket + otomatis aktif tiap sesi. Dibangun di atas `ADR-006`. (`lib/feedback-capture.mjs`)
+- **Pengingat akhir-tugas (hook `Stop`, default-nyala, TAK memblokir).** Di akhir tugas ber-kode, AI diingatkan menimbang: "ada teknik profesional yang belum dijaga kit?" **Fail-open** — kalau hook gagal, kerja tetap jalan; sekali per tugas, bukan tiap pesan. Opt-out: ketik "matikan rekam pelajaran" / centang `AGENTS.md`. (`lib/ensure-feedback-capture-hook.mjs`, addendum `docs/decisions/ADR-008`)
+- **Sensor rahasia 2-lapis SEBELUM apa pun tercatat.** Robot redaksi menyensor secret/data-pribadi/jalur-bisnis + menyamarkan bukti, dengan penjaga anti salah-sensor. (`lib/feedback-scrub.mjs`)
+- **Identitas anonim + agregator per-organisasi.** ID organisasi/repo/staff di-hash anonim dari git (nilai mentah dibuang, §8.1 #6); agregator merangkum per-organisasi (**1 organisasi = 1 suara**), diurut menurut jangkauan — **tanpa stempel "LULUS"** (sering-muncul = prioritas, BUKAN tanda benar). (`lib/project-id.mjs`, `lib/feedback-aggregate.mjs`)
+- **Pagar keras:** tanpa kirim-otomatis (kirim ke owner = opt-in), tanpa skor angka, tanpa AI mengubah perilakunya sendiri. Aturan: `CLAUDE_universal_v1.md` §6.5; detail `workflows/6.5-rekam-pelajaran-frontier.md` + spesifikasi `templates/feedback/rekam-pelajaran.md`.
+
+### Ditambah — 3 gerbang mutu client dinaikkan ke penegakan mesin (sesuai profil tim NOL peran QA/DevOps)
+
+- **Checkpoint `server-only` (Next.js).** Panduan penjaga kunci-server dinaikkan dari saran → **checkpoint wajib** Gerbang Bukti-Jalan: project Next.js dengan secret server (mis. `service_role` Supabase) wajib pasang paket `server-only` + marker di modul rahasia → build gagal otomatis kalau kunci bocor ke browser. (`workflows/stack/4.14-1-nextjs.md`)
+- **Resep gerbang lint keamanan + a11y (opt-in, bertahap).** Section baru `STACK_GUIDE.md` §7.6: cara memasang ESLint yang menangkap XSS (`dangerouslySetInnerHTML`/innerHTML tak-aman) sebagai `error` + a11y/`key={index}` sebagai `warn` — gerbang mesin untuk tim tanpa peran QA. Bertahap + opt-in supaya tak membanjiri merah (anti alarm-palsu). Pointer dari panduan Next.js. (`templates/STACK_GUIDE.md`, `workflows/stack/4.14-1-nextjs.md`)
+- **Palang Rem DB: pengingat verbatim-produksi.** Untuk DROP/TRUNCATE, DELETE-tanpa-WHERE, dan deleteMany/updateMany-tanpa-where, pesan konfirmasi kini menyuruh AI meminta konfirmasi ketik-frasa (§8.2 Aturan 5) bila database PRODUKSI — dialog klik tetap backstop mesin (mekanisme tak berubah). (`lib/risk-gate.js`)
+
+> Efek di project client baru terasa setelah kit di-update (`npx lintasai@latest update`) + buka chat baru; resep server-only/ESLint aktif per-project saat membangun app Next.js.
+
+---
+
+## [2.8.0] - 2026-07-15
+
+### Diubah — `npx lintasai update` kini jalan untuk SEMUA client (sumber npm, bukan repo privat)
+
+- **Masalahnya:** repo standar tim `ojokesusu/lintasAI` **privat**, padahal `npx lintasai update` mengambil bahannya dari sana lewat `git clone`. Di komputer client yang tak diundang ke repo, perintah itu **berhenti tanpa meng-update apa pun** — selama ini mereka harus pasang ulang lewat `npm create lintasai@latest`. Di komputer owner perintah itu jalan, jadi masalahnya tak terlihat dari sisi pembuat.
+- **Sekarang:** cukup **`npx lintasai@latest update`** untuk siapa pun. Bahannya = paket npm publik yang **sudah diunduh + diverifikasi npm sendiri** sebelum perintahnya jalan — **tak butuh akun GitHub, akses repo, maupun git terpasang**. Kit lama **tak perlu** pasang ulang dulu: perintah itu menjalankan updater versi terbaru dari npx, bukan updater lama di `.claude-kit/`.
+- **Tulis `@latest`.** Tanpa itu `npx` bisa memakai versi lama (paket lokal di `node_modules` menang; cache npx juga membekukan versi di npm < 11.2.0). Kalau itu terjadi, updater **menolak jalan** + menyebut perintah yang benar — ia tak akan diam-diam memasang versi lama.
+- **`--from-repo`** = jalur git lama (clone + verifikasi tanda tangan GPG), untuk owner/tim yang diundang ke repo (mis. menguji tag pra-rilis). **`--allow-downgrade`** = pintu darurat kalau memang sengaja mau turun versi.
+- **Aturan lama "client eksternal harus `npm create lintasai@latest`" DICABUT.** `npm create` kini murni untuk **pasang BARU**. Dokumen yang menyatakan aturan lama sudah diselaraskan (`CLAUDE_universal_v1.md` §4.5, `UPDATE_KIT_PROMPT_v1.md` Step 0, `workflows/4.5-update-strategy.md`, `templates/UPDATE_GUIDE.md`).
+
+### Ditambah — update tak lagi bisa membuat kit client lenyap
+
+- **Siapkan → periksa → tukar.** Versi baru disiapkan di folder sebelah, **diperiksa kelengkapannya**, baru ditukar (2 langkah cepat). Dulu urutannya kebalikan: folder kit di-rename jadi cadangan **dulu**, baru versi baru diambil — dan karena tak ada satu pun penangan interupsi di kode, Ctrl-C/mati listrik di tengah = `.claude-kit` **hilang**. Kalau apa pun gagal sebelum tukar, kit client kini **tak tersentuh sama sekali**. (`lib/kit-staging.mjs`)
+- **Penyelamat kit yang terlanjur lenyap** (bekas update versi lama yang mati di tengah): update kini mengenali folder cadangan yang tertinggal, lalu menunjukkan cadangannya + cara mengembalikannya. Dulu perintahnya gagal sambil menyalahkan "berkas terkunci/antivirus" dan tak pernah menyebut cadangan yang duduk diam di sebelahnya — client non-programmer buntu total.
+- **Kunci "cuma 1 update per project"** (`lib/update-lock.mjs`): dua update berjalan bersamaan bisa saling menimpa dan mengubur kit lama. Kunci yang lebih tua dari 30 menit dianggap bangkai dan diambil alih otomatis, supaya project tak terkunci selamanya setelah mati listrik.
+- **`doctor` kini memberi tahu kalau kit kedaluwarsa** (banding ke npm, bukan ke repo — jadi client tanpa akses repo ikut terlayani). Dulu doctor **buta**: daftar berkas wajib dibaca dari kit yang terpasang itu sendiri, jadi kit v2.6.0 divonis "sehat, semua utuh" walau berkas v2.7.0 tak ada. Offline → INFO, bukan merah (jangan bikin alarm palsu gara-gara jaringan kantor).
+
+### Diperbaiki [SECURITY] — dokumen internal repo-dev bocor ke folder kit client
+
+- `docs/serap-skill/**` (4 berkas riset internal) + `docs/BUKU_PELAJARAN.md` **ikut tersalin** ke `.claude-kit/` client saat pemasang dijalankan dari repo-dev: penyaring salin tak sepadan dengan negasi `package.json files[]`. Ketahuan lewat **uji pemasangan nyata**, bukan pembacaan kode. Penyaring kini sepadan + dikunci tes (`tests/setup-copy-filter.test.mjs`).
+
+### Diperbaiki — update bisa diam-diam memasang kerjaan yang BELUM dirilis
+
+- Kalau catatan-pasang hilang, seluruh pengecekan versi mati diam-diam (`canCheckRemote` dihitung **sebelum** versi diisi) → pin-ke-tag gagal → `git clone` jatuh ke branch **`main`**, yaitu kerjaan yang belum dirilis. Sekarang update **berhenti** kecuali diminta eksplisit `--branch main`.
+- **Update yang dibatalkan tak lagi melapor "sukses".** Dulu `return 0` walau tak ada apa pun yang berubah → skrip/CI/AI yang hanya melihat kode-keluar menyimpulkan update berhasil.
+- **Rujukan menggantung di sisi client:** `CLAUDE_universal_v1.md` menunjuk `docs/decisions/ADR-009` yang **sengaja tak dikirim** ke client (penjaga LP-007) → AI client menemukan berkas kosong. Penunjuk path dihapus (sebutan jangkar `(ADR-009)` tetap). Dikunci penjaga baru `tests/adr-rujukan-klien.test.mjs`.
+- **Klaim retensi cadangan yang menyesatkan** di `workflows/4.5-update-strategy.md` ("cadangan lama dibersihkan otomatis") diluruskan: pembersihan **opt-in** lewat `--cleanup-backups`, default tak menghapus apa pun.
+
+### Catatan teknis
+
+- Memanggil `npm` dari Node di Windows: `spawnSync('npm')`→ENOENT, `'npm.cmd'`→EINVAL (ditolak sejak tambalan CVE-2024-27980), `shell:true`→jalan tapi memicu DEP0190 ("argumen tidak di-escape" = celah injeksi). Jalur yang dipakai: `node` + `npm-cli.js` **tanpa shell** (`lib/npm-query.mjs`).
+- Tes: 1103 → 1148. Termasuk tes ujung-ke-ujung pertama untuk jalur update yang **berhasil** — Langkah 4-7 (pasang-ulang, beda CHANGELOG, doctor, laporan migrasi) selama ini **nol cakupan tes**, diakui sendiri di `tests/update-kit.test.mjs`.
+
+## [2.7.0] - 2026-07-15
+
+### Ditambah — Naik-kelas standar profesional stack-pack (5 gap Next.js/Supabase produksi)
+
+Kit sudah setara standar expert di mayoritas praktik (Core Web Vitals, resilience, error boundary, i18n, WCAG, RLS-ON, otorisasi server-side); 5 gap terhadap checklist produksi resmi (nextjs.org/supabase.com/web.dev) ditutup — aditif ke stack-pack, tidak mengubah alur.
+
+- **Untuk non-programmer:** app kamu kini punya lebih banyak "sabuk pengaman kelas pro": uji otomatis bahwa data orang lain benar-benar tak bisa diintip, halaman yang tak lambat/basi, dan checklist klik-Dashboard biar aman sebelum online.
+- **Untuk programmer:** (1) uji policy RLS otomatis pgTAP (`templates/supabase-rls.test.sql` + resep di `4.14-2`) — wire ke Gerbang Bukti-Jalan §4.19; (2) type-safety native Supabase (`supabase gen types` + `createClient<Database>` + typed `.rpc()` + `strict`/`no-explicit-any`); (3) Next.js Caching/ISR/`revalidateTag`/`revalidatePath` sadar-versi (`4.14-4-deploy`); (4) Core Web Vitals berangka (LCP<2.5d/INP<200ms/CLS<0.1) jadi gerbang DoD halaman publik + wajib RUM (§10); (5) checklist pengerasan Auth Supabase pra-launch (leaked-password protection dll., `STACK_GUIDE.md` §7.5). Backlog: E2E Playwright fitur besar, rotasi secret.
+
+### Ditambah — Palang Fakta (fact-gate): penegak-mesin pra-edit berkas berdampak-tinggi (OPT-IN)
+
+- **Untuk non-programmer:** pengaman opsional yang bisa kamu nyalakan — sebelum AI mengubah berkas penting (login, database, keamanan), ia "dipaksa" menyebut dulu siapa saja yang memakai berkas itu + data apa yang tersentuh, biar tak asal ubah dan bikin error. Default MATI; kamu yang memutuskan menyalakan.
+- **Untuk programmer:** `lib/fact-gate.mjs` = hook PreToolUse (adopsi ECC gateguard-fact-force, MIT, ditulis-ulang Bahasa Indonesia). Sebelum Edit/Write PERTAMA berkas berdampak-tinggi (auth/DB/migrasi/RLS/API/route/keamanan) per sesi → block + minta 4 fakta (importer · fungsi terdampak · skema data · instruksi verbatim). Dampening per-sesi (sekali/berkas via state di tmp) + skip pohon rendah-nilai (tests/generated) + fail-open. DEFAULT MATI (opt-in — beda risk-gate yang default nyala); memperkuat-mesin §7.3a/§5/§4.6. Sinergi: pakai-ulang blok `importers:` dari plan-scout. Keputusan = `docs/decisions/ADR-014`. Dijaga `tests/fact-gate.test.mjs`.
+
+### Ditambah — Rencana Cepat-Akurat Plan Mode (§4.19) + robot plan-scout
+
+Aturan baru supaya saat AI menyusun RENCANA (Plan mode Claude Code atau penyajian rencana di mode lain), hasilnya lebih cepat, akurat, dan mudah dipahami — tanpa mengekang penalaran AI.
+
+- **Untuk non-programmer:** kalau kamu minta AI "jelasin kondisi project", "tambah/hapus/upgrade fitur", atau pakai Plan mode — jawabannya kini disajikan bertahap dengan 2 versi tiap bagian (👨‍🎓 versi teknis untuk belajar + 🙂 versi bahasa sehari-hari), memisahkan mana yang sudah "✅ dipastikan" vs "❓ masih dugaan", dan menutup dengan "sudah kuperiksa A/B/C, belum periksa D/E" biar kamu tak salah ambil keputusan. AI juga membaca lebih sedikit berkas tapi yang tepat, jadi lebih hemat + cepat.
+- **Untuk programmer:** mandat §4.19 (always-load, ~230 token pointer) + rak `workflows/4.19-plan-mode.md` (on-demand): Matriks Intent→Kedalaman→Wajib-✅ (menggantikan ambang "3-berkas-jenuh" flat), Pernyataan Cakupan wajib untuk output kondisi/saran, ambang berhenti content-based (klaim RLS/izin → baca migrasi ber-nomor tertinggi per objek), sub-protokol HAPUS Sapuan-Referensi-Terbalik, tabel kandidat 8-dimensi, Stack-DoD (termasuk UI/UX/a11y). Robot `npx lintasai plan-scout` (pra-pindai STATELESS: kata-kunci + migration-timeline + reverse-ref). Hook `lang-reminder` menambah blok pengingat kondisional saat `permission_mode==="plan"` (fail-safe; 0 token di mode lain). Koreksi jujur: pagar lama "titik-risiko→✅ wajib" ternyata BERBAHAYA (memaksa ✅ di atas data basi) → diamandemen. Adopsi: Gerbang Klarifikasi (Spec Kit), EARS Indonesia (Kiro). Keputusan + alternatif ditolak = `docs/decisions/ADR-013`. Dijaga `tests/plan-mode-rule.test.mjs` + `tests/plan-scout.test.mjs` + `tests/lang-reminder.test.mjs`.
 
 ---
 
@@ -127,7 +671,7 @@ Item GENTING (5) + Klaster PENTING + item RAPIKAN Gelombang 3 lulus Gerbang Pra-
 
   **Untuk non-programmer:** tiap jawaban AI yang berisi sekarang diakhiri "pelajaran kecil" 5 baris — arti awamnya, kenapa penting, jebakan yang sering menjerat pemula, dan satu langkah nyata untuk naik kelas — dengan label profesi sesuai topik (mis. Junior-Backend). Tujuannya kamu naik tangga pelan-pelan: non-programmer → junior → senior. Kalau AI tidak yakin soal suatu fakta, dia wajib bilang jujur, bukan mengarang.
 
-  **Untuk programmer:** mandat ringkas `CLAUDE_universal_v1.md` §4.1b + detail on-demand `workflows/4.1b-blok-belajar.md` (terdaftar INDEX + `lib/kit-files.json`); PRE-SEND Kategori #3 diperluas + Kategori #4 relabel dinamis; pengingat per-prompt blok ke-3 di `lib/lang-reminder.mjs` (+236 char ≈ ~59 token/prompt, diukur nyata); label = penalaran Claude, BUKAN router kata-kunci (ADR-009/ADR-012); dikunci `tests/blok-belajar-rule.test.mjs` + `tests/lang-reminder.test.mjs` + istilah-pensiun `lib/consistency-check.mjs` + LP-007 `tests/package-bundle.test.mjs` (ADR-012 repo-dev only). Biaya blok output (±200 token/jawaban substantif) = pilihan sadar owner, tercatat di ADR-012.
+  **Untuk programmer:** mandat ringkas `CLAUDE_universal_v1.md` §4.1b + detail on-demand rak `workflows/4.1b-blok-belajar` [DIHAPUS ADR-026] (dulu terdaftar INDEX + `lib/kit-files.json`); PRE-SEND Kategori #3 diperluas + Kategori #4 relabel dinamis; pengingat per-prompt blok ke-3 di `lib/lang-reminder.mjs` (+236 char ≈ ~59 token/prompt, diukur nyata); label = penalaran Claude, BUKAN router kata-kunci (ADR-009/ADR-012); dikunci `tests/blok-belajar-rule.test.mjs` + `tests/lang-reminder.test.mjs` + istilah-pensiun `lib/consistency-check.mjs` + LP-007 `tests/package-bundle.test.mjs` (ADR-012 repo-dev only). Biaya blok output (±200 token/jawaban substantif) = pilihan sadar owner, tercatat di ADR-012.
 
 ## [2.5.0] - 2026-07-12
 
@@ -602,253 +1146,9 @@ Registri `docs/serap-skill/KATALOG.md` + `docs/plans/ECC_BORROW_LIST.md` ditanda
 - `tests/changelog-archive.test.mjs` — 5 tes penjaga arsip: entri berlabel DILARANG terarsip (pakai `testChangelogLabel` asli), 6 entri legacy tetap utuh, penanda body v1.9.0, arsip tak ikut files[]/kit-files, penunjuk arsip ada.
 - `tests/preflight-robot-baru.test.mjs` — 6 tes penjaga `runEnvKeys` + `runStackCheck`: level DILARANG memblokir gerbang (selalu OK/INFO/RAPIKAN) + nilai rahasia `.env` DILARANG bocor ke laporan.
 
-## [1.63.0] - 2026-07-09
+---
 
-> Rilis JEMBATAN (MENENGAH, 1.62.0 -> 1.63.0): **persiapan v2.0.0 "kit 100% Node"** — semua isi rilis ini **ADITIF & backward-compatible** (tak ada perilaku PowerShell yang dicabut). Tujuannya menyiapkan panggung sebelum v2.0.0 menghapus total PowerShell: (1) **7 penjaga mutu yang dulu cuma ada di PowerShell (Pester) kini punya kembaran Node** yang jalan di semua komputer, (2) **2 perintah Node baru** (`protect-main` pemasang kunci-gabung branch + `migrate-project-card` migrator kartu identitas lama), (3) gerbang cepat + CI kini pakai smoke **Node** (nama job dipertahankan), (4) semua updater/pemasang jalur-lama diberi **jaring pengaman Node**, dan (5) **PowerShell resmi ditandai USANG (deprecated)**. **PENGUMUMAN: v2.0.0 (BREAKING) akan MENGHAPUS TOTAL PowerShell dari kit** (±70 berkas `.ps1`/`.psd1`) — rencana lengkap `docs/plans/RENCANA_V2_HAPUS_POWERSHELL.md`. Rilis ini sendiri **BUKAN breaking**: client update aman tanpa migrasi apa pun; PowerShell masih hidup sebagai cadangan fase-jembatan. *(Kata "breaking" di entri ini hanya MENGUMUMKAN rilis mendatang — entri ini sengaja TANPA label breaking berkurung-siku, karena penjaga preflight sec. 11 mewajibkan label itu menaikkan angka BESAR; angka skema artefak tak berubah, semua tetap 1.)*
-
-### Deprecated — PowerShell ditandai USANG (akan dihapus total di v2.0.0)
-
-**Untuk non-programmer:** dulu kit membawa "dua mesin" untuk pekerjaan yang sama — satu mesin **Node** (jalan di semua komputer) dan satu mesin cadangan **PowerShell** (khusus Windows). Sejak jalur kerja tim sudah 100% Node, mesin PowerShell tinggal "ban serep" yang tak pernah dipakai tapi tetap harus dirawat. Mulai versi ini, ban serep itu **resmi dinyatakan USANG** — masih ada dan masih berfungsi (jadi update-mu aman), tapi **akan dicopot di versi besar berikutnya (v2.0.0)**. Yang perlu kamu lakukan: **tidak ada** sekarang; nanti saat v2.0.0 tayang, cukup update lewat cara resmi `npx lintasai update`. Skrip lama `setup-pola-b.ps1` / `update-kit.ps1` sudah diberi stempel "USANG" di dalamnya.
-
-**Untuk programmer:**
-- Header `setup-pola-b.ps1` + `update-kit.ps1` diberi tanda `[USANG / DEPRECATED sejak v1.63.0]` (dihapus v2.0.0; jalur resmi = `npx lintasai <perintah>`). Tidak ada perilaku yang berubah — hanya penanda.
-- Rencana penghapusan (strategi expand-then-contract, D1–D6 disetujui owner): `docs/plans/RENCANA_V2_HAPUS_POWERSHELL.md`. Rilis jembatan ini = Fase 0 + Fase 1 rencana tersebut.
-
-### Ditambah — 7 penjaga Pester diport ke `node:test` (assert tak turun) + 2 perintah Node baru
-
-**Untuk non-programmer:** beberapa "satpam otomatis" yang menjaga mutu & keamanan kit dulu cuma bisa bekerja di komputer ber-PowerShell. Sekarang mereka punya kembaran yang jalan di komputer mana pun — jadi saat PowerShell dicopot nanti, tidak ada satpam yang ikut hilang diam-diam. Plus 2 tombol baru: satu untuk **memasang kunci pengaman** di jalur utama kode GitHub (biar tak bisa asal-tulis), satu lagi untuk **memindahkan kartu identitas project format lama** ke format baru dengan aman (jalan pura-pura dulu, baru sungguhan).
-
-**Untuk programmer:**
-- Port penjaga Pester → `node:test` (kembaran berdampingan, Pester lama masih hijau): `tests/modify-workflow-rule.test.mjs`, `tests/skills-divisi.test.mjs`, `tests/path-leak-check.test.mjs` (+ logika diangkat ke `lib/path-leak-check.mjs`), `tests/secret-precommit.test.mjs` (spawn bash), `tests/risk-gate.test.mjs`, `tests/package-bundle.test.mjs` (`npm pack --dry-run --json`), `tests/create-lintasai.test.mjs`, + gabungan `tests/kit-templates-guard.test.mjs` (security-guard/portfolio-registry/claude-md-loader). Aturan emas ADR-003d: cakupan assert tak turun. `CLAUDE_universal_v1.md` §7.3a kini menyebut KEDUA nama tes (Pester + Node) supaya dua penjaga hijau berdampingan; penggantian nama-Node-saja menyusul v2.0.0.
-- `npx lintasai protect-main` (`lib/branch-protect.mjs` diperluas jadi penerap; port `setup-branch-protection.ps1`): pasang branch protection GitHub — **default SIMULASI**, `--apply` untuk sungguhan; prasyarat `gh` CLI + auth + admin.
-- `npx lintasai migrate-project-card` (`lib/project-card-migrate.mjs`): migrasi kartu `project.lintas.psd1` → `.jsonc` (salin intent/modules/conventions), **default SIMULASI**, idempoten, cadangan ber-cap-waktu, catat `.migration-state.json`. `kit doctor` kini mendeteksi kartu `.psd1` tersisa / kartu ganda (INFO/WARN, bukan error gerbang).
-
-### Diubah — gerbang cepat + CI pakai smoke Node; jaring pengaman jalur-lama; tutup jebakan senyap fakta-tim
-
-**Untuk non-programmer:** pemeriksa cepat "semua beres sebelum berangkat" sekarang memakai mesin Node (bukan PowerShell) — hasil sama, tapi jalan di mana saja. Pemasang/updater versi lama pun diberi jalan-turun otomatis ke Node kalau kelak kit tak lagi bawa PowerShell, supaya tak ada yang tersangkut setengah-jalan.
-
-**Untuk programmer:**
-- `tests/smoke-portable.mjs` naik jadi gerbang smoke Node UTAMA (5 cek: sintaks `.mjs`, berkas kritis era-Node, integritas manifest rekursif, orphan refs, JSON valid) — padanan `smoke-fast.ps1`. Job CI `fast-smoke` + `smoke-setup` (`validate.yml`) diganti isinya ke Node **dengan NAMA JOB dipertahankan** (required check GitHub tetap valid). `smoke-fast.ps1` tetap hidup di `fast-smoke-ps51` + preflight selama fase-jembatan.
-- `update-kit.ps1` Step 4 kini fallback ke `node setup-pola-b.mjs --force --project-root` bila `setup-pola-b.ps1` tak ada (kit Node-murni v2.0.0+) — bukan skip-dengan-WARN (D5). Cabang `.ps1` tetap dievaluasi dulu (perilaku lama non-breaking); dikunci `tests/update-kit.test.mjs`.
-- `KIT_TEAM_FILES_SOURCE` (+ kembar PS `$KitTeamFilesSource`) kini membaca blok `const teamFiles = [` di `setup-pola-b.mjs` (bukan `$teamFiles` di `setup-pola-b.ps1` yang dihapus v2) — cegah 3 fakta "jumlah file tim" dilewati diam-diam saat `.ps1` hilang; kedua sisi diedit serentak (tes paritas). Tes baru: sumber fakta WAJIB ada di repo kit.
-
-### Diperbaiki — perbaikan bebas-v2 (boleh dirilis kapan saja)
-
-**Untuk programmer:**
-- `.github/workflows/publish-create-lintasai.yml`: pakai Node 24 + berhenti `npm install -g npm@latest` (insiden gagal-terbit v1.62.0: upgrade npm global meninggalkan npm setengah-rusak → `MODULE_NOT_FOUND 'sigstore'`). Disamakan dengan pola `publish-npm.yml`.
-- `templates/architecture_auto.md`: koreksi klaim basi — robot registry sudah versi Node (`lib/project-manifest.mjs`, `npx lintasai project-check`), bukan "versi Node masih dalam antrean".
-- Sapu teks jalur-Node yang masih menyuruh `.ps1` ke `npx lintasai update` (`setup-pola-b.mjs` RINGKASAN AKHIR + `update-kit.mjs` saran + `bin/lintasai.js` komentar bump basi).
-
-## [1.62.0] - 2026-07-09
-
-> Rilis FITUR (MENENGAH, 1.61.0 -> 1.62.0): **mesin pindah-versi artefak klien** (rencana `docs/plans/STRATEGI_UPDATE_v2.md`, 5 langkah SELESAI) — kit kini tahu persis "catatan titipan" mana di project klien yang formatnya tertinggal, melaporkannya dengan jujur ("Selesai sebagian", bukan hijau palsu), update tak lagi menimpa `AGENTS.md` kustom klien, dan gerbang rilis MENOLAK perubahan format yang menyelinap tanpa label breaking (penanda perubahan-merusak) + panduan migrasi. Plus: **2 robot mutu baru** (banding kunci env sebelum online + deteksi error-ditelan-diam) + **2 aturan baru** (laporan "Selesai sebagian" §4.7 + higiene menulis dokumen §7.10), berkas aturan selalu-dimuat lebih hemat token (1253 → 1104 baris), dan petunjuk perintah kini jalur Node lebih dulu. **TIDAK ada perubahan yang merusak kompatibilitas** — semua angka skema artefak masih 1; klien update aman tanpa perlu migrasi apa pun. *(Label breaking sengaja ditulis TANPA kurung siku di entri ini — entri cuma MENCERITAKAN penjaganya, bukan menandai rilis ini breaking.)*
-
-### Ditambah — Mesin pindah-versi artefak klien: peta versi + robot laporan-migrasi + buku-besar + penjaga label breaking (STRATEGI_UPDATE_v2 Langkah 1-5)
-
-**Untuk non-programmer:** kit menitip beberapa "kartu catatan" di project-mu (kartu identitas project, catatan-pasang). Kalau suatu saat FORMAT kartu itu berubah, dulu tak ada yang tahu kartu siapa yang masih format lama. Sekarang lengkap pengurusannya: (1) **update tak lagi menimpa** berkas aturan `AGENTS.md` yang sudah kamu ubah sendiri — editanmu selamat; (2) kit punya **daftar resmi** "format versi berapa yang diharapkan" untuk tiap kartu; (3) ada **robot pelapor** di pemeriksa-kesehatan (`doctor`) + saat update: "Termigrasi X dari Y" — kalau ada yang tertinggal, statusnya jujur **"Selesai sebagian"** (doctor merah), bukan hijau palsu; catatannya disimpan di **buku-besar** yang selamat lintas-update; (4) ada **aturan main** mana perubahan yang wajib langsung dimigrasi vs yang boleh menyusul (ditawarkan lewat popup, kamu yang setuju); (5) lahir **`UPGRADING.md`** — buku panduan pindah-versi — dan **gerbang rilis otomatis MENOLAK** kalau ada perubahan format yang mau menyelinap tanpa label breaking + langkah migrasi + langkah SIMULASI (jalan pura-pura dulu, tak mengubah apa-apa). Semua ini pagar untuk MASA DEPAN — hari ini tak ada format yang berubah, jadi update ini aman.
-
-**Untuk programmer:**
-- **Langkah 1 (keamanan dulu):** `setup-pola-b.mjs` jalur update `--force` kini `skip` untuk `AGENTS.md` yang sudah ada (bukan backup-replace) — kustomisasi klien selamat lintas-update. Robot gerbang di-audit fail-closed: `getLintasPackageJsonDependency` (`lib/project-manifest.mjs`) melempar saat `package.json` ADA-tapi-RUSAK (bukan "0 temuan"); `lib/split-guard.mjs` folder-tak-terbaca → GENTING (bukan di-skip senyap). Tes: `tests/setup-pola-b-write.test.mjs` + `tests/split-guard.test.mjs` + `tests/project-manifest.test.mjs`.
-- **Langkah 2 (Mesin 1 — peta):** `lib/expected-schema.mjs` = sumber-tunggal "kit versi ini mengharap artefak versi berapa" (kartu project + catatan-pasang, keduanya = 1). Konsumen via import: `lib/project-manifest.mjs` (pemeriksa tak lagi angka mati `>= 1`; kartu lama di bawah kit baru = TAK COCOK), `lib/manifest.mjs`, `uninstall.mjs`. Salinan yang tak bisa import (template contoh + PS cadangan) dijaga tes pengunci `tests/expected-schema.test.mjs`. Resep naik-versi-skema: `docs/RESEP_PERUBAHAN.md` Resep 9.
-- **Langkah 3 (Mesin 2 — robot laporan):** `lib/migration-state.mjs` — laporan cuma-baca "Termigrasi X dari Y" (enumerasi DARI peta; artefak RUSAK memblokir, belum-ada = opsional) + buku-besar `.migration-state.json` di AKAR project (luar `.claude-kit/`, idempoten + atomik + tolak buku korup/format-lebih-baru). Tersambung `kit doctor` bagian 2c (tertinggal → ERROR "Selesai sebagian") + `update` Langkah 7 (spawn robot KIT BARU supaya peta sezaman). Node-only disengaja; `parity-check` pakai `--skip-migrasi`. Tes: `tests/migration-state.test.mjs`. Dokumen: `docs/migration-state.md`.
-- **Langkah 4 (Dua Keranjang + kunci mesin):** aturan "Dua Keranjang Migrasi" di `LINTASAI_WORKFLOWS_v1.md` §4.5 (Keranjang 1 eager: naik `schema_version` wajib label breaking + Migration Steps + catat buku-besar via `recordLintasMigrationApplied`; Keranjang 2 lazy: HANYA dokumen advisory, popup per-berkas human-in-the-loop, DILARANG auto-bulk) — dikunci tes anti-rot. Penjaga preflight `checkSchemaRaiseBreaking` (`tests/preflight.mjs`, mode kit): banding peta vs rilis ber-tag terakhir (`git show`) — angka NAIK tanpa label breaking di entri CHANGELOG teratas = **GENTING** (gerbang gagal); entri baru bernilai 1 = kelahiran (sah); parser ber-cek-waras anti-buta.
-- **Langkah 5 (disiplin rilis):** `UPGRADING.md` lahir di akar (panduan pindah-versi klien, terpisah dari CHANGELOG; ikut paket npm `files[]` + terdaftar `lib/kit-files.psd1`). Penjaga diperluas: Migration Steps tanpa kata "SIMULASI" → PENTING `skema-simulasi`; artefak naik tak tercatat di `UPGRADING.md` → PENTING `skema-upgrading`. Dokumen: `docs/preflight.md` v8.
-
-### Ditambah — 2 robot mutu baru + 2 aturan kerja (banding kunci env, error-ditelan-diam, "Selesai sebagian", higiene dokumen)
-
-**Untuk non-programmer:** (1) **Robot banding kunci env** (`npx lintasai env-keys`): sebelum app dionlinekan, robot membanding daftar NAMA "kunci pengaturan" contoh vs punyamu — kunci yang lupa diisi ketahuan SEBELUM app mati di tengah jalan; yang dibaca cuma namanya, bukan isinya (rahasia aman). (2) **Robot error-ditelan-diam** (`npx lintasai swallowed-check`): mencari kode yang "menelan" pesan kesalahan tanpa bersuara — bug jadi tak pernah kelihatan; robot ini menandainya supaya dibereskan. (3) Aturan baru: kalau sebagian pekerjaan masih menunggu keputusanmu, AI wajib lapor **"Selesai sebagian"** + daftar-centang per-temuan — bukan mencentang "SELESAI" semua. (4) Aturan menulis dokumen kit: padat & berisi, buang basa-basi — TANPA membuang analogi/penjelasan awam yang jadi ciri kit ini.
-
-**Untuk programmer:**
-- `lib/env-keys-check.mjs` (`npx lintasai env-keys`): banding NAMA kunci `.env.example` vs `.env.local` (cuma-baca, nama bukan nilai) — dipandu checklist "mau online" §11. Tes: `tests/env-keys-check.test.mjs`.
-- `lib/swallowed-error-check.mjs` (`npx lintasai swallowed-check`): deteksi blok `catch`/`except` KOSONG; tersambung gerbang preflight MODE-PERINGATAN (RAPIKAN, tidak memblokir) — `docs/preflight.md` v7. Tes: `tests/swallowed-error-check.test.mjs`.
-- Aturan §4.7 butir 7 (klausa "Selesai sebagian": 3 keranjang ✅ Selesai / ☑️ Diterima-dengan-alasan / ⏳ Tertunda) + §7.10 higiene anti-"slop" (buang pembuka kosong + duplikasi; JANGAN buang hedging anti-halusinasi / analogi aksesibilitas). Ketiganya adopsi selektif ide kit Willey-Labs — catatan: `docs/plans/WILLEY_BORROW_IMPLEMENTASI.md`.
-
-### Diubah — Berkas aturan selalu-dimuat lebih hemat token + petunjuk perintah jalur Node dulu
-
-**Untuk non-programmer:** berkas aturan yang otomatis dibaca AI tiap sesi dirapikan: kalimat kembar dipadatkan jadi satu + penunjuk, detail panjang dipindah ke "rak" yang dibaca hanya saat perlu. Hasil: tiap sesi lebih hemat "pulsa token" — dan TIDAK ada satu aturan pun yang dibuang, cuma pindah tempat. Petunjuk perintah di dokumen kini menunjuk jalur Node (yang jalan di semua komputer) lebih dulu; PowerShell jadi cadangan.
-
-**Untuk programmer:**
-- `CLAUDE_universal_v1.md` 1253 → 1104 baris (7 commit perapian: dedup salinan berulang + pindah detail §4.6/§6.3/§7.2/§7.2b/§7.4/§4.10/§4.12/§14.1/§15 ke `LINTASAI_WORKFLOWS_v1.md` on-demand; pagar §7.10: aturan wajib/analogi/blok 2-versi tak disentuh). Gerbang penuh lulus tiap commit.
-- Petunjuk dokumen diarahkan ke jalur Node (Tingkat 1 migrasi PS→Node, 34 petunjuk dirapikan) + health-check §7.6 kini menyalakan `npx lintasai doctor --env` (potret lingkungan, cuma-baca). ESLint kit 0 peringatan.
-
-### Diperbaiki — `kit doctor` tidak lagi salah-alarm "36 file missing" pada pemasangan via npm
-
-**Untuk non-programmer:** selama ini client yang memasang kit lewat jalur npm (jalur resmi) lalu menjalankan pemeriksa kesehatan (`kit doctor`) selalu disuguhi vonis menakutkan "Kit BERMASALAH — 36 file missing" — padahal kitnya sehat. Penyebabnya: doctor menuntut berkas tes internal dapur kit yang memang **sengaja tidak dikirim** lewat paket npm. Sekarang doctor paham: semua berkas tes absen = ciri pemasangan npm yang normal (ditampilkan sebagai catatan info, bukan error); tapi kalau tesnya hilang **sebagian** (tanda ada yang terhapus) tetap dilaporkan error. Ditemukan lewat simulasi pemasangan client sungguhan sebelum rilis ini — bug lama yang sudah ada sejak versi-versi sebelumnya (v1.61.0 pun kena).
-
-**Untuk programmer:**
-- `kit.mjs` + `kit.ps1` (doctor bagian 2, cermin identik): subset **suite Pester internal** (`tests/*.Tests.ps1`) dari grup `tests` `lib/kit-files.psd1` kini *opsional-per-jalur* — SEMUA suite absen → `OK <n> file inti utuh` (tanpa suite) + 1 baris `INFO ... tidak ikut terpasang (normal untuk pemasangan via paket npm)`; suite absen SEBAGIAN → tetap `ERROR file missing` (korupsi nyata); anggota grup yang BUKAN suite (pelari tes `Run-Tests.ps1`/`preflight.mjs`/`smoke-*` — ikut paket npm) hilang → tetap ERROR. Integritas berkas yang benar-benar terpasang tetap dijaga cek manifest sha256 (bagian 2b).
-- Tes pengunci baru: `tests/kit-doctor-files.test.mjs` (3 skenario: npm-sehat hijau · suite-korup-sebagian merah · pelari-hilang merah). Dibuktikan ulang end-to-end: pasang dari tarball `npm pack` ke folder kosong → `kit doctor` hijau (exit 0).
-
-### Ditambah — Dokumen rencana: sistem feedback pembelajaran lintas-client (FASE 0, belum ada fitur aktif)
-
-- Cetak-biru di `docs/plans/` (pipeline feedback → standar, gerbang uji standar, status + agenda, prompt client v7) + `docs/decisions/ADR-006` + peta-baca developer baru. Ini RENCANA — belum ada perilaku kit yang berubah; fitur menyusul setelah robot agregator dibangun.
-
-## [1.61.0] - 2026-06-27
-
-> Rilis FITUR (MENENGAH, 1.60.2 -> 1.61.0): peningkatan **keamanan & keandalan operasi** — (1) **ubah struktur database tanpa app mati** + (2) **alarm error produksi** (2 "otot otomasi" baru, disambung auto-load) + (3) **Palang Rem Otomatis kini DEFAULT NYALA** (dulu opt-in) + (4) **penegasan filosofi "Dua Tingkat Aturan"**: 8 divisi + pagar keselamatan = WAJIB, sisanya = rekomendasi yang DITAWARKAN (bukan keharusan) + framing pertumbuhan client + (5) **audit "8 divisi benar-benar sampai ke client tiap prompt"** (2026-06-28): alarm 8 divisi per-prompt (rem-mesin lunak) + 2 robot mutu kini terjangkau jalur Node + gerbang CI opt-in + 5 perapian. Tidak ada perubahan yang merusak pemakaian (template baru + rujukan aturan + pengaman aktif yang mudah dimatikan + penegasan teks, backward-compatible).
-
-### Ditambah — Audit "8 divisi benar-benar sampai ke client tiap prompt" (2026-06-28): alarm 8 divisi + robot mutu jalur Node + gerbang CI opt-in + 5 perapian
-
-**Untuk non-programmer:** scan menyeluruh memastikan 8 "ahli divisi" benar-benar membantu tiap kali staff ngeprompt. Hasil: tidak ada bahaya, tapi 3 hal diperkuat + 5 dirapikan. (1) **Alarm 8 divisi**: tiap kamu kirim pesan, AI kini "disenggol" mesin untuk menimbang 8 divisi + lebih waspada saat menyentuh login/pembayaran/data-pribadi/upload/struktur-database/"mau rilis" — dulu cuma "berharap AI ingat". (2) **2 alat pemeriksa mutu** (cek mutu kode tiap bahasa + cek keamanan konfigurasi AI) sekarang bisa dipanggil 1 perintah di semua komputer (dulu cuma jalan di komputer ber-PowerShell-7). (3) **Saklar otomatis opsional**: kalau mau, robot mutu bisa jalan otomatis tiap kirim kode ke GitHub. Plus 5 perapian kecil (DevOps lebih lengkap, batas-jujur untuk teknologi di luar daftar, penyelarasan teks).
-
-**Untuk programmer:**
-- `lib/lang-reminder.mjs`: hook `UserPromptSubmit` kini menyuntik **2 blok** — pengingat bahasa (lama) + **pengingat 8 divisi** (8 nama + perketat di titik risiko + "tampilkan pas-ukuran, jangan ledakkan 15 lensa"). Menutup asimetri "aturan bahasa dapat rem-mesin, 8 divisi tidak". `CLAUDE_universal_v1.md` §4.17 diselaraskan jujur ("diperkuat pengingat-mesin LUNAK", bukan klaim by-construction). Dikunci `tests/lang-reminder.test.mjs`.
-- `bin/lintasai.js`: daftarkan `stack-check` + `ai-config-check` ke `COMMANDS_NODE` (`npx lintasai stack-check run --repo-root .` / `ai-config-check --repo-root .`) — SENGAJA bukan di `shouldPassProjectRoot` (robot pakai `--repo-root`, bukan `--project-root`). `LINTASAI_WORKFLOWS_v1.md` §4.14/§4.15: jalur Node jadi UTAMA, `pwsh` cadangan. Dikunci `tests/dispatcher-init-routing.test.mjs`.
-- **Gerbang CI opt-in di client** (`npx lintasai enable-preflight-ci`): `templates/github/workflows/preflight.yml` (WAJIB `runs-on: windows-latest` — CLI Windows-only) + `lib/ensure-preflight-ci.mjs` (idempoten, fail-safe, tak timpa editan klien tanpa `--force`). Backstop MESIN supaya robot mutu tak cuma jalan saat AI ingat gerbang §4.6. `docs/preflight.md` v5. Dikunci `tests/ensure-preflight-ci.test.mjs`.
-- 5 perapian: §4.14 batas-jujur kedalaman stack-pack (stack di luar daftar = baseline + konvensi resmi); §4.13 #6 DevOps + 3-pilar observability; klaim "tiap jawaban 2 versi" → "jawaban substantif" (Q&A pendek boleh tanpa blok 2-baris, bahasa tetap awam); nama divisi-8 di blok "Dua Tingkat Aturan" → kanonik (`Cyber Security`) + tes pengunci Pester baru (`tests/skills-divisi.Tests.ps1`).
-
-### Ditambah — Filosofi "Dua Tingkat Aturan": 8 divisi + pagar = WAJIB, sisanya DITAWARKAN (+ framing pertumbuhan)
-
-**Untuk non-programmer:** dulu semua aturan kit terbaca "wajib" dengan nada sama, padahal niatnya: cuma **8 ahli divisi + pagar keselamatan** yang benar-benar wajib; sisanya (gaya kode, dokumentasi, proses) cuma **disarankan** — kamu bebas pakai/lewati per project. Sekarang itu ditegaskan jelas di pembukaan aturan + halaman depan, plus penegasan bahwa output 2 versi (untuk yang belajar koding + bahasa awam) sengaja dibuat supaya kamu **makin paham sendiri dari waktu ke waktu** (non-programmer → junior-programmer), bukan selamanya bergantung.
-
-**Untuk programmer:**
-- `CLAUDE_universal_v1.md`: blok baru **"🎚️ Dua Tingkat Aturan"** (setelah §0) memisahkan **TINGKAT 1** (wajib & tak bisa dimatikan: 8 divisi §4.13 + keamanan §8/§8.1 + anti-halusinasi §8.2 + bahasa non-programmer §2.1 + konfirmasi aksi merusak §8.2-Aturan-5) vs **TINGKAT 2** (ditawarkan/opt-out per project: alur §3, DoD §4, kode §5, docs §7, DB §9, frontend §10, proses §11). §4.1: penegasan tujuan format 2-versi sebagai "tangga belajar".
-- `README.md`: blok **"Janji inti — yang DIJAMIN vs yang DITAWARKAN"** di atas tabel highlight. `MULAI_DI_SINI.md`: blok awam "yang dijamin otomatis vs ditawarkan + kamu tumbuh sendiri".
-- `templates/ONBOARDING.md`: 5 frasa-ajaib otot yang sebelumnya tak diumumkan kini **ditawarkan** (`cek lingkungan`/doctor, `build error`, `cek tes`, `cek keamanan AI/MCP`, `uji tampilan situs`) + butir penjaga `cek akses tim` (access-verify).
-- Higiene kelengkapan: `templates/OPERASI_DATABASE_AMAN.md` + `templates/OBSERVABILITY_PRODUKSI.md` kini terdaftar di `lib/kit-files.psd1` (terjaga anti-drift + verifikasi kelengkapan saat install) + disalin ke `docs/` project (mudah ditemukan staff, selaras file panduan lain). Catatan: file FISIK sudah selalu sampai via salinan penuh jalur npm/npx; ini menutup celah pendaftaran whitelist + visibilitas docs/.
-
-### Diperbaiki — akurasi instruksi pasca-migrasi PowerShell→Node (hasil audit kecepatan/eksekusi READ-ONLY)
-
-**Untuk non-programmer:** beberapa "papan petunjuk" di aturan masih menunjuk alamat lama (jalur PowerShell + format file lama `.psd1`) setelah mesin kit pindah ke Node — bisa bikin AI di project Node-only menjalankan perintah yang tak nyala, lalu langkah pemeriksa otomatis terlewat diam-diam. Sudah dibetulkan menunjuk jalur Node yang benar (PowerShell jadi cadangan). Bukan crash — ini pembetulan papan petunjuk. (Audit menyeluruh mengonfirmasi: installer + 10 robot inti kokoh, nol crash/bug nyata.)
-
-**Untuk programmer:**
-- `CLAUDE_universal_v1.md` §4.6 + §6.3: perintah robot pencegah-drift kini menunjuk jalur utama Node (`npx lintasai preflight` / `node lib/consistency-check.mjs --checks-file docs/consistency-map.jsonc`); `pwsh` + `.psd1` diturunkan jadi cadangan. Cegah langkah-1 Gerbang Pra-Rilis ter-skip diam-diam di client Node-only (syarat `.psd1` tak pernah benar untuk client yang ikut wizard → menghasilkan `.jsonc`).
-- `CLAUDE_universal_v1.md` §4.6: tautkan eksplisit ke §6.3 disiplin #2 — urutan tes hemat-waktu (tes terdampak dulu, suite penuh SEKALI di gerbang), cegah tafsir "jalankan seluruh tes berulang tiap edit kecil" yang melambatkan project bertes-banyak.
-- `templates/architecture_auto.md`: perjelas robot registry (MISSING/ORPHAN) saat ini versi PowerShell (butuh `pwsh`); client Node-only diarahkan jaga registry manual sampai versi Node diport (backlog tercatat di `docs/PETA_SUMBER_KEBENARAN.md`).
-
-### Ditambah — robot penjaga "daftar isi docs" (architecture_auto.md) kini jalan di jalur Node
-
-**Untuk non-programmer:** "daftar isi" dokumen project (architecture_auto.md) dijaga robot supaya tak basi — kalau ada catatan baru lupa didaftarkan, atau link menunjuk file yang sudah dihapus, robot menegur. Dulu penjaga ini cuma jalan di jalur PowerShell; sekarang juga jalan di jalur **Node**, jadi project Node-only (tanpa PowerShell) ikut terlindungi → AI tetap **gesit menavigasi** karena daftar isinya akurat. (Menutup backlog dari audit sebelumnya.)
-
-**Untuk programmer:**
-- `lib/project-manifest.mjs`: port `getLintasRegistryFinding` + `invokeLintasRegistryCheck` (MISSING/ORPHAN) dari `project-manifest.ps1:436-521` — **SETIA** (boundary nama `auth.md`≠`oauth.md`, lewati link eksternal/parent/absolut, kecualikan indeks `architecture_auto.md`+`architecture.md`, rekursif subfolder). CLI: `node lib/project-manifest.mjs --registry`. **Paritas Node↔PowerShell terverifikasi** (output identik terhadap kit).
-- `tests/preflight.mjs`: pemeriksa `runRegistryCheck` ditambah ke gerbang (mode kit + project client) — level **RAPIKAN** (TOC basi = peringatan navigasi, TAK memblokir rilis; bukan crash). Tes baru `tests/project-manifest-registry.test.mjs` (8 kasus: bersih/MISSING/ORPHAN/boundary/indeks/eksternal/subfolder/opsional).
-- Higiene: daftarkan `perf-budget.md` + `BUKU_PELAJARAN_DAN_PREFLIGHT.md` ke `docs/architecture_auto.md`. Backlog di `docs/PETA_SUMBER_KEBENARAN.md` ditandai SELESAI.
-
-### Ditambah — Operasi Database Aman: ubah struktur tanpa downtime + rollback runbook
-
-**Untuk non-programmer:** mengubah "bentuk lemari data" (tambah/hapus/ubah kolom) saat app dipakai itu rawan bikin app error atau data hilang — bug paling fatal karena susah dibalik. Sekarang ada panduan `templates/OPERASI_DATABASE_AMAN.md` yang mengajari AI mengubahnya **pelan-pelan tanpa menutup toko** (pasang yang baru dulu → pindahkan isi → buang yang lama), plus "tombol undo" (rollback) yang disiapkan sebelum mulai. Cocok untuk Supabase tim.
-
-**Untuk programmer:**
-- `templates/OPERASI_DATABASE_AMAN.md` (baru): pola *expand-then-contract* konkret (ADD COLUMN nullable → backfill batched → `CHECK ... NOT VALID` lalu `VALIDATE` → drop lama), tabel keputusan 🟢/🟡/🔴 per operasi, rollback runbook (migrasi-pembalik vs restore snapshot), checklist pra-migrasi. Merujuk (bukan menduplikasi) `MCP_SETUP.md`/`RLS_SETUP_PROMPT.md`/`backup-schemas.yml`.
-- `CLAUDE_universal_v1.md` §9: 1 baris rujukan auto-apply — saat ada permintaan ubah STRUKTUR tabel, AI muat template ini.
-
-### Ditambah — Observability Produksi: alarm error + log terstruktur + healthcheck (wajib sebelum online)
-
-**Untuk non-programmer:** app yang dipakai pelanggan tanpa "alarm" itu seperti toko tanpa CCTV — baru tahu kemalingan pas buka pagi. `templates/OBSERVABILITY_PRODUKSI.md` memandu pasang **alarm error** (langsung kabari kalau ada yang rusak menimpa pengguna) + **catatan otomatis** yang bisa dilacak + **detak jantung** (pantau app masih hidup) — sebelum app online.
-
-**Untuk programmer:**
-- `templates/OBSERVABILITY_PRODUKSI.md` (baru): 3 pilar (error-tracking Sentry untuk Next.js/Python, structured logging `pino` + `trace-id` tanpa secret/PII, healthcheck `/api/health` + uptime monitor) + checklist "sebelum online". Mengangkat Sentry dari `SPLIT_REPO_TOOLS_SETUP.md §12` (3 baris Tier-3) jadi standar wajib-sebelum-online.
-- `CLAUDE_universal_v1.md` §11: 1 baris rujukan auto-apply — saat staff bilang "mau online"/"deploy produksi", AI ingatkan + pandu checklist ini.
-
-### Diubah — Palang Rem Otomatis (risk-gate) kini DEFAULT NYALA (dulu opt-in default mati)
-
-**Untuk non-programmer:** "palang besi" yang minta konfirmasi sebelum AI melakukan aksi berbahaya (hapus banyak data, `push --force`, sentuh file rahasia, format disk) dulu **default mati** — harus dinyalakan manual, jadi sering "tidur" (staff non-programmer tak inisiatif). Sekarang **otomatis nyala** tiap kit dipasang/di-update. Mode-nya cuma **bertanya** untuk aksi yang benar-benar berbahaya, jadi kerja sehari-hari tak terganggu. Gampang dimatikan kalau mau (hapus 1 blok di `.claude/settings.json`).
-
-**Untuk programmer:**
-- `setup-pola-b.mjs`: panggil `ensureRiskGateHook()` otomatis tiap init/update (cermin pola `ensureLangHook`), FAIL-SAFE (settings rusak/terkunci → dilewati, tak ditimpa) + non-blokir (gagal pasang ≠ gagal setup). Panel status akhir-setup diselaraskan.
-- **Justifikasi default-on (anti-drift, didokumentasikan):** Palang Rem **MEMBATASI** AI (mengurangi risiko), BEDA dari mode-OTONOMI (co-pilot/auto-confirm §4.12) yang tetap default MATI. Maka default-nyala **selaras "keamanan dulu"** (tie-breaker #1), bukan melanggar §4.12. Diselaraskan di `CLAUDE_universal_v1.md` §8.2, `docs/risk-gate.md`, `lib/ensure-risk-gate-hook.mjs` (komentar), `KEUNGGULAN_LINTASAI.md`.
-- Tetap mudah dimatikan + bisa dipasang manual `npx lintasai enable-risk-gate`. Tes `tests/ensure-risk-gate-hook.test.mjs` (unit fungsi) tetap berlaku.
-
-### Catatan
-- SEO **sengaja TIDAK ditambah template baru** — sudah lengkap (audit `WIZARD_SEO_CHECK_v1.md` + robot `perf-budget` + panduan schema.org `LINTASAI_WORKFLOWS_v1.md §4.15 #6`). Menambah = duplikasi/bloat (prinsip reuse > duplikasi §5).
-- Gerbang `npm run preflight:strict` LULUS bersih (Node + Pester).
-
-## [1.60.2] - 2026-06-27
-
-> Rilis KECIL (patch, 1.60.1 -> 1.60.2): mengeraskan **jalur update** supaya janji "client tinggal chat 'lintasai update' → dapat fitur terbaru" benar-benar andal untuk SEMUA client. Tidak ada perubahan yang merusak pemakaian (cuma penegasan aturan + perbaikan dokumen).
-
-### Diperbaiki — Jalur update kedap-air: eksternal/ragu otomatis pakai npm (bukan git repo privat)
-
-**Untuk non-programmer:** dulu, kalau client chat "update kit", AI bisa memilih jalur yang mengambil versi baru dari "gudang terkunci" (repo GitHub privat) — yang **gagal** untuk client yang tidak diundang ke repo (mereka mentok di versi lama, walau aman). Sekarang aturannya jelas: client yang tidak punya akses repo / ragu **otomatis pakai jalur npm** (`npm create lintasai@latest`) yang **pasti jalan untuk siapa pun**. Jadi "chat update → dapat versi terbaru" sekarang andal untuk semua.
-
-**Untuk programmer:**
-- `CLAUDE_universal_v1.md` §4.5 (aturan AUTO-LOAD): tambah aturan pemilihan JALUR update — internal (diundang repo) → `npx lintasai update` (git clone repo privat); eksternal / tak punya akses / ragu → `npm create lintasai@latest` (npm publik). Default saat ragu = npm; kalau `npx lintasai update` gagal "tak bisa ambil dari repo" → otomatis beralih ke npm. Sebelumnya logika ini HANYA ada di `UPDATE_KIT_PROMPT_v1.md` (on-demand) — kini diangkat ke aturan inti yang selalu termuat (menutup celah "chat update mentok").
-- `LINTASAI_WORKFLOWS_v1.md` §4.5: tambah "Step 0 - Pilih JALUR update" + selaraskan langkah eksekusi (Mode A step 8) dari `kit.ps1 update` (PowerShell) ke `npx lintasai update` / `npm create lintasai@latest` (Node-first; PowerShell tetap cadangan).
-- `README.md`: perbaiki label repo dari "(publik)" → "(privat — repo standar tim)"; tegaskan paket npm-nya yang publik (status sebelumnya basi/menyesatkan).
-- Gerbang `npm run preflight:strict` LULUS bersih (Node + Pester).
-
-## [1.60.1] - 2026-06-27
-
-> Rilis KECIL (patch, 1.60.0 -> 1.60.1): tambah **panduan "pasang aman"** — di mana sebaiknya kit lintasAI disimpan saat dipasang client + cara pasang yang aman. Tidak ada perubahan yang merusak pemakaian (cuma menambah 1 dokumen + penunjuknya, backward-compatible).
-
-### Ditambah — Panduan "Pasang Aman" (di mana menyimpan lintasAI)
-
-**Untuk non-programmer:** ada panduan baru `PANDUAN_PASANG_AMAN.md` (1 halaman) yang menjawab: kit lintasAI sebaiknya disimpan **di DALAM project** (sebagai folder `.claude-kit/`) lalu disimpan ke git — BUKAN di folder terpisah di luar project. Kalau ditaruh di folder terpisah, aturan AI tidak pernah ikut terbaca ("mati-suri"). Panduan ini juga berisi langkah pasang aman ke project yang sudah punya berkas sendiri + saran untuk project besar (mulai 1 repo dulu, pecah nanti).
-
-**Untuk programmer:**
-- Tambah `PANDUAN_PASANG_AMAN.md` di akar kit + daftarkan ke `package.json` files[] (ikut terkirim saat client pasang via npm) + 1 baris penunjuk di README "Peta Keputusan".
-- Lahir dari kasus nyata: client memasang kit di folder terpisah (di luar project) sehingga pemuat `CLAUDE.md` (yang `@import` ber-alamat relatif `./.claude-kit/CLAUDE_universal_v1.md`) tidak nyambung -> aturan tak ter-load.
-- Gerbang `npm run preflight` LULUS bersih (Node + Pester).
-
-## [1.60.0] - 2026-06-27
-
-> **[SECURITY]** Rilis KEAMANAN (urgensi terpisah dari ukuran). Naik MENENGAH (1.59.0 -> 1.60.0): mengeraskan **alur rilis kit ke npm** — pindah ke **npm Trusted Publishing (OIDC)** sehingga rilis **tanpa kunci/token** sama sekali. Tidak ada perubahan yang merusak pemakaian (backward-compatible) — yang berubah cuma cara kit ini diterbitkan, bukan cara kamu memakainya.
-
-### Diperbaiki (Keamanan) — Rilis tanpa-kunci (OIDC Trusted Publishing)
-
-**Untuk non-programmer:** rilis kit ke "toko" npm dulu pakai "kunci rahasia" (token) yang bisa dicuri + kadang bikin error login (E401/OTP). Sekarang rilis pakai sistem **tanpa kunci** — npm cuma percaya rilis yang datang langsung dari robot GitHub repo ini. (Stempel anti-palsu "provenance" belum dinyalakan karena itu hanya untuk repo publik, sedangkan repo ini private — bisa dinyalakan nanti kalau repo dijadikan publik.)
-
-**Untuk programmer:**
-- `.github/workflows/publish-npm.yml` + `publish-create-lintasai.yml` (job publish): tambah `permissions: id-token: write`, naikkan Node 20 -> 22 + `npm install -g npm@latest` (OIDC Trusted Publishing butuh npm >= 11.5.1 / Node >= 22.14), **hapus `NODE_AUTH_TOKEN`/`NPM_TOKEN`** (OIDC tanpa rahasia jangka-panjang).
-- `publishConfig.provenance` tetap `false` di kedua paket — npm provenance hanya didukung untuk repo PUBLIK; repo ini private (sempat dicoba `true`, gagal `E422`). Bisa dinyalakan kalau repo dijadikan publik.
-- Dokumen status diselaraskan (`SECURITY.md`, `docs/SIGNED_RELEASE.md`).
-- Gerbang `npm run preflight` LULUS bersih (Node + Pester).
-
-**LANGKAH OWNER (agar tetap aman):** setelah rilis OIDC terbukti jalan, hapus secret `NPM_TOKEN` dari GitHub (jalur rilis lama berbasis token tidak lagi diperlukan).
-
-## [1.59.0] - 2026-06-26
-
-> Rilis FITUR. Naik MENENGAH (1.58.0 -> 1.59.0): menyalakan 6 "penjaga" hasil audit "apakah manfaat lintasAI benar-benar dirasakan client?" (wizard Buku Induk akses + Palang Rem 1-langkah + pencegah-drift + verifikator akses + SEO-check + perf-budget) — semua READ-ONLY/aman + auto-skip anggun kalau tak relevan + dikunci tes — ditambah penyempurnaan internal yang menumpuk sejak 1.58.0 (Compaction, `kit doctor --env`, konsolidasi helper, dll). Tidak ada perubahan breaking.
-
-### Ditambah — Nyalakan 6 "penjaga" audit: wizard Buku Induk akses + Palang Rem 1-langkah + pencegah-drift + verifikator akses + SEO-check + perf-budget
-
-Lanjutan audit "apakah manfaat lintasAI benar-benar dirasakan client?" — menutup SEMUA usulan top (yang DITUNDA: RLS-Guard Supabase, butuh kredensial live). Tiap fitur READ-ONLY/aman + auto-skip anggun kalau tak relevan + dikunci tes.
-
-- **👨‍💻 Programmer:**
-  - **Wizard Buku Induk akses** — `lib/portfolio-write.mjs` (pasangan `portfolio-read.mjs`): menulis `lintasai-portfolio.yml` dari data wawancara AI + validasi keamanan (tolak rujukan rusak / anggota ber-baris-baru; tandai brankas dibagi ke kelompok besar) + baca-balik. Naskah `templates/WIZARD_BUKU_INDUK_v1.md`. Menutup celah Buku Induk akses tak pernah terbuat.
-  - **Palang Rem 1-langkah** — `lib/ensure-risk-gate-hook.mjs`: deep-merge hook PreToolUse risk-gate ke `.claude/settings.json` (idempoten + fail-safe + tulis-atomik, OPT-IN). Perintah `npx lintasai enable-risk-gate`. `docs/risk-gate.md` v3.
-  - **Pencegah-drift** — `templates/WIZARD_PENCEGAH_DRIFT_v1.md`: AI mengisi `docs/consistency-map.jsonc` dari fakta NYATA project (BUKAN auto-salin contoh yang memicu alarm palsu); robot `consistency-check.mjs` yang sudah ada jadi penjaganya.
-  - **Verifikator akses** — `lib/access-verify.mjs` (READ-ONLY): banding tim-akses GitHub-nyata vs Buku Induk + audit-log; fetcher injectable (teruji tanpa `gh`); anti rasa-aman-palsu (gh gagal → BERHENTI, exit≠0); tanpa fungsi mengubah izin. Perintah `npx lintasai access-verify` (butuh `gh` + organisasi GitHub).
-  - **SEO-check** — `templates/WIZARD_SEO_CHECK_v1.md`: naskah AI audit SEO paham framework (Next App/Pages/HTML), memisahkan "hilang" vs "diwarisi layout" (anti alarm palsu) — sengaja BUKAN robot regex.
-  - **Perf-budget** — `lib/perf-budget.mjs`: baca manifest build `.next` → perkiraan ukuran JS per route vs anggaran (default 500 KB), auto-skip kalau belum build; ikut `preflight` (RAPIKAN). Perintah `npx lintasai perf-budget`. `docs/perf-budget.md`.
-  - 4 robot baru didaftarkan di `kit-files.psd1` (node_lib, dikunci = persis `lib/*.mjs`) + dispatcher `bin/lintasai.js`. +37 tes Node (total 666 lulus) + 273 Pester relevan; lint + robot konsistensi bersih.
-- **🙂 Non-Programmer:** 6 "alat penjaga" yang tadinya cuma rencana kini nyala + bisa dipakai cukup dengan mengetik ke AI: (1) **"buatkan Buku Induk akses"** — AI mewawancaraimu lalu menulis sendiri catatan siapa boleh akses repo mana (kamu tak menyentuh format teknis); (2) **"nyalakan Palang Rem risk-gate"** — pasang rem-otomatis yang minta konfirmasi sebelum aksi berbahaya, tanpa merusak setelananmu; (3) **"aktifkan pencegah-drift"** — AI membuat daftar "angka yang harus selalu sama di banyak berkas" supaya tak ada yang lupa diganti; (4) **"cek akses"** — robot membandingkan siapa yang benar-benar bisa akses repo di GitHub vs catatanmu (cuma melapor, tak mencabut); (5) **"cek SEO"** — AI mengaudit SEO halaman sesuai teknologi situsmu; (6) **"cek ukuran halaman"** — menghitung berat tiap halaman vs batas wajar. Semua aman (cuma melihat / minta izin dulu) + tak menghentikan kerjamu.
-
-### Ditambah/Diperbaiki — Quick Win "nyalakan penjaga": secret-hook tutup-celah + tombol `board` + panel STATUS PENJAGA + lembar Kalimat Ajaib
-
-Audit "apakah manfaat lintasAI benar-benar dirasakan client?" (2026-06-26) menemukan banyak penjaga sudah dibangun tapi "tidur" (default mati / belum ada tombol / belum diperkenalkan). 4 perbaikan ringan menyalakannya — menumpuk di [1.58.0], tanpa bump versi.
-
-- **👨‍💻 Programmer:** (1) `setup-pola-b.mjs` pasang ulang `installSecretHook` SETELAH `git init` di sesi yang sama (flag `secretHookDeferred`, panggil ulang sesudah `setupGitIdentity`) → tutup celah-bocor `.env` saat repo baru dibuat (sebelumnya hook dilewati lalu tak dipasang sampai update berikutnya). (2) `bin/lintasai.js` daftarkan perintah `board` (`npx lintasai board`) → `lib/repo-board.mjs` (sudah ada `main()`, tinggal entri dispatcher + help). (3) `setup-pola-b.mjs` fungsi baru ter-export `buildGuardStatusLines()` + panel "STATUS PENJAGA (nyala vs belum)" di `printFinalSummary` → cek deterministik cuma-baca status secret-hook/consistency-map/risk-gate/Buku-Induk + 1 kalimat cara nyalakan tiap yang BELUM. (4) `templates/ONBOARDING.md` (v2→v3) bagian baru "🪄 Kalimat Ajaib untuk AI" (frasa pemicu: lintasAI skill/audit/refactor bertingkat/compaction/skill <bidang>/update kit/mode co-pilot/lanjutkan setup) + 1 baris pengingat frasa di penutup pemasangan. Tes: +4 + 2 assert di `tests/setup-pola-b-write.test.mjs` (632 lulus, lint bersih). Semua cuma-baca + idempoten + fail-open; tak ada perubahan breaking.
-- **🙂 Non-Programmer:** 4 perbaikan kecil yang "menyalakan penjaga yang tadinya tidur": (1) penjaga rahasia kini terpasang juga di saat paling rawan (pas repo baru dibuat) — tutup lubang bocor password/kunci `.env`; (2) tombol baru `npx lintasai board` → lihat kondisi SEMUA repo tim dalam 1 layar (mana yang belum dikirim ke server / `.env` belum aman); (3) tiap pasang kit muncul daftar "penjaga mana yang sudah NYALA vs BELUM + cara menyalakannya" (seperti lampu indikator dashboard mobil); (4) lembar "kalimat ajaib" supaya staff tahu fitur terkuat tinggal diketik ("lintasAI skill", "audit", dll). Efek baru terasa di project staff setelah update kit + buka chat baru.
-
-### Ditambah — Compaction (§4.18): rapi-rapi aman berkas yang menumpuk seiring waktu
-
-Berkas yang tumbuh tiap sesi (daftar-isi memori `MEMORY.md`, registry dokumen `architecture_auto.md`) lama-lama membengkak + melenceng (daftar-isi tak lagi sinkron dengan berkasnya) → lambat dibaca + ada link menggantung. Fitur baru "Compaction" memberi AI di tiap project klien protokol **aman** untuk merapikannya — lahir dari kasus nyata daftar-isi memori membengkak ke 59 KB (cuma sebagian termuat).
-
-- **👨‍💻 Programmer:** stub **§4.18** baru di `CLAUDE_universal_v1.md` (auto-load, jejak kecil) + detail di `LINTASAI_WORKFLOWS_v1.md` §4.18. Pemicu "compaction" (+ ucapan biasa "padatkan/rapikan berkas"); AI juga *menawarkan* saat melihat index membengkak/melenceng. Protokol 5-langkah WAJIB urut: tentukan sasaran → cadangan ber-tanggal → padatkan ringkasan (detail TAK dibuang, pindah ke berkas sumber) → buktikan dengan mesin cuma-baca (jumlah entri tak berubah + 0 link menggantung + 0 berkas tersesat) → lapor jujur (terbukti-di-sini vs efek-di-chat-baru). Larangan: jangan buang isi, jangan sentuh logika kode (beda dari §4.11 refactor), verifikasi cuma-baca (§8.2 Aturan 3), aksi merusak tetap konfirmasi (§8.2 Aturan 5). Tes pengunci anti-rot `tests/compaction-rule.test.mjs`. Tidak ada perubahan kode/robot — fitur = aturan + protokol. Tanpa bump versi (entri menumpuk di bawah header [1.58.0] sesuai konvensi branch rilis).
-- **🙂 Non-Programmer:** sekarang AI bisa "rapi-rapi berkas yang makin gemuk seiring waktu" dengan aman — ketik "compaction" (atau "rapikan berkas"). Yang dijaga: **isi tak pernah dibuang** (cuma diringkas + dirapikan), **dicadangkan dulu** biar bisa dibalik, dan **dibuktikan mesin** kalau tak ada yang hilang. 🏢 Seperti merapikan daftar-isi buku tebal biar muat 1 halaman — isi bab-nya tetap utuh, difoto-copy dulu sebelum mulai, dicek sesudah biar tak ada bab yang nyasar.
-
-### Disederhanakan — Aturan komunikasi output: cukup penjelasan bahasa awam (analogi 3-lapis tidak lagi wajib)
-
-Atas keputusan owner (2026-06-25): SEMUA output AI ke user (jawaban, narasi antar-langkah, isi popup, checklist, blok Tinjauan lintasAI Divisi, finding audit) **tidak lagi WAJIB** menyertakan blok "3-lapis analogi" (🏢 sehari-hari + 📱 tools digital + 🎯 contoh konkret) maupun "contoh konkret" terpisah.
-
-- **👨‍💻 Programmer:** kewajiban diturunkan jadi "jargon dijelaskan dengan bahasa awam 1 kalimat; 1 analogi singkat OPSIONAL". Format 2 sudut pandang 👨‍🎓 Junior-programmer + 🙂 Non-Programmer di §4.1 **dipertahankan**. Disunting di `CLAUDE_universal_v1.md` (§2.1, §2.1.1, §4.1, DoD §4, daftar larangan §12), `LINTASAI_WORKFLOWS_v1.md` (style guide audit §4.4 + catatan Reference Card), `AUDIT_POST_SETUP_PROMPT_v1.md`, `POST_SETUP_CHECKLIST_PROMPT_v1.md`, `KEUNGGULAN_LINTASAI.md`, `templates/ANALOGI_LIBRARY.md` (pengantar — **tabel 32 jargon tetap** sebagai sumber analogi OPSIONAL) + label `templates/INDEX.md`/`setup-pola-b.ps1`. Tidak ada perubahan kode/perilaku robot; tujuan inti (jargon tidak dibiarkan mentah, tetap mudah dipahami non-programmer = tie-breaker §0 #3) TETAP.
-- **🙂 Non-Programmer:** sekarang penjelasan AI lebih ringkas — cukup 1 kalimat bahasa awam tiap istilah teknis, tidak lagi wajib 3 versi perumpamaan sekaligus. Kalau 1 perumpamaan membantu, AI masih boleh pakai (tidak dipaksa). Yang penting tetap: AI **tidak boleh** menjawab pakai istilah teknis mentah. Efek baru terasa di project staff **setelah update kit + buka chat baru**.
-
-### Ditambah — `kit doctor --env`: Pemeriksa Lingkungan Setara (menutup akar "di dev jalan, di client beda")
-
-Keluhan berulang "apa yang jalan/terlihat di komputer kami terasa BEDA di komputer client" berakar pada **lingkungan eksekusi yang tak pernah disetarakan**: `kit doctor` lama cuma memeriksa berkas kit + keasliannya, **buta** terhadap versi Node/PowerShell/OS/Git + ada-tidaknya library di mesin client. Robot baru `lib/env-check.mjs` + flag `kit doctor --env` menutup celah ini (Quick Win #1 dari panel desain "standar profesional", owner-pilih 2026-06-25).
-
-- **👨‍💻 Programmer:** robot deterministik `lib/env-check.mjs` (baca `process.version`/`os.release()`/`$PSVersionTable`/`git --version`, cek `node_modules`+lockfile via `getPackageManager`, `.env.local` cuma cek-ada) → menilai versi Node vs `engines.node` project (default `>=18`). Diintegrasikan **opt-in** di `invokeDoctor` (`kit.mjs`): tanpa `--env`, `kit doctor` tetap **byte-identik** dengan cadangan `kit.ps1` (gerbang output-identik ADR-003); dengan `--env`, menambah blok "Lingkungan eksekusi (parity)" + ikut hitungan `Result`. Reuse `getPackageManager`/`stripBom` (anti-duplikasi); terdaftar di `kit-files.psd1` (`node_lib`) → ikut cek-keaslian + tarball. 16 tes (`tests/env-check.test.mjs`) termasuk **kunci-keamanan**: output dipastikan TIDAK memuat hostname/username/jalur absolut/isi `.env` (§8.1 #6). Spawn pakai array-args + `-ExecutionPolicy Bypass` + timeout 5 dtk + **fail-honest** (gagal deteksi → "tidak terdeteksi", bukan diam-diam OK). Fitur Node-only (arah Strangler Fig). Dok: `docs/env-check.md`.
-- **🙂 Non-Programmer:** sekarang ada "lampu indikator dashboard" untuk komputer client — ketik `doctor --env`, kit memotret versi Node/PowerShell/Windows + cek library sudah terpasang, lalu menunjuk **sumber beda** dalam bahasa awam (mis. "Node kamu v16, project minta minimal v18 — naikkan dulu"). 🏢 Seperti memeriksa oven sebelum menyalahkan resep: kalau ovennya beda suhu, kuenya bantet bukan karena resepnya salah. Tidak mengubah apa pun (cuma membaca) + tidak pernah membocorkan password/isi rahasia.
-
-### Ditambah — Cap lingkungan acuan di `project.lintas.jsonc` (pelengkap `doctor --env`)
-
-Pelengkap Quick Win #1: saat pasang, kit kini merekam "cap lingkungan" (versi Node + platform saat itu) ke kartu identitas `project.lintas.jsonc`. `kit doctor --env` membacanya otomatis → bisa menunjuk **sumber beda** lebih tajam: "kit ini disetel di Node 20, komputermu Node 16".
-
-- **👨‍💻 Programmer:** `getLintasDerivedEnvironment()` (`project-manifest.mjs`) merekam `{recorded_node, recorded_node_major, recorded_os}` dari `process.version` AKTUAL saat `writeLintasProjectManifestIfMissing` jalan (bukan ditulis tangan → anti "no quote no claim"). Blok `environment` opsional: kartu lama tanpa blok tetap terbaca (`null` = fitur menyala mulus saat kartu baru, project lama tak error). `env-check.runEnvCheck` auto-baca via `readLintasProjectManifest` (reuse, tak menduplikasi parser `.jsonc`); major di-parse inline di `project-manifest` (cegah lingkar-impor ke `env-check`). 6 tes baru (termasuk kunci-keamanan: kartu tak bocorkan hostname/username). Node-only (`.jsonc`; penulis PowerShell `.psd1` sengaja beda, ADR-003a).
-- **🙂 Non-Programmer:** kit sekarang "mencatat versi lingkungan" saat dipasang (versi Node waktu itu), supaya kalau nanti ada yang terasa beda, bisa langsung membandingkan "dulu disetel di Node 20, sekarang kamu Node 16 — mungkin ini sebabnya". Cuma nomor versi, tidak pernah mencatat nama komputer/identitas.
+> **📦 ARSIP RIWAYAT LAMA (entri < v2.0.0):** entri yang tak-berlabel sudah dihapus dari repo (riwayat lengkap tetap ada di riwayat git). **Pengecualian:** entri berlabel `[SECURITY]`/`[BREAKING]`/`[SCAN-REQUIRED]` di bawah ini SENGAJA dipertahankan utuh supaya banner "pasang SEGERA" untuk client yang lompat banyak versi tetap bekerja (dijaga `tests/changelog-labels.test.mjs`).
 
 ## [1.58.0] - 2026-06-24
 
@@ -948,15 +1248,6 @@ Lanjutan cetak-biru anti-bug-berulang (`docs/plans/BUKU_PELAJARAN_DAN_PREFLIGHT.
 - **👨‍💻 Programmer:** ESLint untuk sisi Node + gerbang CI `node-lint`; robot Node pakai `process.exitCode` (anti output-kepotong); jalan-cadangan PowerShell saat Node gagal; pembuang-BOM disatukan (`lib/fs-text.mjs`); pengunci bentuk manifest Node+PS. +2 tes pengaman tarball (kunci absen berkas rahasia/lokal: `.env`/`.manifest-secret`/`*.local.md`/lockfile/`eslint.config.mjs`; + `docs/plans/` hanya POLA_REPO_AMAN). Polish: header SPLIT_REPO sync v1.58.0 (angka jumlah tes di `docs/split-guard.md` kemudian di-de-fragilize → lihat LAPIS 1 SSOT di atas).
 - **🙂 Non-Programmer:** rapi-rapi mesin di balik layar supaya lebih andal + pengaman tambahan supaya berkas rahasia tak sengaja ikut saat menerbitkan paket. Tak ada yang perlu kamu lakukan.
 
-## [1.57.2] - 2026-06-24
-
-### Diubah — Blok "Tinjauan lintasAI Divisi" pakai sudut pandang JUNIOR-programmer (bukan senior) — lebih mudah dipahami
-
-Atas permintaan owner: blok tinjauan lintas-divisi di AKHIR jawaban AI (yang merangkum temuan dari banyak sisi: Backend, Keamanan, QA, dll) dulu punya baris teknis "👨‍💻 Programmer" yang ditujukan untuk developer/CTO senior — sering terlalu padat-jargon untuk staff. Sekarang baris itu diganti jadi "👨‍🎓 Junior-programmer": tetap teknis & menunjuk `file:baris`, TAPI tiap istilah teknis WAJIB dijelaskan singkat di tempat supaya yang masih belajar koding pun paham. Baris "🙂 Non-Programmer" tetap. Hasil: kedua baris mudah dimengerti.
-
-- **👨‍💻 Programmer:** §4.1 + §2.1.1 Kategori #4 (`CLAUDE_universal_v1.md`) + contoh & skeleton §4.1 (`LINTASAI_WORKFLOWS_v1.md`) di-rewrite: label `👨‍💻 Programmer` → `👨‍🎓 Junior-programmer`, aturan baris teknis kini MEWAJIBKAN penjelasan-jargon-di-tempat (mis. "regex (pola pencocokan teks)") alih-alih "istilah industri untuk developer/CTO". Scope SENGAJA dibatasi ke blok tinjauan (yang dilihat user di output); artefak 2-POV lain TIDAK disentuh (brosur `KEUNGGULAN_LINTASAI.md` + aturan §7.8, materi rujukan stack-checklist `WORKFLOWS` §4.2/§4.13, entri `CHANGELOG` historis) karena beda audiens/fungsi. Nol tes/robot mengunci label lama (terverifikasi folder `tests/` + tak ada `docs/consistency-map.psd1`), jadi tak ada regresi. Konsistensi versi 6-file + buku-fakta BERSIH.
-- **🙂 Non-Programmer:** "kesimpulan multi-sisi" di bawah tiap jawaban AI sekarang ditulis supaya **dua-duanya gampang dimengerti** — versi untuk yang masih belajar koding + versi untuk yang bukan orang teknis (sebelumnya versi atas terlalu "bahasa ahli"). 🏢 Seperti dokter yang menjelaskan hasil lab pakai bahasa pasien, bukan istilah kedokteran mentah. Cuma mengubah CARA NULIS rangkuman; tidak menyentuh kode yang jalan, jadi aman. Berlaku ke semua project yang memasang lintasAI setelah di-update + buka chat baru.
-
 ## [1.57.1] - 2026-06-20
 
 ### Diperbaiki [SECURITY] — Wiring contoh Palang Rem SALAH FORMAT (palang gagal-diam) + tes pengunci wiring
@@ -965,137 +1256,6 @@ Ditemukan oleh scan kesiapan-rilis (17 pemeriksa READ-ONLY, dicek-silang skeptis
 
 - **👨‍💻 Programmer:** wiring diubah ke kontrak Claude Code yang benar: `{ "type":"command", "command":"node .claude-kit/lib/risk-gate.js" }` (SATU string `command`, buang `args`). Diverifikasi 4 arah: schema `commandHookItem` (oneOf string|array, tanpa `args`), 28 hook resmi ECC SEMUA pakai `command` string-penuh (nol `args`), uji empiris (`node` tanpa path → SyntaxError exit 1 vs `node <path>` → ask exit 0), + skema MCP yang memang pakai `args`. **+4 tes pengunci wiring** (`tests/risk-gate.Tests.ps1`): assert `command` memuat `risk-gate.js` + binary `node` + TIDAK ada properti `args` — supaya format salah ini tak bisa kembali diam-diam. Koreksi juga contoh historis `docs/plans/palang-rem-otomatis.md:39`. Robot decide() + 19 robot lib/*.ps1 + 103 tes lain terbukti SEHAT (nol crash). Header `CLAUDE_universal_v1.md` tanggal 06-18→06-20. 27 tes risk-gate lulus. (Catatan label [SECURITY]: ini pra-rilis—belum ada user terdampak; ditandai karena menyangkut fitur keamanan + wajib sebelum staff menyalakan.)
 - **🙂 Non-Programmer:** scan kesiapan-rilis menangkap **1 masalah penting sebelum sampai ke staff**: contoh cara-menyalakan Palang Rem **salah tulis**, sehingga kalau staff mengikutinya persis, palang **diam-diam tidak menyala** — staff kira aman padahal tidak. 🏢 Seperti memasang alarm rumah yang ternyata kabelnya salah colok: lampunya nyala tapi tak benar-benar mendeteksi maling. Sudah **diperbaiki** + dikasih "pengunci" (tes) supaya kesalahan ini tak bisa terulang. Ini justru bukti gerbang QA bekerja: ketahuan saat diuji, bukan pas dipakai. Sisa kit terbukti sehat.
-
-## [1.57.0] - 2026-06-20
-
-### Diubah — Palang Rem Otomatis: runtime PowerShell -> Node.js (`lib/risk-gate.js`), ~7,7x lebih cepat (keputusan owner, ADR-002)
-
-Owner memilih Node.js setelah melihat benchmark nyata (ADR-002): hook PowerShell 5.1 ~509ms/panggilan vs Node ~66ms (~7,7x). Karena palang rem akan dipakai AKTIF oleh semua staff (bukan opt-in jarang), kecepatan jadi prioritas. `lib/risk-gate.ps1` (PowerShell) DIHAPUS → diganti `lib/risk-gate.js` (Node-only, sesuai arahan "nodejs saja"). Logika identik (semua kategori + pesan Bahasa Indonesia sama). Node sudah ada kalau kit dipasang via npm (`engines node>=18`).
-
-- **👨‍💻 Programmer:** `lib/risk-gate.js` = hook `PreToolUse` Node.js; fungsi `decide()` di-export (unit-testable). Kontrak sama: "ask" (exit 0 + JSON `permissionDecision:"ask"`), "block" (exit 2 + stderr), "allow" (exit 0). **2 bug ditemukan + diperbaiki saat konversi** (via tes E2E, bukan di tangan staff): (1) pipa Windows menambah **BOM** di awal stdin → `JSON.parse` gagal → hook **fail-open diam-diam** (keamanan tak bekerja) — ditangani buang-BOM dulu; (2) `process.exit()` memotong tulisan async pada pipa → pakai `process.exitCode` + keluar natural (flush aman). Tes ditulis-ulang `tests/risk-gate.Tests.ps1` (23 tes, Pester spawn `node`, **skip-jika-Node-absen**; token berisiko dirakit-string biar tak picu sandbox). Wiring `templates/hooks/risk-gate.settings.example.json` → `node`. Docs + §8.2 pointer + `kit-files.psd1` + KEUNGGULAN diselaraskan. ADR-002 dapat addendum (owner override). Konsekuensi disadari: kit kini 2 bahasa (PowerShell + 1 hook Node) → beban rawat naik; mitigasi: 1 berkas terisolasi + tes lengkap. Bonus: lintas-OS (Node jalan Win/Mac/Linux).
-- **🙂 Non-Programmer:** palang rem sekarang pakai mesin **Node.js** yang ~7,7× lebih gesit (dialog konfirmasi muncul lebih cepat tiap aksi berisiko). Owner pilih ini karena palang akan dipakai semua staff terus-menerus, jadi kecepatan penting. 🏢 Seperti ganti mesin mobil ke yang lebih responsif karena dipakai harian. CATATAN: saat ganti mesin, ketemu + diperbaiki **2 bug tersembunyi** (salah satunya bikin palang diam-diam tak bekerja) — ketahuan karena diuji ketat dulu, bukan pas dipakai staff. Butuh Node.js (sudah ada kalau pasang lewat npm).
-
-## [1.56.0] - 2026-06-20
-
-### Ditambah — Kebijakan Update untuk staff (UPDATE_GUIDE §2.5): "kapan PERLU update, kapan TIDAK"
-
-Lahir dari pertanyaan owner: "tiap perubahan versi naik — apakah client/staff WAJIB update terus-menerus?" Jawaban profesional: TIDAK. `templates/UPDATE_GUIDE.md` (v3→v4) dapat bagian baru §2.5 yang menegaskan pemisahan **"versi naik (sisi pembuat) ≠ wajib update (sisi pemakai)"** + kebijakan praktis. Melengkapi 4-tier yang sudah ada (§3) dengan "jadi kapan harus bertindak".
-
-- **👨‍💻 Programmer:** §2.5 mengkodifikasi kebijakan konsumsi-versi untuk pemakai: kit terpasang lokal (`.claude-kit/`) = pinning alami (tetap jalan tanpa update); **hanya `[SECURITY]` yang memaksa update segera**, fitur/fix lain = opt-in/terjadwal; + pola **"owner sebagai gerbang"** (owner uji+setujui 1 versi stabil lalu sebar terjadwal ke staff, bukan tiap staff chase latest). Tabel WAJIB/OPSIONAL/TIDAK-perlu. Tidak menyentuh kode/mekanisme — murni kebijakan + komunikasi (label tier sudah ada). Auto-deployed via setup-pola-b.ps1.
-- **🙂 Non-Programmer:** sekarang ada panduan jelas: kamu **TIDAK** harus update lintasAI tiap kali versi naik. Versi yang sudah jalan tetap aman selamanya. Update **wajib segera** HANYA kalau ada label `[SECURITY]`; selebihnya update **terjadwal** (mis. bulanan) atau kalau memang **mau fitur baru**. 🏢 Seperti aplikasi HP — pembuatnya rilis terus, tapi kamu tak update tiap hari; HP tetap jalan. Untuk tim: enaknya **owner** yang pilih versi stabil lalu kabari staff "pakai versi X", bukan tiap staff kejar yang terbaru sendiri-sendiri.
-
-## [1.55.0] - 2026-06-20
-
-### Ditambah — Papan Status Lintas-Repo (`lib/repo-board.ps1`): satu pandangan risiko untuk tim multi-repo
-
-Pinjaman onderdil #3 (terakhir) dari telaah adil lintasAI vs ECC v2.0.0. Owner memilih membangun (setelah diberi catatan jujur bahwa ini paling spekulatif). Adaptasi **RINGAN** konsep "session-tracking + risk-scoring" ecc2 ECC (aslinya control-plane Rust + daemon + SQLite + TUI) → di lintasAI **sengaja** jadi satu robot PowerShell **cuma-baca + on-demand** (BUKAN daemon/dashboard), sesuai filosofi kit (ADR-001: ambil konsep, buang mesin berat). Netral/universal. Pinjam KONSEP ecc2 ECC v2.0.0 (MIT).
-
-- **👨‍💻 Programmer:** `lib/repo-board.ps1` (deterministik, ~0 token, saudara `ai-config-check`/`risk-gate`). Untuk tiap repo (auto-temukan sub-folder ber-`.git` via `-Path`, atau `-Repos`), baca status git **READ-ONLY** (`status --porcelain`, `rev-parse`, `rev-list --left-right --count @{u}...HEAD`) → skor risiko berlabel awam (yang tertinggi menang): **GENTING** (perubahan `.env` belum aman), **PENTING** (ahead>0 belum-ter-backup / dirty belum-disimpan), **RAPIKAN** (behind>0 / detached HEAD / no-upstream), **OK** (bersih+sinkron) + ringkasan. Fungsi inti `Get-LintasRepoRisk` = PURE (dites tanpa repo nyata). TIDAK ada daemon/state/mutasi; exit 0 (papan = informasi, bukan gerbang). `tests/repo-board.Tests.ps1` (13 tes, PS 5.1 + PSSA bersih). Pendamping `docs/repo-board.md`, didaftar `lib/kit-files.psd1`.
-- **🙂 Non-Programmer:** kalau kamu punya **banyak repo** (mis. 3-7 gudang kode), robot ini = **papan tulis "status semua gudang" sekali lihat** — repo mana yang ada perubahan belum disimpan, belum dikirim ke server (belum ter-backup), atau ada kunci rahasia (`.env`) belum aman. Cuma **melihat**, tidak mengubah apa pun. 🏢 Seperti papan status gudang di pagi hari — sekali pandang tahu mana yang perlu diurus, tanpa keliling satu-satu. CATATAN JUJUR: ini alat-bantu-lihat, bukan jaminan; keputusan (commit/push/pull) tetap di kamu. Sengaja dibuat RINGAN (bukan "ruang kendali" berat) supaya tak jadi beban yang jarang dipakai.
-
-## [1.54.0] - 2026-06-20
-
-### Ditambah — Palang Rem Otomatis (`lib/risk-gate.ps1`): penegak-MESIN aksi merusak (rem-mesin pertama lintasAI), OPT-IN
-
-Pinjaman onderdil #1 (yang paling berharga) dari telaah adil lintasAI vs ECC v2.0.0 — menambal **satu-satunya celah struktural** yang diakui scan: lintasAI **nol rem-mesin** (semua pengaman = kebijakan teks yang bergantung AI patuh). Rancangan disetujui owner (`docs/plans/palang-rem-otomatis.md`). Pola hook diadaptasi dari ECC `config-protection.js`/`gateguard-fact-force.js` (MIT) — ditulis-ulang PowerShell + **mode "ask" Bahasa Indonesia** (dialog klik, jauh lebih ramah dari blok-keras-Inggris ECC). Kontrak Claude Code PreToolUse diverifikasi (via pemandu Claude Code + hook ECC nyata). **Default OPT-IN** (§4.12: mode baru = default mati) — pergeseran filosofi (hook pertama yang MEMAKSA; sebelumnya kit cuma robot advisory).
-
-- **👨‍💻 Programmer:** `lib/risk-gate.ps1` = hook `PreToolUse` (deterministik, ~0 token, saudara `ai-config-check`). Baca JSON stdin (`tool_name`/`tool_input`) → klasifikasi → keluarkan keputusan: **"ask"** (exit 0 + JSON `permissionDecision:"ask"` → dialog klik Setujui/Tolak) untuk 6 kategori berisiko (hapus rekursif paksa, `DROP`/`TRUNCATE`/`DELETE`-tanpa-`WHERE`, `prisma migrate dev`, `deleteMany`/`updateMany`-tanpa-`where`, git `--force`/`reset --hard`/`--no-verify`, sentuh `.env`, format disk), **"block"** (exit 2 + stderr) untuk menembus-pagar/`--dangerously-skip-permissions`/unduh-lalu-jalankan (§8.1 #2,#10), **"allow"** (exit 0) untuk sisanya. **FAIL-OPEN** pada input rusak (kecuali kategori blok). Anti alarm-palsu: `deleteMany({ where })`/`DELETE ... WHERE`/`migrate deploy`/`rm berkas.txt` → lolos. Menegakkan §8.2 Aturan 5 (kebijakan→mesin); pointer ditambah di §8.2. `tests/risk-gate.Tests.ps1` (26 tes, lulus PS 5.1 + PSSA bersih) + E2E hook (stdin→JSON/exit terverifikasi). Wiring `templates/hooks/risk-gate.settings.example.json` + pendamping `docs/risk-gate.md`. Pinjam ECC v2.0.0 (MIT).
-- **🙂 Non-Programmer:** akhirnya kit punya **"palang besi", bukan cuma rambu tulisan**. Kalau AI mau melakukan aksi berbahaya (menghapus banyak data, menyentuh kunci rahasia, memformat disk), muncul **dialog klik Setujui/Tolak** dengan alasan bahasa sehari-hari — kamu yang putuskan, AI tak bisa main hapus sendiri. Untuk aksi yang menembus pengaman / menjalankan kode dari internet → langsung **ditolak**. 🏢 Seperti palang besi yang menghentikan mobil + tanya sopir "yakin lewat sini?" — bukan cuma papan peringatan yang gampang diabaikan. **Default MATI** (nyalakan sendiri lewat `docs/risk-gate.md`) — sengaja opt-in karena ini hal baru; uji dulu di project percobaan. CATATAN JUJUR: efek baru terasa setelah dinyalakan + buka chat baru; bukan jaminan mutlak (menutup pola berbahaya yang diketahui).
-
-## [1.53.0] - 2026-06-20
-
-### Ditambah — Disiplin tata-kelola keamanan (SECURITY.md): matriks versi + pengungkapan terkoordinasi + catatan kelangsungan/bus-factor
-
-Pinjaman onderdil #5 dari telaah adil lintasAI vs ECC v2.0.0. **Cek-dulu jujur:** sebagian besar #5 ternyata SUDAH ADA di `SECURITY.md` (target waktu-respon best-effort perawat-tunggal, kebijakan versi, cakupan) — jadi BUKAN celah besar. Ditambah HANYA yang genuinely belum ada, diadaptasi jujur ke realitas kit perawat-kecil (bukan menyalin SLA ECC yang mengandaikan ~270 kontributor). Netral/universal, bukan domain tertentu. Pinjam pola tata-kelola `SECURITY.md` ECC v2.0.0 (MIT).
-
-- **👨‍💻 Programmer:** `SECURITY.md` (v1→v2): (1) **matriks "Versi yang didukung"** eksplisit (baris-terbaru = didukung penuh; di bawahnya = update dulu) + pernyataan jujur "tidak ada backport, kapasitas tak ada"; (2) komitmen **pengungkapan terkoordinasi** (laporan privat sampai tambalan terbit, penyerang tak diberi peta) + janji menjelaskan alasan kalau laporan ditolak; (3) bagian baru **"Kelangsungan & bus factor"** — mitigasi nyata risiko perawat-tunggal: MIT bebas-fork + rilis ber-tag + manifest tanda-tangan + catatan perubahan (untuk penerus), dan saran pengguna simpan salinan lokal + jangan gantung 100% ke upstream. Kredit MIT ke ECC `SECURITY.md`, diadaptasi (bukan disalin). Tidak menyentuh kode; `SECURITY.md` pakai versi-dokumen sendiri (di luar 5 berkas versi-kit).
-- **🙂 Non-Programmer:** halaman aturan keamanan kit diperjelas: (a) daftar tegas "versi mana yang masih ditambal" (jawabannya: yang terbaru — kalau ada perbaikan keamanan, **update**, bukan tambal versi lama, seperti aplikasi HP); (b) janji **tidak mengumumkan celah sebelum ada perbaikannya** (biar penyerang tak dikasih peta duluan, seperti pabrik perbaiki cacat dulu baru recall); (c) pengakuan jujur "kit ini dirawat tim kecil" + cara supaya kamu tetap aman kalau perawatnya berhenti (lisensi bebas-contek + simpan salinanmu sendiri). 🏢 Seperti resep warung yang ditulis lengkap + boleh dicontek siapa saja — kalau kokinya berhenti, warung bisa dilanjutkan. CATATAN JUJUR: ini perbaikan dokumen aturan, bukan kode baru; sebagian sudah ada sebelumnya — yang ditambah cuma yang belum.
-
-## [1.52.0] - 2026-06-20
-
-### Ditambah — Paket jebakan Prisma ORM (§4.14 #2): tutup celah "bisa-hilang-data" untuk project Prisma+Postgres apa pun
-
-Pinjaman onderdil #2 dari telaah adil lintasAI vs ECC v2.0.0 (scan 10-dimensi READ-ONLY, 06-20). Temuan jujur: paket Database lintasAI sebelumnya Supabase-sentris (`@supabase/*`) dan **0 catatan jebakan Prisma**, padahal Prisma+Postgres = stack umum yang dipakai LUAS — dan jebakannya bisa bikin **hilang data** (mis. `migrate dev` mereset DB, `deleteMany()` tanpa `where` mengosongkan tabel). ECC `prisma-patterns` (372 baris, sadar-versi) menutup ini untuk developer. Diadaptasi ke lintasAI: **ditulis-ulang Bahasa Indonesia awam + 2-sudut-pandang + DINETRALKAN untuk project APA PUN** (bukan stack/domain tertentu — sesuai sifat universal kit). BUKAN salin mentah. On-demand di `LINTASAI_WORKFLOWS_v1.md` (always-load tak naik). **Tidak menambah paket baru** — memperluas paket #2 (tetap 9 paket); deteksi Prisma punya pemicu sendiri (`@prisma/client`/`prisma/schema.prisma`) supaya jalan walau tanpa Supabase.
-
-- **👨‍💻 Programmer:** §4.14 #2 (judul dilebarkan → "Database: Supabase / PostgreSQL / Prisma ORM") kini memuat sub-blok Prisma: 🚨 bisa-HILANG-DATA (`deleteMany`/`updateMany` tanpa `where`; `migrate dev` reset DB di staging/prod → pakai `migrate deploy`; `NOT NULL`/rename 1-migrasi → expand-then-contract §9; edit-manual migrasi → `P3006 checksum mismatch`); ⚠️ hasil diam-diam-SALAH (`updateMany`/`deleteMany` balikin `{count}` bukan baris; `@updatedAt` skip bulk; soft-delete + `findUniqueOrThrow` bocor baris terhapus → `findFirstOrThrow`; `$transaction` interaktif timeout 5 detik; N+1 + entitas mentah ke API); kode error `P2002`/`P2025`/`P2003`; pool serverless `connection_limit=1` + singleton `globalThis`; tabel anti-pola. Sadar-versi WAJIB (`npx prisma --version`, verifikasi dokumen versi terpasang §8.2 Aturan 1 — jangan andalkan ingatan). Selaras §4.13 stub + KEUNGGULAN §X. Pinjam `prisma-patterns` ECC v2.0.0 (MIT).
-- **🙂 Non-Programmer:** AI sekarang tahu "jebakan maut" alat database Prisma — berlaku untuk project apa pun. Sebelumnya AI belum punya catatan soal perintah Prisma yang bisa **tanpa sengaja menghapus data** (kayak Select-All lalu Delete di Excel) atau **mengosongkan lemari data** kalau dipakai di tempat salah. Sekarang ada, jadi AI berhenti + minta izin dulu sebelum perintah berbahaya. 🏢 Seperti memberi montir daftar "kabel yang JANGAN dipotong". Dicontek dari ECC (legal, MIT), ditulis ulang bahasa kantor + dibikin berlaku project apa pun (bukan cuma satu jenis). CATATAN JUJUR: ini panduan di atas kertas — keputusan tetap di owner; jebakan versi-spesifik wajib AI verifikasi ke dokumen versi Prisma yang terpasang dulu.
-
-## [1.51.0] - 2026-06-20
-
-### Ditambah — Pindahan "onderdil membangun project" ECC ke lintasAI (scan ke-2 vs ECC v2.0.0, fokus MEMBANGUN project, no-bias): 8 onderdil diadaptasi
-
-Lanjutan telaah lintasAI vs ECC — kali ini fokus "cara MEMBANGUN project" (struktur/logika/penanganan), dicocokkan kondisi tim (Next.js/React + Python, Supabase/Cloudflare, Vercel/Railway/Render, SEO, staff non-programmer, Claude Code only). Scan READ-ONLY 6 sumbu + 4 cek-silang skeptis + 1 kritik anti-bias (yang mengoreksi 3 klaim berlebihan + 3 keberpihakan). Kesimpulan adil: lintasAI tetap fondasi (bahasa awam + owner-gated + robot + paket Supabase/Cloudflare yang ECC TAK punya), TAPI ECC objektif lebih kaya "bahan-bangun" di 5/6 sumbu → **8 onderdil DIADAPTASI** (ditulis-ulang Bahasa Indonesia awam + 2-versi 👨‍💻/🙂 + on-demand, tanpa versi framework hardcoded, owner-gated). BUKAN fork, BUKAN salin mentah. Konten ada di berkas on-demand (`LINTASAI_WORKFLOWS_v1.md`) — always-load tak naik.
-
-- **👨‍💻 Programmer:** (1) **Performa React/Next.js** (§4.14 #1) — ~14 aturan inti dari `react-performance` ECC: anti-waterfall (`Promise.all`), bundle (dynamic-import/anti-barrel), re-render (derive saat render), peta Web-Vitals; aturan auth Server Action ditandai GENTING. (2) **SEO terstruktur** (§4.14 #6) — schema.org per tipe-halaman + title/meta length + 1-H1 + redirect ≤2-hop + keyword-mapping/anti-cannibalization (melengkapi JSON-LD/canonical yang sudah ada di STACK_GUIDE). (3) **Pola D "Uji Situs Benar-Benar Jalan"** (§4.15) — adaptasi `browser-qa` MCP-driven (AI buka browser + klik kayak user; Fase axe-core menutup a11y-otomatis); mode aman staging, tanpa stempel READY/NOT-READY. (4) **Galeri struktur folder per-stack** (§4.14) — contoh tree Next.js + Python, tanpa versi hardcoded, stabilo "isi vs biarkan". (5) **Pola a11y siap-tempel** (§4.14 #1) — label form/aria error/focus modal/keyboard/`prefers-reduced-motion`. (6) **Design-judgment Webdesign** (§4.13 #4) — banned-patterns anti-UI-generik + "pilih arah desain dulu". (7) **§4.16 Urutan Bangun-Fitur** — by-dependency (kontrak data→inti→integrasi→tampilan→cek→catatan) + ringkasan-mandiri per langkah. (8) **Pola E "Tahan-Gagal"** (§4.15) — retry-with-backoff + circuit-breaker untuk API eksternal (Supabase/Cloudflare/pihak-ketiga). §4.15 jadi 5 Pola Bantu (stub always-load + tes anti-rot ikut diperbarui). Pinjam `react-performance`/`seo`/`browser-qa`/`frontend-a11y`/`design-quality`/`frontend-design-direction`/`blueprint`/`code-architect`/`error-handling`/examples ECC v2.0.0 (MIT), ditulis-ulang.
-- **🙂 Non-Programmer:** lintasAI "mencontek" 8 kebiasaan bagus ECC biar bikin-website lebih lengkap — halaman lebih ngebut, muncul cantik di Google (bintang rating/breadcrumb), ada "petugas" yang beneran buka situs + klik tombol mastiin nggak rusak setelah online, contoh rangka folder, pola ramah-disabilitas, panduan desain biar tak terlihat murahan, urutan bangun-fitur yang rapi, dan "coba-ulang otomatis + saklar pemutus" saat layanan luar ngadat. SEMUA ditulis ulang bahasa kantor sehari-hari + tetap minta izinmu dulu. Yang sudah ada di lintasAI (anti-ngarang, Supabase/Cloudflare, anti-injeksi) TIDAK diduplikasi. CATATAN JUJUR: ini panduan di atas kertas — belum diuji di website sungguhan; tiap onderdil keputusan adopsi ada di OWNER, bukan otomatis.
-
-## [1.50.0] - 2026-06-20
-
-### Ditambah — Robot pemeriksa mutu kode per-bahasa (`lib/stack-check.ps1`): menjadikan Paket Stack §4.14 BISA-DIJALANKAN, bukan cuma prinsip
-
-Lahir dari telaah lanjutan lintasAI vs ECC v2.0.0 (sumbu "kedalaman engineering per-bahasa" — satu-satunya sudut teknis murni yang dimenangkan ECC). Selama ini Paket Stack §4.14 cuma PRINSIP teks (AI baca + terapkan manual); onderdil "review per-bahasa" ECC (`agents/*-reviewer`) MENJALANKAN alat nyata. Robot ini menutup gap itu — disesuaikan standar tim lintasAI (deterministik, owner-gated, bahasa awam), bukan menyalin.
-
-- **👨‍💻 Programmer:** robot deterministik baru (saudara `ai-config-check`/`unicode-safety-check`/`consistency-check`) yang auto-deteksi bahasa gudang via `Get-StackType` (reuse) lalu menjalankan alat-cek **STATIS** standar: Go (`go vet`/`staticcheck`/`govulncheck`), Python (`ruff`/`mypy`/`bandit`), Node-TS (`tsc --noEmit`/`eslint`/`npm audit`), Rust (`cargo clippy`/`fmt --check`), PHP (`phpstan`/`pint --test`). **Cuma-periksa** (TANPA `--fix`, TANPA menjalankan tes — tes = eksekusi kode, urusan §4.15-B). **Config-gated** anti alarm-palsu (alat hanya jalan kalau config-nya ada, mis. `tsc` butuh `tsconfig.json`). Alat belum terpasang → "DILEWATI", bukan "0 masalah" (§6.3 #4). Robot kasih FAKTA (kode-keluar + cuplikan), AI kasih MAKNA (terjemah + naikkan ke GENTING kalau keamanan). Pakai `System.Diagnostics.Process` + baca async (anti-deadlock, ExitCode andal di PS 5.1) + batas-waktu per-alat. Robot TAK PERNAH GENTING → Gerbang §4.6 tak hard-fail (mutu kode = saran owner-gated). Dikunci `tests/stack-check.Tests.ps1` (20 tes, lulus di PS 5.1 + PSSA bersih). Disambung §4.14 ("Robot pendamping") + §4.15-A. Pinjam pola `agents/*-reviewer`/`*-build-resolver` ECC (MIT), ditulis-ulang sebagai robot bahasa awam.
-- **🙂 Non-Programmer:** tiap gudang kode sekarang punya "inspektur mutu otomatis" sesuai bahasanya — dia **membaca + menilai** kode (aman, tidak menjalankan mesinnya, tidak mengubah apa pun) lalu lapor temuan dalam bahasa sehari-hari. Kalau alat pemeriksanya belum terpasang, dia bilang jujur "dilewati", bukan pura-pura "semua bersih" (kayak timbangan yang harus nyala dulu sebelum dipercaya). Keputusan menambal tetap di tanganmu.
-
-## [1.49.0] - 2026-06-19
-
-### Ditambah — Pindahan "keunggulan ECC yang cocok" ke lintasAI (hasil telaah ulang 14-dimensi, adil): robot pemindai konfigurasi-AI + 2 paket bahasa + 5 aturan-pinjam
-
-Lanjutan audit menyeluruh lintasAI vs ECC v2.0.0 (14 dimensi, READ-ONLY, tiap usulan dicek-silang skeptis). Hasil jujur: dari 10 usulan pinjam, **5 GUGUR** (lintasAI ternyata sudah punya / mekanismenya melanggar standar tim non-programmer) dan **6 LOLOS** → dipindahkan di sini, **disesuaikan standar tim (Indonesia, non-programmer, Claude Code-only, owner-gated) tanpa menurunkan kualitas expert**.
-
-- **🔒 Robot pemindai konfigurasi-AI (`lib/ai-config-check.ps1`)** — celah keamanan objektif paling nyata. Robot deterministik (~0 token, kembar `unicode-safety-check.ps1`) memindai `.mcp.json` + `.claude/settings.json` + `docs/SKILLS_LOCAL.md`: rahasia ber-pola vendor (sk-/ghp_/AKIA/JWT) = GENTING, izin lebar `Bash(*)` = PENTING, server MCP remote/npx = PENTING/RAPIKAN, hook "unduh-lalu-jalankan" + `dangerously-skip-permissions` + skill menembus-pagar = GENTING. Label GENTING/PENTING/RAPIKAN (bukan CRITICAL/HIGH), cuma-baca (tak auto-fix), jalan di Gerbang §4.6 + CI. §4.15-C diubah dari "AI baca+nalar" → "robot dulu, AI tafsir". Dikunci `tests/ai-config-check.Tests.ps1` (14 tes). Pinjam pola `security-scan`/AgentShield/`mcp-inventory` ECC.
-- **🐘 Paket Stack PHP/Laravel (§4.14 #8) + 🐹 Go (§4.14 #9)** — gap cakupan-bahasa terbesar yang terverifikasi (ECC punya 18-24 bahasa, lintasAI sebelumnya JS/TS+Python): idiom + jebakan keamanan khas + toolchain (Eloquent anti-SQLi/mass-assignment/`APP_DEBUG`; Go `err`-wajib/goroutine-bocor/`-race`). Auto-deteksi `composer.json`/`go.mod`, on-demand. + §4.15-A perbaiki-error kini kenal `composer`/`go`/`cargo`/`mvn`/`gradle`.
-- **🔁 Batas loop cek-diri (§4.12)** — maks 2-3 percobaan + deteksi-buntu → berhenti + balik + eskalasi (cegah loop boros token / kerusakan beruntun). Pinjam "stop-threshold" ECC `loop-operator`/GAN.
-- **🧠 Memory "tawar-dulu-baru-simpan" (§6.2)** — AI proaktif MENAWARKAN mencatat pola koreksi berulang (≥2×) lewat popup, manusia menyetujui. Pinjam IDE belajar-berkelanjutan ECC — TAPI **menolak** mesin auto-learning/instinct-nya (bahaya: pola salah terpasang diam-diam tanpa staff non-programmer sadar).
-- **🛡️ Fan-out cuma-baca (§8.2 Aturan 3) + larangan melemahkan config mutu (§12)** — tiap pemeriksa paralel wajib diperintahkan read-only di promptnya; AI dilarang melonggarkan linter/tsconfig/ambang-tes demi "lulus". Pinjam konsep tool-scope + `config-protection` ECC, sebagai ATURAN (bukan hook runtime — kit sengaja nol-hook, ADR-001).
-- **📝 Rencana tersimpan ringan (§3) + catatan biaya-AI owner (§4.15)** — boleh simpan rencana fitur besar ke `docs/plans/` (pinjam `prp-plan`); owner pantau biaya AI via Anthropic Console (BUKAN bangun dashboard/hook — itu yang membuat pelacak biaya ECC selalu kosong di lintasAI).
-
-**5 yang GUGUR cek-silang (jujur — TIDAK dipindah):** `prp-plan` penuh (sudah ada lifecycle resume), hook-runtime anti-`--no-verify` (sudah server-side `secret-guard.yml`+branch-protect), ambang cakupan 80% (sudah §4.15-B), `selective install` (sudah Team Mode), dashboard/cost-Rust (premis salah + langgar ADR-001). Multi-harness + Agent-OS 67-agen + auto-learning + Rust control-plane = unggul untuk DEVELOPER tapi **tak cocok standar tim non-programmer** (keputusan owner sendiri: "harus cocok standar tim").
-
-- 👨‍💻 Programmer: deterministic AI-config scanner (vendor-secret/over-broad-perms/remote-MCP/fetch-run-hook) + PHP/Go stack-packs + loop-bound/auto-suggest-memory/read-only-fanout/config-protection rules; 582+14 Pester green, 3 robots clean. 🙂 Non-Programmer: AI sekarang punya satpam ekstra yang cek pengaturan AI-mu, ahli PHP/Go, dan rem otomatis biar tak ngulang perbaikan tanpa henti — semua otomatis, pakai bahasa yang kamu mengerti.
-- **Kredit (MIT):** adaptasi ECC v2.0.0 © Affaan Mustafa (`security-scan`/`mcp-inventory`, `php-reviewer`/`laravel-*`, `go-reviewer`/`golang-patterns`, `loop-operator`/GAN, `continuous-learning`, `config-protection`, `prp-plan`, `cost-report`) — ditulis ulang bahasa non-programmer + label GENTING/PENTING/RAPIKAN, BUKAN disalin. Dikunci tes. Aturan baru tetap on-demand kecuali 5 baris always-load (loop-bound/memory/fanout/config-protection/plan) yang = aturan keamanan/mutu inti.
-
-> **Catatan:** Paket "Data Sensitif / UU PDP" (kandidat §4.14 #10) SENGAJA tidak disertakan atas keputusan owner (20-06) — bisa ditambahkan nanti saat ada kebutuhan klien nyata.
-
-## [1.48.0] - 2026-06-19
-
-### Ditambah — Paket Stack Python (§4.14 #7) + 3 Pola Bantu otomatis (§4.15): perbaiki-error, coverage+tes, pindai-permukaan-AI
-
-Lanjutan tutup gap pinjaman ECC, disesuaikan stack owner yang ternyata **pakai Python** + kebutuhan staff non-programmer. Semua OTOMATIS (auto-deteksi/pemicu, tanpa staff ketik nama), on-demand (token always-load hanya +2 penunjuk stub).
-
-- **🐍 Paket Stack Python (§4.14 #7)** — gap baru karena stack owner pakai Python (§4.14 sebelumnya cuma JS/TS): secret via env + bandit, type hints + Pythonic (`is None`, mutable-default-arg), anti `except: pass`, FastAPI (`create_app`, router tipis, schema terpisah, deps, async), Django (N+1 `select_related`), pytest, Supabase-dari-Python (`service_role` server-only). Auto-deteksi `requirements.txt`/`pyproject.toml`/`*.py`.
-- **🔧 Pola Perbaiki Error Build/Run (§4.15-A)** — pemicu "error/gagal build/merah/tidak jalan": deteksi sistem build (npm/pnpm/pip/poetry, tak hardcode) → baca error asli → perbaiki bertahap → verifikasi nyata. Penolong harian terbesar staff non-programmer.
-- **✅ Pola Cakupan Tes + Generate (§4.15-B)** — petakan jalur belum-teruji → bikinkan tes kurang → jalankan. Standar QA tetap tinggi tanpa staff jadi programmer.
-- **🔒 Pola Pindai Permukaan-AI (§4.15-C)** — inventaris MCP (`.mcp.json`) + izin/hook (`.claude/settings.json`) + skill kustom, mode cuma-baca; melengkapi OWASP (kode) + §8.1 (anti-AI-nakal) ke level konfigurasi-AI.
-- 👨‍💻 Programmer: per-language Python rules + reviewer knowledge + 3 workflow pattern (build-fix/coverage/agent-surface) di-fuse jadi pola read-only auto-trigger. 🙂 Non-Programmer: kode Python kini punya ahli khusus; AI bantu benerin error + bikinkan tes + periksa "alat-alat AI"-nya — kamu cukup minta.
-- **Kredit (MIT):** adaptasi ECC v2.0.0 `rules/python`+`fastapi.md`, `python-reviewer`/`fastapi-reviewer`/`django-reviewer`, `build-fix`/`build-error-resolver`, `test-coverage`, `security-scan`/`mcp-inventory.js` — ditulis ulang non-programmer, bukan disalin. Dikunci `tests/skills-divisi.Tests.ps1`. Cost-report sengaja ditunda (owner).
-
-## [1.47.0] - 2026-06-19
-
-### Ditambah — Paket Stack (§4.14): checklist profesional per-teknologi untuk stack web umum, otomatis
-
-Lanjutan tutup gap "review per-bahasa/stack" (papan skor audit ECC #4/#5). Sekarang AI **auto-deteksi stack dari `package.json`/config** lalu menerapkan checklist stack-spesifik DI ATAS baseline 8 divisi §4.13 — staff cukup prompt biasa, tak perlu ketik apa pun. Detail di berkas on-demand (`LINTASAI_WORKFLOWS_v1.md` §4.14); token always-load TIDAK bertambah berarti (hanya 1 penunjuk di stub).
-
-- **6 paket stack:** ⚛️ Next.js/React/TS (Server vs Client Component, env `NEXT_PUBLIC_` terbuka, server-state, container/presentational) · 🗄️ Supabase/Postgres (RLS wajib, `anon` vs `service_role`, index/EXPLAIN, migrasi terversion) · ☁️ Cloudflare Workers (secret via binding, stateless+KV/D1/R2, edge≠Node penuh) · 🚀 Deployment Vercel/Railway/Render (env per-environment, healthcheck+rollback, preview deploy) · 🔒 Keamanan Web OWASP Top 10 (pelengkap keamanan anti-AI-nakal §8.1 — project expert butuh keduanya) · 📈 SEO (Next.js Metadata API + Core Web Vitals).
-- 👨‍💻 Programmer: per-stack rules + reviewer knowledge (RSC boundary, RLS, OWASP) di-fuse jadi checklist read-only yang auto-apply per area kerja. 🙂 Non-Programmer: tiap teknologi punya "ahli khusus" yang otomatis mengawal — kamu cukup minta fiturnya, AI yang jaga standar profesionalnya.
-- **Kredit (MIT):** adaptasi `rules/` + `agents/*-reviewer` + `database-reviewer` + skill `postgres-patterns`/`deployment-patterns`/`seo` ECC v2.0.0 (kredit Supabase utk pola Postgres) + OWASP/WCAG — ditulis ulang non-programmer, bukan disalin. Dikunci tes `tests/skills-divisi.Tests.ps1`. Auto-trigger di stub §4.13 (`CLAUDE_universal_v1.md`).
-
-## [1.46.0] - 2026-06-19
-
-### Ditambah — perdalam 4 checklist divisi §4.13 (pinjam onderdil ECC, lisensi MIT) supaya standar profesional naik tanpa staff perlu mengetik apa pun
-
-Hasil audit pembanding **lintasAI vs ECC v2.0.0** (MIT © Affaan Mustafa): kelemahan terbesar lintasAI = cakupan & review per-bidang. Empat onderdil ECC yang paling bernilai + paling bersih dipinjam diadaptasi ke bahasa non-programmer khas lintasAI dan **ditanam ke checklist divisi §4.13** — yang **otomatis diterapkan AI tiap staff prompt biasa** (tak perlu ketik "skill"). Token always-load TIDAK bertambah (detail di berkas on-demand `LINTASAI_WORKFLOWS_v1.md`).
-
-- **A3 Aksesibilitas WCAG 2.2 (divisi UI/UX)** — dari 1 baris a11y jadi standar WCAG 2.2 AA konkret: teks alternatif gambar, label form, heading berurutan, peran ARIA + keyboard untuk komponen non-standar, jangan andalkan warna saja, ukuran target sentuh min ~24px. 👨‍💻 WCAG 2.2 AA / ARIA / target size. 🙂 Awam: web jadi ramah penyandang disabilitas — kayak pasang jalur kursi roda + huruf braille di gedung.
-- **A4 Desain API (divisi Backend)** — format respons konsisten (amplop sukses+data+error+paginasi), status code benar (jangan semua 200), versioning `/v1/`. 👨‍💻 REST envelope + proper status codes. 🙂 Awam: "loket data" rapi & standar industri.
-- **A1 Anti-telan-error / silent failure (divisi Backend)** — perkuat §12: dilarang `catch {}` kosong / fallback menyesatkan (`.catch(() => [])`); error wajib di-log berkonteks + dipropagasi. 🙂 Awam: error tak boleh "ditelan diam-diam" sampai jadi bug tersembunyi.
-- **A2 Cek dokumentasi library (divisi Backend, anti-halusinasi)** — sebelum pakai fungsi/parameter library yang tak yakin, cek dokumentasi resmi versi terpasang (lewat alat docs/MCP kalau ada, mis. Context7) — bukan ingatan AI (§8.2 Aturan 1). 🙂 Awam: AI cek "buku manual resmi" dulu, tak sok tahu.
-- **Kredit + tes pengunci:** sumber ditulis terbuka (ECC MIT + WCAG W3C, ditulis ulang bukan disalin); `tests/skills-divisi.Tests.ps1` mengunci keempat pendalaman ini agar tak diam-diam hilang saat berkas aturan disunting.
-
-### Diperbaiki — robot pemindai Unicode kini baca UTF-8 eksplisit (deterministik lintas-versi PowerShell)
-
-- **`lib/unicode-safety-check.ps1` baca berkas dengan `-Encoding UTF8`.** Sebelumnya `Get-Content` default di Windows PowerShell 5.1 = codepage ANSI → byte multi-byte UTF-8 yang SAH salah-ditafsir (mis. `中` = byte `E4 B8 AD` → byte `AD` keliru jadi U+00AD "soft hyphen") → **alarm palsu** + hasil beda 5.1 vs pwsh7 (gerbang gagal lokal, lulus di CI). 👨‍💻 Robot keamanan jadi benar-benar deterministik lintas-versi PowerShell (tujuan utamanya). 🙂 Awam: "lampu pendeteksi tinta-tak-terlihat" tadi salah baca huruf asing (China/Jepang) seolah mencurigakan — sekarang dibetulkan supaya tak salah-alarm. Ditemukan saat menjalankan Gerbang Pra-Rilis §4.6 di PowerShell 5.1; dikunci tes regresi CJK.
 
 ## [1.45.0] - 2026-06-19
 
@@ -1117,67 +1277,6 @@ Menutup 2 temuan GENTING dari audit mekanisme update:
 
 Terverifikasi: seluruh tes hijau + robot konsistensi bersih + PSScriptAnalyzer 0 temuan + **uji-lapangan di sesi nyata LULUS** (install pertama lanjut ke Fase B + project setengah-jadi terdeteksi benar + popup refactor muncul).
 
-## [1.44.0] - 2026-06-18
-
-### Ditambah — aturan "baca kode asli sebelum edit" (§7.3a) kini anti-lupa + dikunci tes otomatis
-
-Aturan §7.3a (saat ubah/tambah/hapus kode: dokumen untuk NAVIGASI, **kode asli WAJIB dibaca sebelum edit**) dulu hanya ada di satu sub-bagian yang mudah terlewat. Sekarang ia **tertanam di alur inti + dijaga penjaga otomatis**, supaya AI konsisten cepat (tidak perlu menganalisa banyak hal) tanpa risiko bug dari dokumen basi.
-
-- **Ditarik ke alur inti (anti "ngumpet"):** langkah "Read" + "Implement" di §3 (Workflow per task) + checklist Definition of Done §4 kini menunjuk eksplisit ke §7.3a; berkas pola tugas `LINTASAI_WORKFLOWS_v1.md` §4.2 ikut menggemakan aturannya. 🙂 Awam: aturan penting tadi cuma di "halaman 50", sekarang ditaruh juga di "halaman 1" yang selalu dibaca.
-- **Penjaga otomatis bawaan didokumentasikan:** Claude Code memang sudah **menolak meng-`Edit`/`Write` berkas yang belum di-`Read`** di sesi itu (Read-before-Edit) — jadi baca-kode berkas-target sudah dipaksa mesin, gratis (~0 token). §7.3a kini menjelaskan ini + memberi **checklist mikro 5-centang** yang cepat & deterministik (cegah over-analisa).
-- **Tes-pengunci anti-rot (`tests/modify-workflow-rule.Tests.ps1`):** kalau wiring §7.3a hilang dari salah satu dari 3 tempat (alur §3, DoD §4, berkas pola §4.2) atau catatan Read-before-Edit terhapus → **suite tes jadi merah sebelum rilis**. Aturan ini tak bisa lagi diam-diam hilang saat ada yang menyunting berkas aturan. 👨‍💻 8 assertion ASCII-only (aman di PowerShell 5.1).
-- **Dokumen keunggulan diselaraskan** (§7.8 AUTO-SYNC): bagian J (Dokumentasi Otomatis) menambah poin §7.3a.
-
-## [1.43.2] - 2026-06-18
-
-### Ditambah — catatan di panduan pasang: popup izin Claude Code saat pasang itu NORMAL
-
-Saat pengguna pasang lewat `npm create lintasai`, Claude Code kadang menampilkan kotak pilihan izin (mis. *"Cara jalan"* / *"diblokir auto-mode"*) karena penyaring keamanannya ekstra hati-hati dengan perintah `npm`. Ini **pengaman bawaan Claude Code, BUKAN error/bug lintasAI** dan **bukan** bagian alur pemandu kit (terjadi SEBELUM pemasangan jalan). Sebelumnya tidak terdokumentasi → staff non-programmer bisa panik / mengira pasang gagal.
-
-- **Catatan baru di 3 panduan pasang** (`README.md` bagian "Cara pasang", `docs/NPX_INSTALL.md`, `docs/CLAUDE_CODE_MEDIATED_INSTALL.md` bagian Troubleshooting): popup izin ini NORMAL; **pilih "Izinkan di repo ini"** supaya AI memasang di project lalu langsung lanjut memandu (Fase B). 🙂 Awam: kayak Windows nanya "Aplikasi ini mau buat perubahan, izinkan?" — klik Izinkan untuk lanjut. 👨‍💻 Programmer: classifier `npm` Claude Code bisa tetap meminta konfirmasi walau perintah ada di allow-list; ini di luar kendali kode kit (kit hanya bisa menjelaskan + menyarankan opsi yang benar). Hanya perubahan dokumen — tidak ada perubahan perilaku/kode.
-
-## [1.43.1] - 2026-06-18
-
-### Diperbaiki — pengguna pertama-kali install kini lebih andal lanjut ke pemanduan (Fase B) + deteksi project "setengah jadi" tidak lagi salah-vonis "kosong"
-
-Permintaan owner: dari awal kit ini ditujukan membantu orang dengan project **setengah jadi**, lewat pemanduan AI di chat (Fase B: tawaran audit + adopsi kode yang sudah ada). Ternyata pengguna pertama-kali sering **tidak otomatis lanjut** ke Fase B. Dua sebab GENTING ditemukan + diperbaiki (tidak ada perubahan breaking — hanya teks panduan + pesan penutup pemasang).
-
-- **Deteksi "setengah jadi" tidak lagi pakai perintah Unix yang gagal di Windows.** 👨‍💻 Programmer: `POST_SETUP_CHECKLIST_PROMPT_v1.md` [1] dulu menyuruh AI scan pakai `find`/`grep`/`wc` — di PowerShell (shell utama Windows) `find` me-resolve ke `find.exe` (cari-teks, bukan cari-file) dan `grep`/`wc` tidak ada → hasil **0 palsu** → project nyata divonis "kosong" → Popup audit dilewati diam-diam. Sekarang deteksi pakai **tool berkas Claude Code (`Glob`/`Grep`/`Read`)** yang tool-agnostik + merujuk **SUMBER TUNGGAL** kriteria OR di `JALANKAN_KIT.md` step 10 (menghapus drift ambang `src/lib` 3 vs 10) + **fail-safe**: kalau scan galat/0 mencurigakan → JANGAN simpulkan kosong, tawarkan audit / tanya. 🙂 Awam: dulu alat ukur "seberapa penuh project" pakai bahasa yang tidak dimengerti Windows jadi selalu nunjuk "kosong" (kayak timbangan rusak) → bantuan audit dilewati; sekarang pakai alat yang benar + aman saat ragu.
-- **Pesan penutup pemasang dikeraskan supaya AI tidak berhenti di "SIAP NGODING".** 👨‍💻 Programmer: saat AI yang menjalankan pemasang (jalur yang disarankan), aturan auto-lanjut (§4.3b) belum ter-load di sesi itu (pemuat aturan baru dibuat installer di tengah sesi; Claude Code memuat `CLAUDE.md` hanya saat sesi START), jadi satu-satunya pembawa ke Fase B = teks penutup di output — dan baris terakhirnya `"Status: SIAP NGODING"` gampang disangka "selesai". Sekarang baris **terakhir** output = direktif AI eksplisit "JANGAN berhenti, lanjut Fase B sekarang" + header checklist menegaskan "Fase A selesai, tugasmu BELUM". 🙂 Awam: dulu struk hasil pasang diakhiri kata "SIAP NGODING" (kayak struk ATM "Transaksi selesai") jadi AI sering mengira tugasnya kelar; sekarang kalimat terakhir jelas menyuruh AI lanjut memandu.
-
-## [1.43.0] - 2026-06-18
-
-### Diubah — alur popup pemasangan ditata ulang + catatan kode kini 2 versi (programmer + awam)
-
-Permintaan owner: urutan PETA pemasangan dibuat lebih masuk akal + catatan kode lebih berguna untuk semua orang. **Tidak ada perubahan breaking** — semua popup tetap ada & berfungsi; ini penataan ulang urutan + penggabungan, bukan penghapusan fitur. Berlaku untuk pemasangan BARU (install lama tidak terpengaruh).
-
-- **Audit pindah ke DEPAN** (Popup #2, sebelum keputusan bentuk-kode) — temuan audit jadi bahan pertimbangan saat memilih rapikan vs pecah. Denah project + denah database + catatan kode SEMUA ditunda ke langkah AKHIR (tidak 2x kerja, cocok dengan kode final).
-- **Popup "ukuran tim" + "pecah-repo" DIGABUNG jadi 1** (Popup #3 "Ukuran Tim + Bentuk Kode"): [1] tetap 1 tempat + rapikan bertingkat (cocok 1 orang) / [2] pecah 3 repo frontend+backend+shared (tim 3-5+) / [3] multi-repo 6-10 layanan (tim 15-30+). 🙂 Awam: lebih sedikit klik, bentuk kode langsung nyambung dengan ukuran tim. 👨‍💻 Programmer: ukuran tim diturunkan dari pilihan topologi; project kosong / sudah-terpecah pakai versi RINGKAS (cuma ukuran tim).
-- **Catatan kode tiap file kini 2 VERSI dalam 1 berkas**: 👨‍💻 untuk programmer (teknis akurat + `path:baris`) + 🙂 untuk non-programmer (analogi sehari-hari) — supaya owner/staff awam paham fungsi berkas tanpa baca kode. Selaras §7.8 + §4.1.
-- **Project kosong**: popup audit + rapikan/pecah dilewati otomatis (tak ada kode untuk diaudit/dirapikan), TAPI ukuran tim TETAP ditanya (berkas tim aktif benar sejak awal). Nama repo multi-repo = auto-deteksi dari fitur project (BUKAN nama paku-mati ke 1 jenis project).
-- **Berkas tersentuh**: `JALANKAN_KIT.md` (Bagian 0/3/4/4b/5/5c/6 ditata ulang), `POST_SETUP_CHECKLIST_PROMPT_v1.md`, `CLAUDE_universal_v1.md` §4.3b, `LINTASAI_WORKFLOWS_v1.md`, `docs/NPX_INSTALL.md`, `docs/CLAUDE_CODE_MEDIATED_INSTALL.md`, `README.md`. QA+QC: seluruh tes hijau + robot konsistensi bersih.
-
-## [1.42.0] - 2026-06-17
-
-### Ditambah — tombol naik-versi 1-langkah `kit.ps1 bump <versi>` (anti "lupa ganti satu berkas")
-
-Permintaan owner: naik versi tak perlu lagi mengedit 6 berkas manual (boros waktu + token + rawan lupa salah satu — riwayat nyata: README nyangkut 5 rilis). Kemampuan "cap versi" ditambahkan ke robot konsistensi yang SUDAH ADA (pakai ulang daftar tempat-versi yang sama = satu sumber kebenaran lokasi versi), bukan berkas baru. **Tidak ada perubahan breaking.**
-
-- **`kit.ps1 bump 1.42.0`** (atau `consistency-check.ps1 -SetVersion 1.42.0`) dalam 1 perintah: cap nomor versi baru ke `package.json` (sumber kebenaran) + 4 deklarasi (judul CLAUDE_universal, README, KEUNGGULAN, templates/INDEX) + sisipkan kerangka entri CHANGELOG (tanggal otomatis), lalu auto-jalankan pemeriksaan kecocokan. Hanya nomor versi yang diganti (format berkas + status BOM dipertahankan → diff bersih).
-- **Pengaman:** guard hanya jalan di repo kit (`package.json name='lintasai'`, bukan project staf); tolak format versi invalid; tolak downgrade (cegah salah ketik); idempoten (cap versi sama 2x tak menggandakan entri CHANGELOG). Deskripsi CHANGELOG tetap ditulis manusia (placeholder yang diganti).
-- **Tes:** +8 tes Pester di `tests/consistency-check.Tests.ps1` (stamp 6-berkas, kerangka CHANGELOG, guard non-kit, tolak-downgrade, tolak-format, idempoten, banding semver). Dogfood: rilis ini sendiri di-bump pakai perintah baru ini.
-
-## [1.41.0] - 2026-06-17
-
-### Diubah — Tinjauan lintasAI Divisi: 2 versi (programmer + non-programmer) kini DIPISAH baris-per-baris (lebih mudah dibaca)
-
-Permintaan owner: blok tinjauan/temuan lebih enak dibaca dengan dua sudut pandang dipisah jelas, bukan didempetkan dalam satu sel tabel (apalagi di layar sempit / HP). **Tidak ada perubahan breaking** — tabel lama masih terbaca; ini penyempurnaan tampilan + penegasan aturan.
-
-- **Format blok per divisi, bukan tabel 3-kolom berdempet.** Tiap lensa divisi kini ditulis sebagai blok: nama divisi (bold) lalu **dua baris berlabel** di bawahnya — `👨‍💻 Programmer:` (teknis akurat) dan `🙂 Non-Programmer:` (analogi awam). Sebelumnya 2 sudut pandang itu dijejalkan dalam satu baris tabel.
-- **"Selalu ada 2 versi" dipertegas.** Tiap divisi WAJIB memuat baris 👨‍💻 DAN baris 🙂 — jangan salah satu saja. Baris 🙂 tetap wajib & 100% dipahami staff awam (tie-breaker §0 #3 tak dikorbankan); baris 👨‍💻 **menambah** ketepatan teknis, bukan menggantikan.
-- **Cakupan:** berlaku untuk blok Tinjauan lintasAI Divisi + laporan temuan/audit. Isi **jawaban utama tetap 1 versi** (sudah wajib ramah-awam per §2.1) — tidak digandakan, jadi hemat token.
-- **Berkas tersentuh:** `CLAUDE_universal_v1.md` §4.1 + §2.1.1 (Kategori #4), `LINTASAI_WORKFLOWS_v1.md` §4.1 (skeleton + contoh terisi), `KEUNGGULAN_LINTASAI.md`. QA+QC: seluruh tes hijau + robot konsistensi bersih.
-
 ## [1.40.0] - 2026-06-17
 
 ### [SECURITY] Ditambah — hardening rantai-pasok + penjaga rahasia (dari audit menyeluruh)
@@ -1198,90 +1297,6 @@ Hasil audit menyeluruh kit (READ-ONLY, 15 pemeriksa, tiap temuan dicek-silang sk
 - `.gitattributes` baru: `*.sh` = LF (CRLF merusak shebang hook bash).
 - QA+QC: seluruh tes hijau, robot konsistensi bersih, PSScriptAnalyzer bersih (cara CI seluruh repo).
 - **Belum dikerjakan (butuh keputusan owner)**: aktifkan provenance npm (repo sudah publik) + GPG verify-jika-bisa.
-
-## [1.39.0] - 2026-06-17
-
-### Ditambah — robot anti-drift "buku fakta" + doktrin scan-cepat (default kit + client)
-
-- **Robot konsistensi (`lib/consistency-check.ps1`) diperluas jadi "buku fakta"** — selain nomor versi, kini menjaga **angka berulang yang bersumber-kode** secara otomatis. Pertama: jumlah file tim (**31** = dihitung dari `$teamFiles` di `setup-pola-b.ps1`; sub **8** di `.github` + **23** di `docs`) dicek cocok di README + JALANKAN_KIT, mengecek **SEMUA** kemunculan (1 dokumen boleh sebut angka >1x). Tambah fakta baru = cukup 1 blok di `$script:KitFacts`. Mencegah bug "angka lupa diganti" (riwayat nyata: 17→28→30→32, padahal asli 31). + tes positif/negatif.
-- **Doktrin DEFAULT scan-cepat (§6.3)** — cek-drift/duplikasi + discovery = **robot deterministik / `grep` DULU** (detik, ~0 token), BUKAN kerahkan banyak agen AI baca semua (lambat, boros token, rawan rate-limit). AI fan-out = pengecualian + WAJIB gelombang kecil. Berlaku di kit **DAN** tiap project client (robot ikut terpasang; client daftarkan fakta di `docs/consistency-map.psd1`).
-- Robot tetap mode aman cuma-baca; jalan otomatis di tes + Gerbang Pra-Rilis §4.6.
-
-### Diperbaiki — dokumen pemasangan (akurasi)
-
-- **Jalur pasang utama = lewat Claude Code chat (biar AI yang jalankan).** Saat AI yang memasang, popup jendela Windows otomatis dilewati → staff langsung masuk pemanduan di dalam chat. Dokumen lama (`README.md`, `docs/NPX_INSTALL.md`, `docs/CLAUDE_CODE_MEDIATED_INSTALL.md`) keliru menyebut popup jendela Windows tetap muncul saat AI yang pasang — sudah dibetulkan. Jalur PowerShell manual tetap ada sebagai cara cadangan (jujur: cara ini memang memunculkan popup jendela Windows).
-- **Jumlah file tim dibetulkan jadi 31** (8 di `.github/` + 23 di `docs/`). Dokumen sebelumnya tak konsisten (menyebut 32 di satu bagian, 30 di bagian lain). Sumber kebenaran = `$teamFiles` di `setup-pola-b.ps1`. (`README.md`, `JALANKAN_KIT.md`)
-
-Tidak ada perubahan PERILAKU runtime kit (robot = alat pemeriksa, bukan jalur eksekusi installer). Tes lulus + robot konsistensi bersih.
-
-## [1.38.0] - 2026-06-17
-
-### Ditambah — §6.3: 4 disiplin operasional efisiensi (dari sesi audit nyata)
-
-Menambah 4 aturan operasional ke Doktrin Kecepatan §6.3 (always-load, berlaku di kit + SEMUA project klien) — diambil dari sesi audit menyeluruh 2026-06-17 yang menemukan di mana AI SENDIRI boros waktu/token TANPA menambah kualitas. Tujuan: AI di tiap project otomatis lebih cepat + hemat, kualitas tetap = lantai (§0).
-
-- **Disiplin 1 — gelombang kecil saat fan-out besar:** banyak agen disebar 3-4 per gelombang bergiliran + 1 coba-ulang, bukan puluhan serempak (yang bikin server overload -> separuh agen mati -> kerja terbuang diulang). Yang membatasi = arus-token, bukan jumlah agen.
-- **Disiplin 2 — uji bagian paling berisiko DULU, sendirian:** perubahan kripto/keamanan/destruktif diuji terisolasi sebelum suite penuh (gagal-kecil-awal lebih murah).
-- **Disiplin 3 — prediksi hasil SEBELUM mengedit:** perubahan ber-interaksi tak-jelas (glob/regex/config) dibaca cukup untuk ditebak hasilnya, baru edit sekali (hindari putar-balik edit->cek->batal).
-- **Disiplin 4 — pastikan alat benar-benar jalan:** "0 masalah/bersih" dari perintah yang ERROR = palsu; cek perintah sukses dulu.
-
-+ tes pengunci (`setup-pola-b.Tests.ps1`) supaya 4 disiplin tak terhapus tak sengaja. Tidak ada perubahan kode/perilaku program — murni penambahan aturan (always-load, ditulis ringkas demi hemat token).
-
----
-
-## [1.37.1] - 2026-06-17
-
-### Diperbaiki — hasil audit menyeluruh (3 tingkat: dokumen -> kode kecil+tes -> berisiko)
-
-Rilis perbaikan dari audit menyeluruh kit (READ-ONLY, ~80 pemeriksa AI, 16 bidang, tiap temuan dicek-silang skeptis). **Tidak ada masalah GENTING**; ini perbaikan + pengetatan keamanan + tambahan tes. **319 -> 349 tes hijau.**
-
-**Keamanan / jalur destruktif:**
-- **`update-kit.ps1`: saklar baru `-YesDeleteNoBackup`, dipisah dari `-Force`.** Dulu `-NoBackup -Force` diam-diam MENGHAPUS PERMANEN `.claude-kit/` tanpa konfirmasi (padahal `-Force` didokumentasikan hanya untuk bypass allowlist URL) -> risiko kehilangan data. Sekarang auto-hapus-tanpa-backup butuh `-YesDeleteNoBackup` eksplisit; tanpa itu, sesi non-interaktif ABORT (fail-closed). **Catatan pemakai lama:** kalau ada skrip/CI yang pakai `-NoBackup -Force` untuk hapus otomatis, ganti ke `-NoBackup -YesDeleteNoBackup`.
-- **`kit.ps1 doctor`: verifikasi keaslian manifest (tanda-tangan HMAC) DULU** sebelum melapor "PRISTINE" — supaya tidak memberi rasa aman palsu pada daftar berkas yang mungkin sudah diubah. Helper baru `Get-LintasManifestSignatureStatus` (round-trip kanonik teruji = tanpa alarm palsu).
-- **`manifest-signing.ps1`: banding tanda-tangan byte-exact (Ordinal).** Dulu banding antar-karakter PowerShell (`-ne`) case-INSENSITIVE -> 2 tanda-tangan base64 beda kapitalisasi keliru dinilai sama.
-
-**Anti-macet / keandalan:**
-- **`install-windows.ps1`: gerbang non-interaktif** (`[Console]::IsInputRedirected` + env) sebelum prompt -> tidak menggantung kalau dijalankan langsung (AI/CI) dengan stdin pipa terbuka.
-- **`project-detect.ps1`: anti-error folder kosong** — `Get-MonorepoState` membungkus `@()` supaya folder kosong = 0 file, bukan crash di StrictMode.
-- **`consistency-check.ps1`: pesan error akurat** saat peta-konsistensi punya kunci `Checks` tapi kosong.
-- **`kit.ps1 status`: baca `metadata.signature`** (jalur benar).
-
-**CI / rilis:**
-- Job CI **izin minimal** (`contents: read`) di `validate.yml` + job test `publish-npm.yml`.
-- Job baru **`fast-smoke-ps51`**: uji parse di **Windows PowerShell 5.1** (runtime staf), bukan cuma PowerShell 7.
-- **Gerbang cek** `index.js` sebelum terbit `create-lintasai`.
-
-**Tes:** +4 suite pengaman (`manifest-signing`, `project-detect`, `git-helpers`, `audit-helpers`) untuk bagian yang tadinya tanpa tes, termasuk regresi tanda-tangan case-sensitivity + anti-crash folder kosong.
-
-**Dokumen:** perbaikan tautan menggantung + angka/tanggal basi + jargon Inggris (README, CLAUDE_universal "6->7 prinsip" §4.6, WORKFLOWS, RESEP_PERUBAHAN, ANALOGI_LIBRARY, INDEX, ONBOARDING).
-
-Ditunda sengaja: NPM-1 (keluarkan `install-pre-commit.ps1` dari paket npm) — `files[]` `*.ps1` cocok rekursif; daftar manual = risiko lupa-daftar skrip baru > manfaat (RAPIKAN).
-
----
-
-## [1.37.0] - 2026-06-17
-
-### Ditambah — Doktrin Kecepatan & Efisiensi universal (§6.3): cepat + hemat token TIAP task, di kit + semua project klien
-
-Lanjutan permintaan owner ("scan/kerja terasa lama"): perluas prinsip efisiensi supaya berlaku **tiap task** (memindai DAN mengeksekusi), bukan cuma di gerbang pra-rilis, dan **eksplisit universal** (auto-baca di kit lintasAI + tiap project yang memasang lintasAI).
-
-- **§6.3 baru** (always-load): 7 prinsip efisiensi §4.6 (scope ke blast radius · robot deterministik dulu · paralel saat besar · pakai-ulang & tes 1x · periksa yang berubah saja · berhenti saat cukup · **default Pindai Cepat, kerahkan banyak-agen HANYA saat perlu**) WAJIB diterapkan di SETIAP task — termasuk eksekusi fitur/perbaikan biasa.
-- **Usaha pas-ukuran:** task kecil → kerjakan langsung & ringan; pengerahan besar (banyak agen / baca luas / seluruh tes) HANYA saat user minta "menyeluruh"/"lintasAI skill", mau rilis, atau perubahan luas. Hindari ledakan usaha untuk hal sepele = sumber utama "lama + boros".
-- **Kualitas = lantai, kecepatan = cara:** keamanan + anti-halusinasi + bahasa non-programmer + cakupan verifikasi tak pernah dipangkas demi cepat (tie-breaker §0).
-- Catatan: prinsip "default Pindai Cepat" (§4.6 #7, sejak v1.35.0) sudah auto-berlaku di project klien; v1.37.0 mempertegas cakupannya ke eksekusi + membingkainya universal. Tambah ~10 baris always-load (dijaga ringkas, menunjuk §4.6 tanpa duplikasi).
-- 319/319 tes lulus, PSScriptAnalyzer bersih, smoke PASS.
-
-## [1.36.0] - 2026-06-17
-
-### Diubah — "Tinjauan Multi-Divisi" → "Tinjauan lintasAI Divisi" + format 2 sudut pandang (programmer + non-programmer)
-
-Permintaan owner: ganti nama blok tinjauan jadi **"🎯 Tinjauan lintasAI Divisi"** + sajikan tiap temuan dalam **2 sudut pandang** sekaligus, biar berguna untuk SEMUA pembaca (developer/CTO maupun staff awam).
-
-- **Heading** sekarang literal **"🎯 Tinjauan lintasAI Divisi"** (drop "(Menggunakan Analogi Non-Programmer)").
-- **Format tabel jadi 3 kolom:** `| Divisi | 👨‍💻 Programmer | 🙂 Non-Programmer |`. Kolom 👨‍💻 = teknis akurat (boleh `file:line` + istilah industri); kolom 🙂 = analogi mudah (tools digital populer + contoh konkret).
-- **Bahasa non-programmer TIDAK turun:** kolom 🙂 TETAP WAJIB & harus 100% dipahami staff awam (tie-breaker §0 #3 tak dikorbankan); kolom 👨‍💻 **menambah** ketepatan teknis, bukan menggantikan.
-- Diselaraskan di seluruh kit: §4.1 (definisi) + §2.1.1 kategori #4 (PRE-SEND CHECKLIST) + contoh & skeleton `LINTASAI_WORKFLOWS_v1.md` §4.1 + `POST_SETUP_CHECKLIST_PROMPT_v1.md` + `setup-pola-b.ps1` (closing) + `PROMPT_LIBRARY.md` + `KEUNGGULAN_LINTASAI.md`. Entri CHANGELOG lama (sejarah) sengaja tidak diubah.
-- 319/319 tes lulus, PSScriptAnalyzer bersih, smoke PASS.
 
 ## [1.35.0] - 2026-06-17
 
@@ -1305,52 +1320,6 @@ Lahir dari owner: "kalau memeriksa sesuatu selalu lama". Gerbang QA+QC §4.6 dap
 - **Janji pengaman "hantu" di template backend.** `templates/split-agents/BACKEND.md` dulu menyebut skrip `prisma-guard.mjs` seolah **sudah ada** (padahal tidak ada di kit) + menganjurkan `PRISMA_GUARD_BYPASS=1` untuk menerobos. Memberi rasa-aman palsu (mirip pelajaran "tier-guard hantu"). Diubah jadi jujur: pengaman migrasi-prod **harus dibuat dulu** oleh owner sebelum diandalkan, + larang "mode paksa" menerobos pengaman (selaras §8.1 #10).
 - **Penjaga rahasia gratis (`secret-guard.yml`) kini menangkap kunci "gudang emas":** token JWT (`eyJ...`) + alamat database ber-password (`postgres/mysql/mongodb://user:pass@`) — disamakan dengan lapis AI (`ai-review.js`). Sebelumnya hanya kunci Anthropic/AWS/GitHub/Slack/GitLab, sehingga alamat database (paling berharga) bisa lolos.
 - **Panduan darurat keamanan tersambung ke aturan auto-load.** §8 kini punya pemicu: saat ada sinyal kebocoran rahasia/akses tak sah (mis. staf chat "kayaknya aku ke-commit `.env`") → AI WAJIB buka `docs/SECURITY_INCIDENT_PLAYBOOK.md` + pandu langkah demi langkah; JANGAN ganti-kunci/force-push sendiri.
-
-## [1.34.0] - 2026-06-17
-
-### Ditambah — Perintah pasang gaya npm: `npm create lintasai`
-
-Lanjutan permintaan owner: selain `npx lintasai init`, sediakan perintah berbasis `npm`. Karena `npm` sendiri tidak menjalankan paket (itu tugas `npx`), cara yang sah + idiomatik = pola scaffolder `npm create <nama>` (seperti `npm create vite`).
-
-- **Paket baru `create-lintasai/`** (tipis): saat `npm create lintasai` / `npm init lintasai` dijalankan, ia mendelegasikan ke peluncur paket `lintasai` (dependency `^1.33.0`) lalu menjalankan `init` di folder user. Hasilnya sama persis dengan `npx lintasai init`. Satu sumber kebenaran (logika setup tetap di `lintasai`); create-lintasai nyaris tak perlu rilis ulang saat lintasai update.
-- **Workflow `publish-create-lintasai.yml`** (manual `workflow_dispatch`, idempotent) untuk menerbitkan paket scaffolder ini sekali pakai `NPM_TOKEN`.
-- Tes `tests/create-lintasai.Tests.ps1` + terdaftar di manifest `lib/kit-files.psd1`. Wiring terbukti (lintasai resolve dari create-lintasai di folder uji).
-- **Juga mengembalikan perbaikan gaya kode** (commit `ee5dac6`: `Get-LintasVersionFinding` + `Test-Utf8Bom` + BOM) yang tidak ikut ter-merge ke `main` saat PR #1 digabung — sehingga cek gaya (`validate.yml`) di `main` kembali hijau.
-
-### Diperbaiki + Diubah — Satu cara pasang (npm) + 2 bug GENTING alur update
-
-Lahir dari audit alur rilis→distribusi→update (puluhan pengguna) + keputusan owner "satu cara pasang npm saja, biar staff tak bingung npm atau npx".
-
-- **[FIX GENTING] `npx lintasai update` kini menyasar kit di project, bukan folder cache npm.** Dulu `update-kit.ps1` mengambil lokasi kit dari posisi script (= folder cache npm saat lewat peluncur), sehingga update jalur ini diam-diam TIDAK mengubah `.claude-kit/` project (pengguna kira sudah update padahal belum). Sekarang lokasi kit didamaikan dari `-ProjectRoot` (meniru pola `kit.ps1:70-75` yang sudah benar). Jalur `kit.ps1 update` / "minta AI update" tidak terdampak (memang sudah benar). Terverifikasi via uji SIMULASI + tes baru.
-- **[FIX GENTING] Pesan pemulihan setelah update gagal kini menunjuk cara yang benar.** Dulu menyuruh `kit.ps1 rollback` (yang hanya memulihkan berkas project per-satuan) untuk masalah "kit baru rusak" — memberi rasa-aman palsu (staff kira sudah balik, padahal kit masih versi rusak). Sekarang mengarahkan ke pemulihan FOLDER cadangan utuh (`.claude-kit.backup-<tanggal>`) atau "minta AI: 'rollback dong'".
-- **[Diubah] Satu cara pasang resmi: `npm create lintasai`.** Semua instruksi `npx lintasai ...` di dokumen diganti jadi `npm create lintasai` (pasang) + "minta AI / `.\.claude-kit\kit.ps1 <perintah>`" (update/cek/rollback/uninstall). Tujuan: staff non-programmer tak perlu memutuskan "npm atau npx". `npx` untuk alat lain (prisma/MCP/shadcn/dll) + entri sejarah CHANGELOG/AUDIT_HISTORY **tidak** diubah. `docs/NPX_INSTALL.md` dialih-fungsi jadi panduan pasang-via-npm (nama berkas dipertahankan demi keutuhan manifest).
-- **[Diubah] `create-lintasai` dipatok ke `lintasai@latest`** (bukan caret `^1.33.0`) supaya pintu pasang utama SELALU memasang versi terbaru — termasuk saat kit naik ke major berikutnya (caret tidak ikut lompat major → bisa diam-diam basi). + tes pengunci.
-- **[FIX PENTING] Banner '[SECURITY]/[BREAKING] — pasang SEGERA' kini dipindai di SELURUH rentang versi yang dilewati**, bukan cuma entri CHANGELOG teratas. Dulu kalau pengguna lompat banyak versi sekaligus (mis. v1.20 → v1.33), peringatan keamanan yang ada di versi-tengah (mis. v1.27) TIDAK muncul. Tambah fungsi `Get-ChangelogRangeBody` di `update-kit.ps1` + 2 tes.
-- **[Keamanan — provenance npm DITUNDA]** Provenance npm (bukti-pabrik Sigstore/OIDC) sempat dinyalakan tapi **dimatikan lagi**: npm hanya mendukung provenance untuk repo **PUBLIK**, sedangkan repo ini **private** (publish gagal `E422`). `publishConfig.provenance: false` di kedua paket. **Bisa diaktifkan nanti KALAU repo dijadikan publik** (panduan: `docs/SIGNED_RELEASE.md`).
-- **[PENTING Dokumen jujur] `docs/SIGNED_RELEASE.md`** diberi banner STATUS: penandatanganan tag GPG **belum** aktif (penanda versi belum ditandatangani + `.github/owner-pubkey.asc` belum ada) → dokumen jadi panduan MENGAKTIFKAN, bukan klaim keadaan sekarang (hapus rasa-aman palsu). Benar-benar mengaktifkan = butuh kunci GPG owner.
-- **[PENTING Proses] Runbook rilis `CONTRIBUTING.md` + pengingat anti beda-versi:** WAJIB tunggu robot penerbit HIJAU sebelum mengumumkan rilis ke staff (git tag langsung dibaca jalur update kit; npm baru terisi setelah robot selesai → kalau gagal, tim bisa jalan beda-versi).
-- **[PENTING Dokumen] `TEAM_ROLLOUT_GUIDE_v1.md` disegarkan ke era npm:** tambah callout `npm create lintasai` (pasang) + "minta AI: tolong update kit" (update); ganti langkah update lama (`install-windows.ps1` + git pull).
-- **[RAPIKAN] Samakan istilah "rollback"** di `kit.ps1` (bantuan + deskripsi): perjelas `kit.ps1 rollback` memulihkan berkas project **per-satuan** — untuk balik SELURUH folder kit yang rusak, kembalikan `.claude-kit.backup-<tanggal>` (atau minta AI "rollback dong"). Hilangkan kesan "balik seluruh versi".
-- **[RAPIKAN] Jujurkan klaim update `AGENTS.md`** di `UPDATE_KIT_PROMPT_v1.md`: script **TIDAK** mengubah `AGENTS.md` otomatis (cuma mencetak pengingat) — koreksi daftar langkah yang dulu menyebutnya otomatis (+ perjelas cleanup `.bak` itu opt-in `-CleanupBackups`).
-- **[RAPIKAN] Tutup celah tes pada penjaga repo-tepercaya** (`Test-LintasTrustedRepo`): tabel-kebenaran 9 kasus (URL resmi + variannya → tepercaya; owner-lain/repo-fork/host-beda/kosong → ditolak) sebagai jaring anti-regresi keamanan jalur update.
-- **[RAPIKAN] Perintah baru `kit.ps1 check-update`** (juga `npx lintasai check-update`): cek apakah ada versi baru **TANPA** mengubah apa pun (read-only), pakai logika deteksi-versi yang sama dengan update asli (flag `-CheckOnly` di `update-kit.ps1`). Dibuat **anti-macet**: mode cek-saja melewati semua prompt allowlist/konfirmasi (array-splat `@ExtraArgs` di PS 5.1 bisa salah-bind switch → dihindari). + 5 tes.
-- **[RAPIKAN] Rotasi FOLDER cadangan `.claude-kit.backup-*`** di `Invoke-BackupCleanup` (keep latest 3) — dulu cuma menyapu FILE `.bak`/`.backup-*`, folder cadangan kit menumpuk (opt-in `-CleanupBackups`).
-- **[RAPIKAN] Peringatan pra-update**: update mencetak catatan kalau ada editan DI DALAM `.claude-kit/` yang akan diganti versi baru (editan lama tetap aman di folder cadangan).
-- Pemeriksaan: **287 tes hijau**, robot konsistensi versi bersih, smoke PASS, PSScriptAnalyzer bersih, YAML + JSON valid.
-
-## [1.33.0] - 2026-06-16
-
-### Diubah — Nama paket npm dipendekkan jadi `lintasai` (perintah pasang lebih mudah)
-
-Lahir dari owner: perintah pasang `npx @ojokesusu/lintasai init` terlalu panjang/ribet untuk staff non-programmer (bagian awalan `@ojokesusu/` yang ber-`@` dan `/` paling sering salah ketik). Nama paket dipendekkan dari `@ojokesusu/lintasai` jadi **`lintasai`** (tanpa awalan scope) — perintah jadi **`npx lintasai init`**.
-
-- **Perintah baru**: `npx lintasai init` (juga `update`, `team-setup`, `doctor`, `status`, `uninstall`, dll). Nama peluncur (`bin`) tidak berubah, jadi cara kerja kit sama persis — murni nama paket + dokumentasi.
-- Semua contoh perintah di README, dokumen panduan, skrip, dan template allowlist (`settings.local.json.template`) disesuaikan ke nama baru. **Catatan sejarah di CHANGELOG sengaja dibiarkan apa adanya** (rekaman command yang berlaku saat versi itu).
-- **Catatan penerbitan (WAJIB dibaca owner sebelum rilis)**: karena `lintasai` adalah nama paket **baru** di npm, sekali-saja perlu: (1) klaim nama `lintasai` (publish pertama mengeklaim nama), dan (2) beri `NPM_TOKEN` di GitHub Secrets akses tulis ke paket baru itu — setelah itu robot penerbit (`.github/workflows/publish-npm.yml`) jalan otomatis seperti biasa (tag → publish, tanpa OTP). Nama lama `@ojokesusu/lintasai` tetap hidup (versi terakhir tetap berfungsi); bisa dimatikan-halus (`npm deprecate`) dengan pesan penunjuk ke nama baru.
-
----
-
-> **📦 ARSIP RIWAYAT LAMA (era pra-npm, < v1.33.0):** entri yang lebih lama dipindah ke `CHANGELOG_ARCHIVE.md` (hanya di repo GitHub — TIDAK ikut paket npm, merampingkan unduhan client ±10%). **Pengecualian:** entri berlabel `[SECURITY]`/`[BREAKING]`/`[SCAN-REQUIRED]` di bawah ini SENGAJA dipertahankan utuh supaya banner "pasang SEGERA" untuk client yang lompat banyak versi tetap bekerja.
 
 ## [1.30.1] - 2026-06-16
 

@@ -6,7 +6,7 @@
 
 ## 1. Pengantar
 
-> ⚠️ **PENTING — panduan ini KHUSUS stack Next.js + Vercel + Supabase**, bukan "universal lintas-stack". Kalau proyekmu pakai stack lain (Python/Django, Go, Rust, PHP/Laravel, dll.), JANGAN paksakan panduan ini — minta AI buatkan panduan sesuai stack-mu (AI deteksi stack via `STACK_DETECTION_PATTERN.md` lalu menyesuaikan). Yang "universal" di kit ini adalah **aturan kerja** (`CLAUDE_universal_v1.md`), bukan pilihan stack.
+> ⚠️ **PENTING — panduan ini KHUSUS stack Next.js + Vercel + Supabase**, bukan "universal lintas-stack". Kalau proyekmu pakai stack lain (Python/Django, Go, Rust, PHP/Laravel, dll.), JANGAN paksakan panduan ini — minta AI buatkan panduan sesuai stack-mu (AI deteksi stack via `STACK_DETECTION_PATTERN.md` lalu menyesuaikan). Yang "universal" di kit ini adalah **aturan kerja** (`AGENTS.md` + rak `rules/`), bukan pilihan stack.
 
 File ini = **panduan opinionated** untuk stack standar tim AI-first.
 Target stack default:
@@ -297,7 +297,7 @@ Variabel `NEXT_PUBLIC_*` = ter-expose ke browser (jangan taruh secret di sini). 
 
 File `middleware.ts` di root → otomatis jalan di Edge Runtime (cepat, deploy global).
 
-> ⚠️ **Sadar-versi (Next.js 16+):** sejak Next.js 16, berkas ini **berganti nama jadi `proxy.ts`** (fungsi ekspor juga `proxy`, bukan `middleware`) dan jalan di **runtime Node.js**. `middleware.ts` masih bisa dipakai untuk Edge tetapi **sudah usang (deprecated)** dan akan dihapus. Ada codemod resmi untuk migrasi. Larangan salah-koreksi + detail ada di `workflows/stack/4.14-1-nextjs.md`. **Cek angka `next` di `package.json` sebelum menyentuh berkas ini** (§8.2 Aturan 1) — contoh di bawah pakai gaya pra-16.
+> ⚠️ **Sadar-versi (Next.js 16+):** sejak Next.js 16, berkas ini **berganti nama jadi `proxy.ts`** (fungsi ekspor juga `proxy`, bukan `middleware`) dan jalan di **runtime Node.js**. `middleware.ts` masih bisa dipakai untuk Edge tetapi **sudah usang (deprecated)** dan akan dihapus. Ada codemod resmi untuk migrasi. Larangan salah-koreksi + detail ada di `skills/next-core/SKILL.md`. **Cek angka `next` di `package.json` sebelum menyentuh berkas ini** (§8.2 Aturan 1) — contoh di bawah pakai gaya pra-16.
 
 ```ts
 // middleware.ts - proteksi route /dashboard
@@ -378,7 +378,7 @@ Migrasi ke Railway atau Render = **operasi advanced** yang baru relevan kalau sa
 
 ## 5. Database (Supabase / PostgreSQL)
 
-> Supabase = PostgreSQL managed. Bagian ini = rujukan cepat index + audit + tipe data. Pola Prisma/RLS lebih dalam ada di `workflows/stack/4.14-2-supabase-prisma.md` (dibaca otomatis saat stack DB terdeteksi).
+> Supabase = PostgreSQL managed. Bagian ini = rujukan cepat index + audit + tipe data. Pola Prisma/RLS lebih dalam ada di `skills/supabase-prisma/SKILL.md` (dibaca otomatis saat stack DB terdeteksi).
 
 ### 5.1. Index: pilih tipe & urutan kolom yang benar
 
@@ -447,7 +447,7 @@ ORDER BY n_dead_tup DESC;
 ```sql
 REVOKE ALL ON SCHEMA public FROM public;  -- cabut hak "siapa saja boleh bikin objek di schema public"
 ```
-> Sadar-versi: sejak Postgres 15, hak `CREATE` di schema `public` sudah dicabut dari PUBLIC secara bawaan — perintah di atas aman dijalankan tapi jangan diklaim "perbaikan" kalau sudah PG15+. Query #2 butuh `CREATE EXTENSION IF NOT EXISTS pg_stat_statements;` dulu (di Supabase umumnya sudah aktif — cek via `list_extensions`). Kontrol-akses REVOKE per-developer yang lebih dalam ada di `MCP_SETUP.md` §2.6b.
+> Sadar-versi: sejak Postgres 15, hak `CREATE` di schema `public` sudah dicabut dari PUBLIC secara bawaan — perintah di atas aman dijalankan tapi jangan diklaim "perbaikan" kalau sudah PG15+. Query #2 butuh `CREATE EXTENSION IF NOT EXISTS pg_stat_statements;` dulu (di Supabase umumnya sudah aktif — cek via `list_extensions`). Kontrol-akses REVOKE per-developer yang lebih dalam: minta AI susun SQL `GRANT`/`REVOKE` per schema (role tiering §9).
 
 - 🙂 Non-Programmer: tiga query pertama = "cek kesehatan" gudang data — mana rak tanpa label (foreign key tak ter-index → pencarian lambat), transaksi paling lelet, dan laci penuh sampah yang belum dibuang. Perintah terakhir = "kunci pintu gudang secara default" supaya tak sembarang akun bisa menaruh barang di dalamnya.
 
@@ -480,7 +480,7 @@ REVOKE ALL ON SCHEMA public FROM public;  -- cabut hak "siapa saja boleh bikin o
   -- `authenticator` = role koneksi/pool (juga default service_role) + batas transaksi nganggur:
   ALTER ROLE authenticator SET idle_in_transaction_session_timeout = '30s';
   ```
-  Ini timeout **LAPISAN DB** — BEDA dari timeout Prisma `$transaction` (default 5 detik, lihat `workflows/stack/4.14-2-supabase-prisma.md`) dan `pool_timeout` di `DATABASE_URL`. Tiga rem beda lapisan; jangan anggap satu menutup yang lain. (Cara termudah tanpa SQL: Dashboard → Database → Settings.)
+  Ini timeout **LAPISAN DB** — BEDA dari timeout Prisma `$transaction` (default 5 detik, lihat `skills/supabase-prisma/SKILL.md`) dan `pool_timeout` di `DATABASE_URL`. Tiga rem beda lapisan; jangan anggap satu menutup yang lain. (Cara termudah tanpa SQL: Dashboard → Database → Settings.)
 - 🙂 Non-Programmer: kasir yang kalau melayani 1 pelanggan lebih dari 30 detik otomatis "dilewati" supaya antrean tak macet total.
 
 > ⚠️ **Supabase-managed — jangan salin gaya self-hosted.** Perintah `ALTER SYSTEM SET …` + `SELECT pg_reload_conf();` (lazim di tutorial Postgres self-host/superuser) TIDAK jalan di sini (kita bukan superuser). Untuk guardrail per-role/per-db pakai `ALTER ROLE … SET` / `ALTER DATABASE … SET` seperti di atas, atau Dashboard → Database → Settings. `max_connections` ditentukan tier compute (add-on), bukan `ALTER SYSTEM`.
@@ -645,16 +645,63 @@ module.exports = {
 
 **Tingkat 2 — CSP ketat ber-nonce (untuk data sensitif / tuntutan kepatuhan).** **Nonce** = kode acak sekali-pakai per request; hanya skrip yang membawa nonce itu yang boleh jalan — penyusup harus menebak kode yang berganti tiap request:
 
-- Dipasang lewat berkas "satpam pintu masuk" — 🚨 **SADAR-VERSI**: `proxy.ts` (fungsi `proxy`) di Next 16+, `middleware.ts` di versi sebelumnya. Lihat peringatan di `workflows/stack/4.14-1-nextjs.md` + contoh UTUH di dok resmi: `nextjs.org/docs/app/guides/content-security-policy` (jangan tulis dari ingatan — header `x-nonce`, `'strict-dynamic'`, dan matcher pengecualian `_next/static` semuanya ada di sana).
+- Dipasang lewat berkas "satpam pintu masuk" — 🚨 **SADAR-VERSI**: `proxy.ts` (fungsi `proxy`) di Next 16+, `middleware.ts` di versi sebelumnya. Lihat peringatan di `skills/next-core/SKILL.md` + contoh UTUH di dok resmi: `nextjs.org/docs/app/guides/content-security-policy` (jangan tulis dari ingatan — header `x-nonce`, `'strict-dynamic'`, dan matcher pengecualian `_next/static` semuanya ada di sana).
 - ⚠️ **Trade-off resmi**: nonce MEWAJIBKAN dynamic rendering (halaman dirakit ulang tiap request) → halaman statik/ISR/cache CDN mati → lebih lambat + server lebih sibuk + biaya naik. Pakai hanya kalau memang butuh ketat; kombinasi umum: nonce untuk halaman ber-data-sensitif, Tingkat 1 untuk halaman publik.
 
-> Sumber: dok resmi Next.js (guide CSP, dicek 2026-07) + pola nonce diserap dari ECC `rules/web/security.md` (MIT © Affaan Mustafa). Header cross-origin (COOP/CORP/COEP) diverifikasi ke MDN + OWASP HTTP Headers Cheat Sheet (dicek 2026-07). Versi Next.js naik? Cek ulang dok resmi versi terpasang.
+> Sumber: dok resmi Next.js (guide CSP, dicek 2026-07) + pola nonce diserap dari ECC `web/security.md` (MIT © Affaan Mustafa). Header cross-origin (COOP/CORP/COEP) diverifikasi ke MDN + OWASP HTTP Headers Cheat Sheet (dicek 2026-07). Versi Next.js naik? Cek ulang dok resmi versi terpasang.
+
+### 7.5. Pengerasan Auth Supabase pra-launch (checklist Dashboard — nyaris tanpa koding, item DoD "mau online")
+
+Standar-expert Supabase go-live: sebagian pengaman TERKUAT cuma perlu KLIK di panel Supabase (Dashboard → Authentication), bukan koding — cocok dikerjakan staff non-programmer sebelum launch:
+- [ ] **Leaked-password protection ON** — Supabase cek password user ke database kebocoran (HaveIBeenPwned) → tolak password yang sudah pernah bocor.
+- [ ] **Minimum password length + kompleksitas** di-set (bukan default lemah).
+- [ ] **Matikan signup publik** kalau app internal/undang-saja (Authentication → Providers → Email → "Enable signups" OFF), atau batasi domain.
+- [ ] **Rate-limit Auth aktif** (server-side GoTrue) — brute-force login langsung ke endpoint tetap kena batas; JANGAN andalkan lockout yang dihitung di klien.
+- [ ] **SMTP produksi terkonfigurasi** (bukan email bawaan Supabase yang di-throttle) supaya reset-password/verifikasi jalan.
+- [ ] **MFA/2FA** ditawarkan untuk akun admin (native Supabase AAL2, bukan sekadar flag di frontend — flag frontend BUKAN kontrol keamanan server).
+- [ ] Jalankan **Security Advisor** (Dashboard → Advisors) → nol temuan GENTING sebelum online.
+
+> Sumber: dok resmi Supabase "Going into Production" + "Auth security" (dicek 2026-07). Versi/panel berubah? Cek ulang dok resmi.
+
+### 7.6. Gerbang lint keamanan + a11y (opt-in, bertahap)
+
+Tim tanpa peran QA → satu celah keamanan/aksesibilitas (a11y) yang lolos mata bisa terlanjur tayang. ESLint bisa jadi "satpam mesin" yang menangkap pola bahaya secara pasti (deterministik) saat ngoding — TAPI dipasang **bertahap** supaya tak membanjiri merah (banjir peringatan wajar = staff mematikannya diam-diam, malah lebih buruk dari tak ada gerbang).
+
+**1. Pasang plugin** (`react` + `jsx-a11y` sudah dibawa `eslint-config-next`; yang kurang cuma anti-XSS):
+```bash
+npm i -D eslint-plugin-no-unsanitized
+```
+
+**2. Tambah rule di ATAS config `eslint-config-next`** (contoh flat config `eslint.config.mjs` — sesuaikan kalau project-mu pakai legacy `.eslintrc`):
+```js
+import nounsan from 'eslint-plugin-no-unsanitized'
+
+export default [
+  // ...spread config eslint-config-next kamu di sini...
+  {
+    plugins: { 'no-unsanitized': nounsan },
+    rules: {
+      // KEAMANAN/BUG = "error" (tegakkan keras - XSS = celah publik, jarang salah-tangkap)
+      'react/no-danger': 'error',           // larang dangerouslySetInnerHTML mentah
+      'no-unsanitized/property': 'error',   // larang innerHTML = <nilai tak-aman>
+      'no-unsanitized/method': 'error',     // larang insertAdjacentHTML(...) tak-aman
+      // A11Y/SELERA = "warn" (jangan banjiri merah dulu)
+      'react/no-array-index-key': 'warn',   // key={index} = state form loncat ke baris salah (bug senyap)
+      // jsx-a11y sudah aktif via eslint-config-next (recommended = warn)
+    },
+  },
+]
+```
+
+**3. Naikkan bertahap (JANGAN langsung wajib):** jalankan `npm run lint` **INFORMATIF** dulu (lihat berapa temuan di basis-kode nyata). Setelah baseline bersih, baru jadikan gerbang yang memblokir merge. Filosofi sama persis dengan lint kit sendiri (bug=`error`, selera=`warn`, CI informatif dulu).
+
+> Kenapa dipisah `error` vs `warn`: rule keamanan (XSS) hampir tak pernah salah-tangkap → aman jadi `error`. Rule a11y/selera lebih sering "peringatan wajar" → `warn` dulu supaya alur kerja tak macet. Naikkan `warn`→`error` per-rule saat timmu siap. 🙂 pasang satpam, tapi jangan bikin alarm nyala tiap orang lewat pintu.
 
 ---
 
 ## 8. Feature Flag Pattern (ADVANCED - Post-Launch Only)
 
-> ⚠️ **Default workflow tim TIDAK pakai feature flag.** Untuk early-stage project (belum launch / progress <50%), staging via **Vercel Preview Deploy per PR** sudah cukup. Lihat `CLAUDE_TEAM_GUIDE.md` section 7b (Risk Level Decision Tree) untuk default workflow.
+> ⚠️ **Default workflow tim TIDAK pakai feature flag.** Untuk early-stage project (belum launch / progress <50%), staging via **Vercel Preview Deploy per PR** sudah cukup.
 >
 > Feature flag = advanced operation yang butuh owner familiar dengan Vercel env vars + redeploy cycle. **Tambahkan post-launch** kalau project sudah punya user aktif dan butuh:
 > - Kill switch instant untuk fitur kritis (mis. payment toggle saat Black Friday)
@@ -663,7 +710,7 @@ module.exports = {
 
 Detail implementasi lengkap (decision tree, naming convention, cleanup ritual, testing pattern, per-user hash) di **`./.claude-kit/templates/feature-flags-advanced.md`** - file terpisah supaya tidak ngebebanin kit default workflow.
 
-**Untuk early-stage <project> (progress ~5%)**: skip section ini, pakai Risk Level (CLAUDE_TEAM_GUIDE.md 7b) + staging-only.
+**Untuk early-stage <project> (progress ~5%)**: skip section ini, pakai staging-only.
 
 ---
 
@@ -680,7 +727,9 @@ Detail implementasi lengkap (decision tree, naming convention, cleanup ritual, t
 | **PostgreSQL bundled**          | TIDAK (pakai Supabase)| YA (plugin)          | YA (managed)         |
 | **Pricing transparency**        | ★★★ (function invoke) | ★★★★ (per-resource)  | ★★★★★ (flat)         |
 | **Free tier (small project)**   | Hobby gratis cukup    | $5 credit/bulan      | Free 750 jam/bulan   |
-| **Vendor lock-in**              | Tinggi (Edge runtime) | Rendah (Docker)      | Rendah (Docker)      |
+| **Vendor lock-in**              | Menengah — kini bisa Docker¹ | Rendah (Docker)      | Rendah (Docker)      |
+
+> ¹ **Vercel kini menjalankan Dockerfile** (sejak 30 Jun 2026 — cek dok resmi versi terpasang sebelum mengandalkan, §8.2): taruh `Dockerfile.vercel` di akar → Vercel deteksi otomatis. **Backend Python/FastAPI + frontend Next.js bisa satu project yang sama** lewat `services` di `vercel.json` + `rewrites` (mis. `/api/*` → service `backend`) — sebelumnya backend Python harus pindah ke platform lain. Port bawaan `80` (ubah lewat env `PORT`); tidur otomatis setelah 5 menit tanpa trafik (30 detik di preview), `SIGTERM` + 30 detik masa bersih-bersih. **Batas jujur:** Secure Compute + Static IP **belum** didukung untuk container; `vercel dev` butuh Docker daemon lokal. Jadi lock-in turun dari "Tinggi" ke "Menengah" — **bukan** setara Railway/Render.
 | **Best untuk**                  | Marketing site, SaaS, dashboard | App butuh worker / WS | Stabilitas + predictable |
 
 ### Rekomendasi default
@@ -703,7 +752,7 @@ Sebelum announce launch produksi:
 - [ ] Rollback plan dipahami (section 3.8).
 - [ ] Backup DB Supabase aktif (Settings → Database → Backups).
 - [ ] Error monitoring (Sentry / Vercel logs) aktif.
-- [ ] Healthcheck endpoint `/api/health` ada (untuk uptime monitor). Butuh cek lebih dalam (DB) + validasi env fail-fast? Lihat `workflows/stack/4.14-4-deploy.md` §health.
+- [ ] Healthcheck endpoint `/api/health` ada (untuk uptime monitor). Butuh cek lebih dalam (DB) + validasi env fail-fast? Lihat `skills/deploy/SKILL.md` §health.
 - [ ] (Opsional, kalau pakai Docker/CI) Pipeline CI/CD otomatis — template `templates/github/workflows/app-cicd.yml.example`.
 - [ ] Robots & sitemap di-submit ke Google Search Console.
 - [ ] Feature flag default = stable path (rollout fitur baru bertahap).

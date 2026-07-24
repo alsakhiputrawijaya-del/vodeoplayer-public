@@ -77,9 +77,9 @@ bukan minta tambalan untuk versi lama.
 
 ## 📦 Cakupan
 
-**Termasuk:** kode kit — orkestrator akar (`*.mjs` & `*.ps1`), `lib/`, `bin/` — paket npm
-`lintasai` / `create-lintasai`, serta robot & workflow CI bawaan kit. (Sejak migrasi PS→Node,
-perintah utama dijalankan berkas `.mjs` di akar; `.ps1` = jalur cadangan.)
+**Termasuk:** kode kit — orkestrator akar (`*.mjs`), `lib/`, `bin/` — paket npm
+`lintasai` / `create-lintasai`, serta robot & workflow CI bawaan kit. (Sejak v2.0.0 kit
+**100% Node**; satu-satunya `.ps1` tersisa = `setup-pola-b.ps1` = jaring darurat, bukan jalur resmi.)
 
 **Di luar cakupan:** kode/aplikasi yang **kamu** bangun memakai lintasAI (itu tanggung
 jawab project-mu sendiri); kerentanan di dependency pihak-ketiga (laporkan ke pihak terkait);

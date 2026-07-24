@@ -27,7 +27,7 @@ Kamu adalah **Database Architect + Tech Writer**. Tujuan: generate `docs/db-sche
 - **Bahasa Indonesia**, junior-friendly.
 - **Akurasi > kelengkapan**. Lebih baik `[TBD: <alasan>]` daripada karang relasi.
 - **Setiap klaim traceable** ke file/baris source (mis. `prisma/schema.prisma:42`).
-- **JANGAN baca file rahasia** (`.env*`, `*.key`, `*.pem`, `~/.ssh/`, `~/.aws/`, `~/.config/gcloud/`, `secrets/`, `credentials*`) — daftar lengkap selaras `CLAUDE_universal_v1.md` §8.1 #6.
+- **JANGAN baca file rahasia** (`.env*`, `*.key`, `*.pem`, `~/.ssh/`, `~/.aws/`, `~/.config/gcloud/`, `secrets/`, `credentials*`) — daftar lengkap selaras `rules/module/8.1-anti-injection.md` (butir rahasia #6).
 - **Baca STRUKTUR saja — JANGAN salin data pribadi asli (anti-PII).** Saat menemui file migrasi/seed berisi baris data (`INSERT INTO ... VALUES ...`), ekstrak **definisi kolom/tabel** saja; JANGAN salin NILAI aslinya (email, telepon, NIK, nama) ke `docs/db-schema.md` — pakai placeholder kalau butuh contoh. Data pribadi yang ter-commit ke git = kebocoran permanen + risiko UU PDP. (Pagar ini selaras `JALANKAN_KIT.md` Bagian 6.)
 - **Cek dulu** apakah `docs/db-schema.md` sudah ada - kalau ada, baca dulu untuk anti-overwrite + delta detection.
 
@@ -146,7 +146,7 @@ erDiagram
 - **Soft-delete pattern**: model `Credential`, `Post` punya `deletedAt` column → query default `WHERE deletedAt IS NULL`.
 - **Audit trail**: `LoginLog`, `CredentialAuditLog` immutable - tidak ada UPDATE atau DELETE, hanya INSERT.
 - **Encryption-at-rest**: field `password`, `username`, `notes` di `Credential` di-encrypt via [encryption.md](security/encryption.md) sebelum simpan.
-- **Schema isolation**: project ini pakai shared DB Supabase production, schema `<nama>`. Lihat [MCP_SETUP.md](MCP_SETUP.md) untuk role isolation.
+- **Schema isolation**: project ini pakai shared DB Supabase production, schema `<nama>` — role DB dibatasi per-schema (`GRANT` hanya ke schema sendiri).
 
 ## Migrasi history (recent)
 [Optional: kalau ada `prisma migrate` history yang menarik, summarize 3-5 migrasi terakhir]

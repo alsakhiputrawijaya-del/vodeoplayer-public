@@ -70,3 +70,8 @@ public/legacy/*.min.css
 *.backup-*
 *.bak
 *.bak.*
+
+
+# === pola lintasAI (ditambah otomatis pemasang) ===
+# Cegah kebocoran: rahasia kit, identitas per-staff, folder cadangan.
+docs/pelajaran-lintasai/

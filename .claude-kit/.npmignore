@@ -22,6 +22,8 @@ ehthumbs_vista.db
 *.backup-*
 *.bak
 *.old
+# Cadangan snapshot ber-tanda pra-refactor (isi lama sudah aman di git history) — jangan dilacak lagi
+*.pre-*.txt
 
 # Log
 *.log
@@ -70,3 +72,17 @@ testResults.xml
 
 # Eksperimen / pilot lokal (benchmark, fixture coba-coba) — tidak untuk rilis
 experiments/
+
+# Folder config Kimi Code (.kimi-code/) — hook OPT-IN per-project (config.toml). Bukan sumber aturan:
+# sejak ADR-032, Kimi baca AGENTS.md akar native (tak ada lagi .kimi-code/AGENTS.md generated).
+.kimi-code/
+
+# Berkas aturan Cursor yang DIBUAT OTOMATIS (engine/adapter-rules-gen.mjs, sumber = AGENTS.md) — artefak generated.
+.cursor/rules/lintasai.mdc
+
+# CATATAN (ADR-032): /AGENTS.md akar TIDAK lagi di-ignore — kini KERNEL tulis-tangan (sumber tunggal,
+# dibaca native Codex/Kimi/Cursor + Claude via @import), bukan blok Codex generated seperti sebelumnya.
+
+# Ditambah otomatis oleh pemasang lintasAI (cegah kebocoran rahasia + metadata):
+*.env
+*.env.local

@@ -193,8 +193,8 @@ JANGAN pakai starter template. Langsung adapt lintasAI:
 
 ```bash
 cd <existing-project>
-git clone https://github.com/ojokesusu/lintasAI.git .claude-kit
-node .claude-kit/setup-pola-b.mjs
+npm create lintasai@latest
+# Ini memuat .claude-kit/ + memandu setup (Fase B). Tak perlu git clone / akun GitHub.
 ```
 
 LintasAI akan auto-detect stack (via `STACK_DETECTION_PATTERN.md`) dan customize setup berdasarkan project existing.

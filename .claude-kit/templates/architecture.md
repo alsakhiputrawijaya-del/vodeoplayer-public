@@ -110,10 +110,9 @@ Contoh terisi: *"Aplikasi internal manajemen invoice untuk tim finance UKM. Meng
 ---
 
 ## Deploy, Rilis & Rollback
-Ringkas di sini; **detail + decision tree ada di `./.claude-kit/templates/CLAUDE_TEAM_GUIDE.md`** (jangan digandakan supaya peta ini tetap 1-halaman + tak drift).
+Ringkas di sini (jangan digandakan supaya peta ini tetap 1-halaman + tak drift).
 - **Hosting + auto-deploy**: ⛔ BELUM DIISI (mis. *"Vercel: `main` → production, PR → Preview auto"*)
-- **Risk Level (🟢/🟡/🔴)** → `CLAUDE_TEAM_GUIDE.md` section 7b.
-- **Rollback** (target <5 menit): `git revert HEAD && git push` → platform auto-deploy versi sebelumnya. Playbook: `CLAUDE_TEAM_GUIDE.md` section 13b.
+- **Rollback** (target <5 menit): `git revert HEAD && git push` → platform auto-deploy versi sebelumnya.
 - **Backup DB**: ⛔ BELUM DIISI (mis. *"Supabase daily auto-backup 7 hari; snapshot manual WAJIB sebelum PR migrasi"*)
 - **Feature flag** = opsi lanjutan (post-launch): `templates/feature-flags-advanced.md`.
 
