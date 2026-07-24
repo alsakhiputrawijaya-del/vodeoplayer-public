@@ -110,7 +110,7 @@ Prinsip: orang baru mulai **TANPA akses apa pun**, ditambah **hanya** repo yang 
 
 Akses gampang "set sekali lalu lupa". Cek **tiap bulan** memastikan kenyataan di GitHub masih cocok dengan Buku Induk. Supaya tidak lupa, kit memasang **robot pengingat** (`audit-access.yml`) yang otomatis membuka satu "Issue" tiap awal bulan: *"waktunya cek-akses"*. Robot itu cuma **mengingatkan** — pemeriksaannya tetap kamu jalankan (lewat AI, baca-saja). Sengaja TIDAK ada pencabutan otomatis, supaya tak ada akses yang ke-cabut keliru.
 
-**Cara cepat (robot):** jalankan `npx lintasai access-verify` (atau `node .claude-kit/lib/access-verify.mjs`) — robot otomatis baca Buku Induk + tanya GitHub (read-only) + cetak SELISIH tim per repo + catat ke `.audit-log`. Butuh `gh` login + **organisasi** GitHub (bukan akun pribadi). Kalau `gh` tak tersedia/gagal, robot **BERHENTI + lapor** (tak pernah diam-diam bilang "aman"). Tetap READ-ONLY — pencabutan akses = kamu klik manual.
+**Cara cepat (robot):** ⚠️ perintah `lintasai access-verify` **DIHAPUS di kit v3** (tak lagi tersedia). Pakai **metode manual (lewat AI)** di bawah, atau bandingkan sendiri di GitHub → Settings → Collaborators tiap repo vs Buku Induk. Semua tetap READ-ONLY — pencabutan akses = kamu klik manual.
 
 **Atau minta AI** (manual):
 > *"Bandingkan siapa yang SEKARANG punya akses tiap repo (baca dari GitHub) dengan `lintasai-portfolio.yml`. Cetak SELISIH-nya: siapa punya akses yang TIDAK ada di Buku Induk, atau sebaliknya. Mode baca-saja, jangan ubah apa pun."*

@@ -9,8 +9,8 @@
 ## Pengantar
 
 Proyek ini ikut **standar kerja tim IT** (kit terpasang di `./.claude-kit/`).
-Aturan utama (cara coding, dokumentasi, larangan) ada di **`./.claude-kit/CLAUDE_universal_v1.md`**, dan dimuat **OTOMATIS** lewat `CLAUDE.md` di root proyek (yang `@import` file aturan itu + file `AGENTS.md` ini). Claude Code meng-auto-load `CLAUDE.md`, jadi aturan benar-benar masuk konteks tiap sesi — bukan sekadar "ditunjuk" lewat tulisan.
-File `AGENTS.md` ini cuma berisi **override khusus proyek** + instruksi resolusi path; ikut di-`@import` oleh `CLAUDE.md`.
+Aturan utama (cara coding, dokumentasi, larangan) ada di **`./AGENTS.md`** (kernel microkernel kit sejak v3), dan dimuat **OTOMATIS** lewat `CLAUDE.md` di root proyek (yang `@import` kernel itu + file override ini). Claude Code meng-auto-load `CLAUDE.md`, jadi aturan benar-benar masuk konteks tiap sesi — bukan sekadar "ditunjuk" lewat tulisan.
+File `AGENTS.override.md` ini cuma berisi **override khusus proyek** + instruksi resolusi path; ikut di-`@import` oleh `CLAUDE.md`, dan **tak pernah ditimpa saat update kit**.
 
 ---
 
@@ -89,5 +89,7 @@ Sesi pertama tim member baru: AI auto-trigger `./.claude-kit/POST_SETUP_CHECKLIS
 | Versi kit | Tanggal update     | Siapa update | Catatan              |
 |-----------|--------------------|--------------|----------------------|
 | v1.61.0 | 2026-06-29 | user15  | Setup awal Pola B    |
+| v2.6.0  | 2026-07-14 | user15  | Update kit lintasAI v1.61.0 → v2.6.0 (rilis keamanan) |
+| v3.1.0  | 2026-07-24 | Cantika (AI-assist) | Update v2.6.0 → v3.1.0: microkernel (aturan pindah ke AGENTS.md), folder workflows/→rules/ & lib/→engine/, AGENTS.md kustom → AGENTS.override.md |
 
 <!-- Tambah baris baru tiap update isi `./.claude-kit/` ke versi lebih baru. -->

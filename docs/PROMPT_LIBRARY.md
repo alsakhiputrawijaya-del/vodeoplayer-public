@@ -894,8 +894,8 @@ PHASE 0 — Environment Sanity Check (v1.5.6 hardening)
   0.1  Verify Claude Code DESKTOP (bukan Web) — kalau Web, kasih link
        https://claude.ai/download dan STOP.
   0.2  Verify platform = Windows (lintasAI v1.x Windows-only).
-  0.3  Verify stack project = Node.js via Get-StackType di
-       .claude-kit/lib/project-detect.ps1. Kalau bukan Node (Python/Go/Rust/Ruby/PHP),
+  0.3  Verify stack project = Node.js via .claude-kit/engine/project-detect.mjs
+       (kit v3 = 100% Node). Kalau bukan Node (Python/Go/Rust/Ruby/PHP),
        STOP dengan pesan jelas + link issue cross-stack.
   0.4  Verify project sudah `git init` (cek .git/ folder). Kalau belum,
        tawarkan pre-flight Fix #1: [1] auto init / [2] skip + global identity /
