@@ -83,6 +83,17 @@
     "playly-welcome-",
     "playly-onboarding-",
     "playly-notif-",
+    // 28 Jul 2026 (fix RLS): trash + keluarga key per-user ber-suffix username —
+    // dulu lewat jalur anon (user_id NULL) → upsert menabrak row bertuan →
+    // "new row violates RLS" / "retry dibuang (RLS permanen)" tiap load.
+    // Kini distamp user_id via bridge.
+    "playly-trash-",
+    "playly-history-",
+    "playly-downloads-",
+    "playly-sessions-",
+    "playly-user-audit-",
+    "playly-daily-snapshot-",
+    "playly-video-snapshot-",
     // playly-account-* — special handling via isPerUserBridgeKey suffix check
   ];
   function isPerUserBridgeKey(key) {

@@ -453,3 +453,56 @@
       .cta-bar-body { gap: 10px; }
     }
   
+/* ============================================================================
+   WATERMARK PLAYER (26 Jul 2026, req user) — Playly · @username pojok kanan
+   bawah video (brand + kreator, ala TikTok; non-destruktif). Seragam dgn rule
+   di styles.css (app utama). .video-wrap sudah position:relative.
+   ========================================================================== */
+.player-watermark {
+  position: absolute; right: 14px; bottom: 56px; z-index: 3;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .01em;
+  color: rgba(255,255,255,.88); text-shadow: 0 1px 4px rgba(0,0,0,.75);
+  background: rgba(0,0,0,.30); padding: 4px 11px; border-radius: 999px;
+  pointer-events: none; user-select: none; max-width: 60%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ============================================================================
+   LOGO WATERMARK KUSTOM (26 Jul 2026) — logo uploader di video (v.wmLogo).
+   Posisi via data-pos; ukuran (width %) & opacity via inline style dari JS.
+   ========================================================================== */
+.player-wm-logo {
+  position: absolute; z-index: 3; pointer-events: none; user-select: none;
+  height: auto; display: block;
+}
+.player-wm-logo[hidden] { display: none; }
+.player-wm-logo[data-pos="br"] { right: 14px; bottom: 14px; }
+.player-wm-logo[data-pos="bl"] { left: 14px; bottom: 14px; }
+.player-wm-logo[data-pos="tr"] { right: 14px; top: 14px; }
+.player-wm-logo[data-pos="tl"] { left: 14px; top: 14px; }
+
+/* ============================================================================
+   TEXT OVERLAY HASIL EDIT (28 Jul 2026) — dirender oleh _applyPlaybackTextOverlay
+   (video-edit-playback.js) sebagai saudara <video> di dalam .video-wrap (sudah
+   position:relative). Disalin dari styles.css supaya tampilan sama dgn editor.
+   ========================================================================== */
+.ve-text-overlay {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 92%;
+  padding: 6px 14px;
+  text-align: center;
+  font-weight: 800;
+  line-height: 1.25;
+  text-shadow:
+    0 2px 6px rgba(0,0,0,.6),
+    0 0 2px rgba(0,0,0,.9);
+  pointer-events: none;
+  display: none;
+  word-break: break-word;
+  z-index: 2;
+}
+.ve-text-overlay[data-pos="top"]    { top: 8%; bottom: auto; }
+.ve-text-overlay[data-pos="center"] { top: 50%; transform: translate(-50%, -50%); }
+.ve-text-overlay[data-pos="bottom"] { bottom: 12%; top: auto; }

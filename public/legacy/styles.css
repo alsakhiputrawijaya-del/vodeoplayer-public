@@ -82551,3 +82551,227 @@ body:not([data-role="admin"]) .upf-field .upf-tags-wrap input#upTagsInput { font
 /* perkuat-pratinjau-premium */
 .preview-card.preview-premium h3 { color: #f0c878 !important; font-weight: 900 !important; letter-spacing: -.01em; }
 .preview-card.preview-premium { border-color: rgba(212, 166, 74, .45) !important; }
+
+/* ============================================================================
+   FIX EDITOR VIDEO (24 Jul 2026) — polesan panel kanan & tab Teks:
+   (1) Dropdown "Preset…" ukuran teks INLINE sebaris dgn slider + angka
+       (sebelumnya yatim full-width tanpa label — tampak spt kontrol tanpa fungsi).
+   (2) Scrollbar tipis yang TERLIHAT di panel kanan (.ve-controls) — sebelumnya
+       tak ada indikasi konten bisa di-scroll (baris Zoom/Rotate/Flip terpotong
+       diam-diam di batas bawah panel).
+   Catatan: section TRIM juga dipindah ke kolom KIRI (stage) via index-markup.ts —
+   CSS pendukungnya (.ve-stage > .ve-section dst) sudah ada sejak 4 Jun 2026.
+   ========================================================================== */
+#videoEditorModal .ve-textsize-row { flex-wrap: nowrap; }
+/* JANGAN flex-wrap di baris ini: .ve-range ber-width:100% (basis penuh) sehingga
+   dengan wrap slider mengisi 1 baris sendiri & angka+Preset… turun ke baris 2
+   (regresi 24 Jul 2026). nowrap + shrink basis-0 yg menyesuaikan — pola yg sama
+   dgn .ve-adv-row:has(.ve-range). */
+#videoEditorModal .ve-textsize-row .ve-range { flex: 1 1 0; }
+#videoEditorModal .ve-textsize-preset {
+  flex: 0 0 108px;
+  width: 108px;
+  margin-top: 0;
+  padding: 8px 28px 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+#videoEditorModal .ve-controls {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+#videoEditorModal .ve-controls::-webkit-scrollbar { width: 8px; }
+#videoEditorModal .ve-controls::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+#videoEditorModal .ve-controls::-webkit-scrollbar-track { background: transparent; }
+
+/* Ruang napas bawah kolom kiri (stage): setelah TRIM pindah ke stage, teks meta
+   "0:00 – 0:14 / Durasi" nempel & sedikit tergores tepi bawah kolom. Padding
+   bawah 12 → 16px; JS _veFitWrap membaca padding ini & otomatis mengecilkan
+   video supaya grup tetap pas (tidak overflow). */
+#videoEditorModal .ve-stage { padding-bottom: 16px; }
+
+/* ============================================================================
+   DIRTY GUARD editor video (24 Jul 2026) — popup konfirmasi "Perubahan belum
+   di-export". Overlay absolute menutup panel (z 120: di atas konten & overlay
+   export yg z 100, di bawah tombol ✕ yg z 130). Wired di script.js (veDirtyGuard).
+   ========================================================================== */
+#videoEditorModal .ve-dirty-confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 14, .78);
+  backdrop-filter: blur(6px);
+  border-radius: inherit;
+}
+#videoEditorModal .ve-dirty-confirm[hidden] { display: none; }
+#videoEditorModal .ve-dirty-box {
+  width: min(90%, 380px);
+  padding: 24px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .5);
+  text-align: center;
+}
+#videoEditorModal .ve-dirty-box h4 {
+  margin: 0 0 6px;
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--text);
+}
+#videoEditorModal .ve-dirty-box p {
+  margin: 0 0 18px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+#videoEditorModal .ve-dirty-actions { display: flex; gap: 10px; justify-content: center; }
+
+/* ============================================================================
+   CROP BEBAS — handle SELALU terlihat & bisa di-drag (24 Jul 2026).
+   Sebelumnya handle diposisikan -7px di LUAR pojok kotak → terpotong
+   overflow:hidden milik .ve-video-wrap; saat kotak full-frame (awal masuk
+   Bebas) keempat handle hilang total → crop tak bisa diatur sama sekali.
+   Kini handle ditaruh 3px DI DALAM pojok, diperbesar 14px, border lebih tebal.
+   ========================================================================== */
+#videoEditorModal .ve-crop-handle {
+  width: 14px;
+  height: 14px;
+  border-width: 2.5px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, .55);
+}
+#videoEditorModal .ve-crop-handle[data-crop-handle="nw"] { top: 3px; left: 3px; }
+#videoEditorModal .ve-crop-handle[data-crop-handle="ne"] { top: 3px; right: 3px; }
+#videoEditorModal .ve-crop-handle[data-crop-handle="sw"] { bottom: 3px; left: 3px; }
+#videoEditorModal .ve-crop-handle[data-crop-handle="se"] { bottom: 3px; right: 3px; }
+
+/* ============================================================================
+   CROP BEBAS — baris tombol "Terapkan Crop" / "Ubah Crop" (24 Jul 2026).
+   Muncul di kolom kiri (stage), antara tombol Putar Preview & bar trim; hanya
+   saat mode Bebas & relevan (diatur script.js: _cropApplied + _veIsFullCrop).
+   ========================================================================== */
+#videoEditorModal .ve-crop-apply-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+  max-width: 640px;
+}
+#videoEditorModal .ve-crop-apply-row[hidden] { display: none; }
+#videoEditorModal .ve-crop-apply-row .btn { flex: 0 0 auto; }
+
+/* ============================================================================
+   TEXT OVERLAY DI PLAYBACK (25 Jul 2026) — applyVideoEditCss kini merender div
+   .ve-playback-text (pakai ulang gaya .ve-text-overlay) sebagai saudara <video>.
+   .ve-export-preview-wrap butuh positioning context utk overlay absolute-nya;
+   .player-screen sudah position:relative (9459). Detil: script.js _applyPlaybackTextOverlay.
+   ========================================================================== */
+.ve-export-preview-wrap { position: relative; }
+
+/* ============================================================================
+   BARIS TERAPKAN PERUBAHAN (25 Jul 2026) — pola Terapkan-Crop utk semua kontrol
+   (warna/advance/teks): kontrol mengubah state tanpa live preview; klik = render.
+   Pinned di bawah kolom kontrol (.ve-controls = flex column -> margin-top:auto).
+   ========================================================================== */
+#videoEditorModal .ve-apply-fx-row { margin-top: auto; padding: 12px 16px 4px; display: flex; }
+#videoEditorModal .ve-apply-fx-row[hidden] { display: none; }
+#videoEditorModal .ve-apply-fx-btn { flex: 1; justify-content: center; }
+
+/* ============================================================================
+   EDIT THUMBNAIL — viewport pendek (25 Jul 2026). Bug: modal max-height:92vh
+   menekan & yg dikorbankan flex = .te-panel (overflow-y:auto) sampai 27px, jadi
+   hint "Drag pojok crop frame..." terpotong setengah/0px di pita ~600-720px
+   (diukur langsung: scrollHeight panel 99 vs clientHeight 27). Akar: .te-stage
+   min-height:320px menolak menyusut. Fix: semua anak panel KECUALI stage
+   flex-shrink:0 (kontrol tetap utuh); stage yg menyusut (canvas contain
+   auto-scale, max-height:100%). Floor 160px supaya canvas masih terlihat.
+   ========================================================================== */
+#thumbEditorModal .thumb-editor-panel > :not(.te-stage) { flex-shrink: 0; }
+#thumbEditorModal .te-stage { min-height: 160px; }
+
+/* ============================================================================
+   EDIT THUMBNAIL — logo header (26 Jul 2026, req user). Sebelumnya emoji di
+   kotak indigo (#6366f1 — off-theme). Kini ikon SVG gambar + gradasi WINE +
+   ikon EMAS, seragam dgn badge premium aplikasi (.upf-ai-ico).
+   ========================================================================== */
+#thumbEditorModal .te-head-ico {
+  background: linear-gradient(135deg, #6E2222, #541A1A, #380F0F);
+  color: #F0C878;
+}
+#thumbEditorModal .te-head-ico svg { width: 20px; height: 20px; }
+
+/* ============================================================================
+   WATERMARK PLAYER (26 Jul 2026, req user) — Playly · @username pojok kanan
+   bawah saat video diputar (brand + kreator, ala TikTok; non-destruktif).
+   bottom:56px supaya berada DI ATAS bar kontrol custom (.cpl-overlay z-4).
+   ========================================================================== */
+.player-watermark {
+  position: absolute; right: 14px; bottom: 56px; z-index: 3;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .01em;
+  color: rgba(255,255,255,.88); text-shadow: 0 1px 4px rgba(0,0,0,.75);
+  background: rgba(0,0,0,.30); padding: 4px 11px; border-radius: 999px;
+  pointer-events: none; user-select: none; max-width: 60%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ============================================================================
+   LOGO WATERMARK — seksi form upload (26 Jul 2026). Kartu ringkas: tombol pilih,
+   nama file, preview + kontrol posisi/ukuran/transparansi.
+   ========================================================================== */
+.upf-wmlogo-row { display: flex; align-items: center; gap: 10px; }
+.upf-wmlogo-row .btn { flex: 0 0 auto; }
+.upf-wmlogo-name { flex: 1; min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upf-wmlogo-settings { display: flex; gap: 14px; align-items: flex-start; margin-top: 10px; }
+.upf-wmlogo-preview {
+  width: 72px; height: 72px; object-fit: contain; flex: 0 0 auto;
+  background: #0a0a0c; border: 1px solid var(--border); border-radius: 10px; padding: 6px;
+}
+.upf-wmlogo-controls { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.upf-mini-label { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.upf-mini-label .ve-select { width: 100%; }
+.upf-mini-label input[type="range"] { width: 100%; }
+
+/* ============================================================================
+   PLAYER SCREEN — sudut membulat + border (26 Jul 2026, req "perbaiki tampilan
+   play video"). Sebelumnya border-radius:0 (9459-9467): satu-satunya elemen
+   persegi di antara kartu sekitarnya (.player-info/.ps-section = 14px + border
+   var(--border), gaya Dailymotion 32053-32063). overflow:hidden sudah ada →
+   video, kontrol custom (.cpl-overlay), & watermark ikut ter-clip rapi.
+   ========================================================================== */
+.player-screen {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+
+/* ============================================================================
+   STATISTIK — label KPI terpotong (28 Jul 2026). v756 membesarkan font label
+   9.5→13.5px (78557) tapi nowrap+ellipsis warisan (78398) tetap → "Total
+   Tontonan" & "Total Komentar" terpotong ~3-6px di kartu ~184px (terukur:
+   scrollW 99-101 vs width 95.6). Izinkan wrap 2 baris — kartu auto-height.
+   ========================================================================== */
+section[data-view="stats"] #statsRow .stat-label {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  line-height: 1.25 !important;
+}
+
+/* ============================================================================
+   JELAJAHI — bar kontrol kategori + urutan (28 Jul 2026). Pill "Semua" +
+   kategori yg ada di pool video (klik = filter, klik ulang = hapus) +
+   dropdown urutan (Untukmu/Terbaru/Terpopuler). Di atas #fypFeed.
+   ========================================================================== */
+.fyp-ctrl-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0 4px; }
+.fyp-cat-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
+.fyp-cat-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-2); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: background .15s var(--ease), color .15s var(--ease), border-color .15s;
+}
+.fyp-cat-pill:hover { background: var(--surface-2); color: var(--text); }
+.fyp-cat-pill.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.fyp-sort-sel { flex: 0 0 auto; width: auto !important; min-width: 0; max-width: 180px; margin-left: auto; }

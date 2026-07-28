@@ -11,6 +11,22 @@ import path from 'node:path';
 import type { Metadata, Viewport } from 'next';
 import { legacyAsset } from '@/app/_legacy/legacy-asset';
 
+// Hash isi file utk cache-bust ?v= legacy scripts (pola sama dgn cssVersion +
+// assetVersion di IndexPage — duplikasi kecil disengaja supaya legacy-asset.ts
+// tetap bebas fs (diimpor juga komponen lain).
+function assetVersion(file: string, fallback: string): string {
+  try {
+    const served = process.env.NODE_ENV === 'production'
+      ? file.replace(/\.(js|css)$/, '.min.$1')
+      : file;
+    return createHash('md5')
+      .update(readFileSync(path.join(process.cwd(), 'public', 'legacy', served)))
+      .digest('hex').slice(0, 12);
+  } catch {
+    return fallback;
+  }
+}
+
 // Cache-bust ?v= untuk styles.css — OTOMATIS dari hash isi CSS yang disajikan,
 // jadi BERUBAH sendiri tiap kali CSS berubah (di-compute sekali saat build).
 // Sebelumnya di-set manual & sering lupa di-bump → browser nyangkut cache CSS
@@ -73,6 +89,18 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   // meng-update ?v= → browser nyangkut cache lama). Prod: tetap pakai hash
   // build-time (STYLES_V const) supaya caching immutable jalan (nol cost runtime).
   const stylesV = process.env.NODE_ENV === 'production' ? STYLES_V : cssVersion();
+  // 26 Jul 2026 (fix hydration error, temuan audit): 8 legacy scripts dipindah
+  // dari IndexPage (page) ke layout — script klasik (tanpa async) TIDAK di-hoist
+  // React 19 ("async prop must be true to allow scripts to be safely moved"),
+  // jadi server & client merender di posisi yg sama → tanpa hydration mismatch.
+  // Posisi AKHIR body (bukan head): script.js punya binding parse-time ke elemen
+  // markup (mis. $("#signinForm") — harus sudah ter-parse saat script jalan.
+  const vMain = assetVersion('script.js', '20260627-admin2-gates');
+  const vCloud = assetVersion('cloud-sync.js', '20260627-orphan-leak-fix-v559');
+  const vAuth = assetVersion('supabase-auth-bridge.js', '20260627-orphan-leak-fix-v559');
+  const vPicons = assetVersion('picons.js', '20260516-settings-ico-v188');
+  const vParticles = assetVersion('particles-bg.js', '20260516-particles-v2');
+  const vVePlayback = assetVersion('video-edit-playback.js', '20260728-vepb1');
   return (
     <html lang="id" suppressHydrationWarning>
       <body data-theme="dark" className="auth-mode" suppressHydrationWarning>
@@ -81,7 +109,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap"
           precedence="high"
         />
         <link rel="stylesheet" href={legacyAsset('styles.css', stylesV)} precedence="high" />
@@ -89,6 +117,23 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           {FOUC_CSS}
         </style>
         {children}
+        {/* Legacy scripts — di AKHIR body (setelah markup) supaya kode parse-time
+            di script.js yang mengakses DOM (mis. $("#signinForm") 26053) melihat
+            elemen yang sudah ter-parse. Urutan WAJIB sama dgn index.html asli.
+            Tanpa async (script klasik): React tidak me-hoist-nya ("async prop
+            must be true to allow scripts to be safely moved" — react.dev), jadi
+            server & client sama → tanpa hydration mismatch. */}
+        <script src={legacyAsset('index-config.js')} />
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" />
+        {/* 28 Jul 2026: mesin penerap edit playback bersama (dipakai app + watch) —
+            HARUS sebelum script.js (openPlayer/export preview memanggilnya). */}
+        <script src={legacyAsset('video-edit-playback.js', vVePlayback)} />
+        <script src={legacyAsset('cloud-sync.js', vCloud)} />
+        <script src={legacyAsset('supabase-auth-bridge.js', vAuth)} />
+        <script src={legacyAsset('script.js', vMain)} data-playly-main="1" />
+        <script src={legacyAsset('picons.js', vPicons)} />
+        <script src={legacyAsset('particles-bg.js', vParticles)} />
+        <script src={legacyAsset('index-ensure.js')} />
       </body>
     </html>
   );

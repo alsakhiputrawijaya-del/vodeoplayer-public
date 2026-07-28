@@ -79,6 +79,16 @@
           const myVids = row.value && Array.isArray(row.value.myVideos) ? row.value.myVideos : [];
           const hit = myVids.find((v) => v && v.id === id);
           if (hit) {
+            // 26 Jul 2026 (v-sec, hasil audit): GATE visibilitas — sebelumnya SEMUA
+            // video (Pribadi/Draf/terjadwal) bisa ditonton lewat link watch karena
+            // myVideos = 1 baris platform (RLS tak bisa filter per-item di dalamnya).
+            // Hanya Publik/Unlisted yg published & tak terjadwal masa depan yg lolos;
+            // sisanya → null → halaman error "Video tidak ditemukan" (tak bocorkan
+            // eksistensi video privat).
+            const vis = String(hit.visibility || "public").toLowerCase();
+            const st = String(hit.adminStatus || "published").toLowerCase();
+            const inFuture = !!(hit.scheduledAt && Date.parse(hit.scheduledAt) > Date.now());
+            if ((vis !== "public" && vis !== "unlisted") || st === "draft" || inFuture) return null;
             const username = String(row.key).replace("playly-state-", "");
             return { meta: hit, creator: hit.creator || username };
           }
@@ -109,6 +119,25 @@
       function renderMeta(meta, creator) {
         $("videoTitle").textContent = meta.title || "Video";
         $("creatorName").textContent = "@" + creator;
+        // 26 Jul 2026 (req user): watermark "Playly · @username" pojok kanan bawah
+        // video (brand + kreator, ala TikTok; non-destruktif overlay HTML).
+        const wm = $("watchWatermark");
+        if (wm) { wm.textContent = "Playly · @" + creator; wm.hidden = !!meta.wmBaked; }
+        // 26 Jul 2026: logo watermark kustom uploader (v.wmLogo) — tampil sesuai
+        // posisi/ukuran/transparansi pilihan saat upload.
+        const wl = $("watchWmLogo");
+        if (wl) {
+          const spec = meta.wmLogo;
+          if (spec && spec.url) {
+            wl.src = spec.url;
+            wl.dataset.pos = spec.pos || "br";
+            wl.style.width = (spec.size || 12) + "%";
+            wl.style.opacity = String((spec.opacity != null ? spec.opacity : 80) / 100);
+            wl.hidden = false;
+          } else {
+            wl.hidden = true;
+          }
+        }
         // Avatar default seragam: SATU huruf pertama username (req user 2026-06-16).
         const init = (String(creator || "U").trim().charAt(0).toUpperCase()) || "U";
         $("creatorInit").textContent = init;
@@ -402,6 +431,12 @@
 
           const v = $("videoEl");
           v.src = url;
+          // 28 Jul 2026: terapkan hasil edit video (crop/filter/teks/audio/fade/
+          // trim/speed/backsound) ke penonton publik — sebelumnya edit hanya
+          // berlaku di player aplikasi (applyVideoEditCss dari video-edit-playback.js).
+          try {
+            if (typeof applyVideoEditCss === "function") applyVideoEditCss(v, found.meta.videoEdit || null);
+          } catch (e) { console.warn("[watch] applyVideoEditCss:", e); }
 
           // Tunggu ad config (max 2 detik — kalau lambat, skip iklan dan langsung putar)
           const adCfg = await Promise.race([
