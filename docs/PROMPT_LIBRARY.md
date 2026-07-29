@@ -541,7 +541,7 @@ Project sudah launch resmi (post-MVP), mulai punya user aktif, butuh feature fla
 Aktifkan feature flag mode di proyek ini karena product sudah launch.
 
 Tolong:
-1. Read .claude-kit/templates/feature-flags-advanced.md untuk reference lengkap.
+1. Read .lintasai/templates/feature-flags-advanced.md untuk reference lengkap.
 2. Generate docs/feature-flags-decision-tree.md di proyek ini - slim version (1 halaman) yang berisi:
    - 5 kriteria PAKAI FLAG (auth/billing/schema-user-visible/destruktif/eksperimental)
    - 5 kategori BRANCH ONLY cukup (copy edit/styling/bugfix kecil/refactor internal/dokumentasi)
@@ -610,7 +610,7 @@ Lapor diff dulu, tunggu approval.
 Tolong jalankan AUDIT KOMPREHENSIF di proyek ini, READ-ONLY, dengan ANALOGI NON-PROGRAMMER di setiap finding.
 
 Workflow:
-1. Pre-audit verify: AGENTS.md ada, docs/architecture_auto.md ada, .claude-kit/ ada.
+1. Pre-audit verify: AGENTS.md ada, docs/architecture_auto.md ada, .lintasai/ ada.
 2. Read landscape: docs/architecture.md + docs/architecture_auto.md + memory project-*.
 3. Workflow tool 8 paralel auditor (refactor / security / qa-test / database / devops / performance / docs-gap / onboarding).
 4. Adversarial verify per finding (default is_real=false kalau tidak 100% yakin).
@@ -626,7 +626,7 @@ Output WAJIB untuk tiap finding:
 
 Status default: READONLY. Popup #1 di akhir scan: pilih tier mau ditampilkan (1/2/3/4 default). Popup #2 setelah display: lanjut Tahap 0 / write report ke docs/decisions/ / pick item / stop.
 
-Detail lengkap workflow: .claude-kit/AUDIT_POST_SETUP_PROMPT_v1.md
+Detail lengkap workflow: .lintasai/AUDIT_POST_SETUP_PROMPT_v1.md
 ```
 
 **Tips**:
@@ -674,25 +674,25 @@ Intent natural Bahasa Indonesia dari staff non-programmer = trigger. Staff TIDAK
 
 ### Template prompt
 
-Isi lengkap ada di `./.claude-kit/UPDATE_KIT_PROMPT_v1.md`. Singkatnya AI jalanin step:
+Isi lengkap ada di `./.lintasai/UPDATE_KIT_PROMPT_v1.md`. Singkatnya AI jalanin step:
 
-1. **Fetch CHANGELOG remote** (git ls-remote / GitHub raw) → bandingin vs `./.claude-kit/CHANGELOG.md` lokal.
+1. **Fetch CHANGELOG remote** (git ls-remote / GitHub raw) → bandingin vs `./.lintasai/CHANGELOG.md` lokal.
 2. **Auto-classify tier** per entry baru:
    - Tidak ada label → **Tier 1** (silent) atau **Tier 2** (auto-sync), AI baca konteks deskripsi.
    - Label `[BREAKING]` → **Tier 3**.
    - Label `[SCAN-REQUIRED]` → **Tier 4**.
 3. **Compose summary** ke staff: ringkasan + analogi tools populer + action item yang dibutuhin.
 4. **Konfirmasi** (skip kalau user mode auto-confirm Y/N - lihat `feedback_auto_confirm.md`).
-5. **Eksekusi** via `./.claude-kit/kit.ps1 update` (yang internal manggil `update-kit.ps1`).
+5. **Eksekusi** via `./.lintasai/kit.ps1 update` (yang internal manggil `update-kit.ps1`).
 6. **Post-update**: kalau Tier 4 → minta staff paste `JALANKAN_KIT.md` ulang. Kalau Tier 3 → AI baca section "Migration Steps" inline di CHANGELOG dan eksekusi. Kalau Tier 1/2 → done.
 
 ### Tips
 
 - **Staff non-programmer**: chat natural cukup ("update kit dong"). AI auto-route ke pattern ini. Staff nggak perlu tau apa itu PowerShell, sha256, atau manifest.
-- **Power user** (dev kit-aware): bisa skip AI orchestration, langsung `./.claude-kit/kit.ps1 update` di terminal. Output structured + tier label langsung muncul.
+- **Power user** (dev kit-aware): bisa skip AI orchestration, langsung `./.lintasai/kit.ps1 update` di terminal. Output structured + tier label langsung muncul.
 - **CI/automation**: `kit.ps1 update --json` (atau bash wrapper di repo) buat ngehasilin exit code + JSON report. Cocok buat GitHub Actions cek drift kit antar proyek tim.
 - **Customization preservation**: staff sering takut "update bakal hapus AGENTS.md yang udah gue isi". Tenangin pakai analogi: "Kayak update WhatsApp - chat lo nggak ilang, cuma app-nya yang di-refresh." Mekanisme aslinya = manifest sha256 diff (file yang lo modif diketahuin AI lewat hash, otomatis di-skip dari overwrite).
-- **Rollback ada safety net**: `update-kit.ps1` taro backup di `./.claude-kit.backup-<timestamp>/`. Auto-cleanup file `.bak` > 30 hari + simpan max 3 backup terakhir. Analogi: kayak Google Drive version history - bisa balik ke versi sebelumnya, tapi nggak nyimpen 100 versi (boros disk).
+- **Rollback ada safety net**: `update-kit.ps1` taro backup di `./.lintasai.backup-<timestamp>/`. Auto-cleanup file `.bak` > 30 hari + simpan max 3 backup terakhir. Analogi: kayak Google Drive version history - bisa balik ke versi sebelumnya, tapi nggak nyimpen 100 versi (boros disk).
 
 ### Mapping intent → sub-pattern
 
@@ -702,7 +702,7 @@ Isi lengkap ada di `./.claude-kit/UPDATE_KIT_PROMPT_v1.md`. Singkatnya AI jalani
 | "update kit" / "sync ke versi terbaru"          | Full workflow step 1-6.                                              |
 | "rollback" / "update tadi gagal, balikin"       | Rollback flow: cari folder `.bak-<timestamp>` terbaru → restore → verify. |
 | "update tanpa hapus customization gue"          | Full workflow + highlight manifest sha256 protection di summary (analogi: "kayak Notion sync - page yang lo edit lokal nggak ke-replace versi server"). |
-| "kit ku versi berapa?"                          | Baca `./.claude-kit/CHANGELOG.md` line pertama → report ke staff.    |
+| "kit ku versi berapa?"                          | Baca `./.lintasai/CHANGELOG.md` line pertama → report ke staff.    |
 
 ### Contoh output AI (skenario Tier 2 update)
 
@@ -724,11 +724,11 @@ AI (setelah fetch CHANGELOG + classify):
 ### Cross-reference
 
 - **Panduan lengkap update** (langkah, screenshot, troubleshooting): `docs/UPDATE_GUIDE.md`
-- **Aturan AI route intent → pattern**: `./.claude-kit/CLAUDE_universal_v1.md` section 4.5
-- **Audit post-setup pattern** (referensi tier classification origin): `./.claude-kit/CLAUDE_universal_v1.md` section 4.4
-- **Analogi library** (kalau butuh nambah analogi tools populer di summary): `./.claude-kit/templates/ANALOGI_LIBRARY.md`
-- **Backup retention policy detail**: `./.claude-kit/update-kit.ps1` (header comment)
-- **Manifest sha256 logic** (preservation file user-modified): `./.claude-kit/uninstall.ps1` (shared dengan update flow)
+- **Aturan AI route intent → pattern**: `./.lintasai/CLAUDE_universal_v1.md` section 4.5
+- **Audit post-setup pattern** (referensi tier classification origin): `./.lintasai/CLAUDE_universal_v1.md` section 4.4
+- **Analogi library** (kalau butuh nambah analogi tools populer di summary): `./.lintasai/templates/ANALOGI_LIBRARY.md`
+- **Backup retention policy detail**: `./.lintasai/update-kit.ps1` (header comment)
+- **Manifest sha256 logic** (preservation file user-modified): `./.lintasai/uninstall.ps1` (shared dengan update flow)
 
 ---
 
@@ -774,7 +774,7 @@ Trigger: paste isi SPLIT_REPO_MIGRATION_PROMPT_v1.md
 Output: AI analyze + propose plan + execute step-by-step
 Effort: 4-6 minggu owner-side
 
-Lihat detail di `SPLIT_REPO_MIGRATION_PROMPT_v1.md` (di root kit / `.claude-kit/`).
+Lihat detail di `SPLIT_REPO_MIGRATION_PROMPT_v1.md` (di root kit / `.lintasai/`).
 
 ## Prompt 19: AGENTS.md Deploy per Repo
 
@@ -894,7 +894,7 @@ PHASE 0 — Environment Sanity Check (v1.5.6 hardening)
   0.1  Verify Claude Code DESKTOP (bukan Web) — kalau Web, kasih link
        https://claude.ai/download dan STOP.
   0.2  Verify platform = Windows (lintasAI v1.x Windows-only).
-  0.3  Verify stack project = Node.js via .claude-kit/engine/project-detect.mjs
+  0.3  Verify stack project = Node.js via .lintasai/engine/project-detect.mjs
        (kit v3 = 100% Node). Kalau bukan Node (Python/Go/Rust/Ruby/PHP),
        STOP dengan pesan jelas + link issue cross-stack.
   0.4  Verify project sudah `git init` (cek .git/ folder). Kalau belum,
@@ -907,7 +907,7 @@ PHASE 0 — Environment Sanity Check (v1.5.6 hardening)
        protected, surface "pakai pattern branch + PR" sejak awal.
 
 PHASE 1 — Foundation Verification (auto, ~30 detik)
-  Cek 36 file kit lengkap di .claude-kit/, AGENTS.md sudah ter-fill (bukan
+  Cek 36 file kit lengkap di .lintasai/, AGENTS.md sudah ter-fill (bukan
   template placeholder), docs/ skeleton ada, .github/workflows/ai-review.yml ada.
 
 PHASE 2 — Pre-Work Reading (Day 0, sekali pakai)

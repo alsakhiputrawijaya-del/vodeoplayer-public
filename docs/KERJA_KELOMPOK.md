@@ -93,4 +93,4 @@ Saat seseorang membuka PR, GitHub otomatis menampilkan isian dari `.github/pull_
 - [ ] Undang anggota tim sebagai collaborator di GitHub (sesuai akses berjenjang `ACCESS_CONTROL_NREPO_v1.md`).
 - [ ] Beri tahu tim: buka `KERJA_KELOMPOK.md` ini dulu sebelum mulai.
 
-> 💡 Mau menyiapkan/menyegarkan berkas kerja-kelompok kapan saja? Jalankan di dalam folder project ini: `.\.claude-kit\kit.ps1 team-setup`
+> 💡 Mau menyiapkan/menyegarkan berkas kerja-kelompok kapan saja? Jalankan di dalam folder project ini: `.\.lintasai\kit.ps1 team-setup`

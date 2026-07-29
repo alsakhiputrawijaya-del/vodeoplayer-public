@@ -974,7 +974,7 @@ REVOKE ALL ON pbn.posts FROM anon;
 -- Harus return 401 / 403 / empty array (depending on policy).
 ```
 
-**Prompt siap-paste untuk staff IT**: lihat `RLS_SETUP_PROMPT.md` di kit (`./.claude-kit/templates/RLS_SETUP_PROMPT.md`).
+**Prompt siap-paste untuk staff IT**: lihat `RLS_SETUP_PROMPT.md` di kit (`./.lintasai/templates/RLS_SETUP_PROMPT.md`).
 
 ### 2.14. MCP Config di Claude Code
 

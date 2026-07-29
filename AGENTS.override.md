@@ -8,7 +8,7 @@
 
 ## Pengantar
 
-Proyek ini ikut **standar kerja tim IT** (kit terpasang di `./.claude-kit/`).
+Proyek ini ikut **standar kerja tim IT** (kit terpasang di `./.lintasai/`).
 Aturan utama (cara coding, dokumentasi, larangan) ada di **`./AGENTS.md`** (kernel microkernel kit sejak v3), dan dimuat **OTOMATIS** lewat `CLAUDE.md` di root proyek (yang `@import` kernel itu + file override ini). Claude Code meng-auto-load `CLAUDE.md`, jadi aturan benar-benar masuk konteks tiap sesi — bukan sekadar "ditunjuk" lewat tulisan.
 File `AGENTS.override.md` ini cuma berisi **override khusus proyek** + instruksi resolusi path; ikut di-`@import` oleh `CLAUDE.md`, dan **tak pernah ditimpa saat update kit**.
 
@@ -16,19 +16,19 @@ File `AGENTS.override.md` ini cuma berisi **override khusus proyek** + instruksi
 
 ## Path resolution (PENTING - instruksi untuk AI)
 
-Kit ini di-embed di subfolder `./.claude-kit/` (bukan di `%USERPROFILE%\.claude\`).
+Kit ini di-embed di subfolder `./.lintasai/` (bukan di `%USERPROFILE%\.claude\`).
 Saat baca/merujuk file kit, **kamu (AI) wajib mengganti** path lama jadi path lokal:
 
-- `%USERPROFILE%\.claude\<NAMA_FILE>` → `./.claude-kit/<NAMA_FILE>`
-- `~/.claude/<NAMA_FILE>` → `./.claude-kit/<NAMA_FILE>`
+- `%USERPROFILE%\.claude\<NAMA_FILE>` → `./.lintasai/<NAMA_FILE>`
+- `~/.claude/<NAMA_FILE>` → `./.lintasai/<NAMA_FILE>`
 
-Kalau install global **dan** `./.claude-kit/` sama-sama ada → **`./.claude-kit/` menang** (version-locked per proyek).
+Kalau install global **dan** `./.lintasai/` sama-sama ada → **`./.lintasai/` menang** (version-locked per proyek).
 
 ---
 
 ## Versi kit aktif
 
-- Versi kit aktif: cek **baris paling atas `./.claude-kit/CHANGELOG.md`** (sumber hidup — selalu ikut versi terbaru tiap kit di-update). <!-- Sengaja TIDAK menaruh nomor versi di sini: angka yang disalin akan jadi basi setelah kit di-update. Versi saat setup awal tercatat di tabel "Riwayat update kit di proyek ini" di bawah. -->
+- Versi kit aktif: cek **baris paling atas `./.lintasai/CHANGELOG.md`** (sumber hidup — selalu ikut versi terbaru tiap kit di-update). <!-- Sengaja TIDAK menaruh nomor versi di sini: angka yang disalin akan jadi basi setelah kit di-update. Versi saat setup awal tercatat di tabel "Riwayat update kit di proyek ini" di bawah. -->
 - Sumber kit (repo standar tim): **belum-ada (solo project)** <!-- ISI: URL repo git tempat kit dirilis. -->
 
 ---
@@ -40,7 +40,7 @@ Contoh: `- [x] Bahasa docs: EN (override dari default ID karena klien minta)`.
 
 - [ ] Bahasa docs: <!-- default ID -->
 - [ ] Format commit: <!-- default Conventional Commits -->
-- [ ] Folder `docs/`: <!-- default ikut `./.claude-kit/templates/architecture.md` -->
+- [ ] Folder `docs/`: <!-- default ikut `./.lintasai/templates/architecture.md` -->
 - [ ] Tech stack: <!-- default React/Next.js + Tailwind + shadcn -->
 - [ ] Branch utama: <!-- default `main` -->
 - [ ] Pakai GitHub Issue: <!-- default Tidak - pakai chat. Ubah ke `Ya` kalau ada klien eksternal yang tracking via Issue. -->
@@ -51,27 +51,27 @@ Contoh: `- [x] Bahasa docs: EN (override dari default ID karena klien minta)`.
 
 ## Workflow & Komunikasi Task
 
-Tim ini pakai workflow chat-driven (tanpa GitHub Issue by default). Detail di `./.claude-kit/templates/CLAUDE_TEAM_GUIDE.md` section 5b.
+Tim ini pakai workflow chat-driven (tanpa GitHub Issue by default). Detail di `./.lintasai/templates/CLAUDE_TEAM_GUIDE.md` section 5b.
 
 - **Channel chat task**: <!-- ISI: link Slack/Discord/Telegram/WhatsApp -->
 - **Pakai GitHub Issue?** Tidak (default tim). Ubah ke "Ya" kalau proyek punya klien eksternal yang tracking via Issue.
-- **Format prompt task**: lihat `./.claude-kit/templates/PROMPT_LIBRARY.md` section "Prompts untuk Workflow Chat-Driven Task".
-- **Risk Level decision tree**: lihat `./.claude-kit/templates/CLAUDE_TEAM_GUIDE.md` section 7b (Low/Medium/High klasifikasi task).
-- **Rollback playbook**: lihat `./.claude-kit/templates/CLAUDE_TEAM_GUIDE.md` section 13b (git revert <5 menit).
-- **Feature flag** = advanced/post-launch (kit early-stage default = staging-only). Lihat `./.claude-kit/templates/feature-flags-advanced.md` kalau butuh.
+- **Format prompt task**: lihat `./.lintasai/templates/PROMPT_LIBRARY.md` section "Prompts untuk Workflow Chat-Driven Task".
+- **Risk Level decision tree**: lihat `./.lintasai/templates/CLAUDE_TEAM_GUIDE.md` section 7b (Low/Medium/High klasifikasi task).
+- **Rollback playbook**: lihat `./.lintasai/templates/CLAUDE_TEAM_GUIDE.md` section 13b (git revert <5 menit).
+- **Feature flag** = advanced/post-launch (kit early-stage default = staging-only). Lihat `./.lintasai/templates/feature-flags-advanced.md` kalau butuh.
 
 ---
 
 ## Skenario adopsi (AI WAJIB tanya popup di sesi pertama setelah setup)
 
-> **AI: kalau section ini masih punya 4 opsi semua ([1]-[4]), berarti user belum pilih scenario. WAJIB tampilkan POPUP KLIK ke user (Tipe A — pakai `AskUserQuestion` kalau tersedia, fallback blok teks; ikut RULE-8 §14.1) di sesi sekarang per `./.claude-kit/POST_SETUP_CHECKLIST_PROMPT_v1.md`. Opsi rekomendasi (posisi [1] saat dirender) = HASIL AUTO-DETEKSI kondisi project, BUKAN dipatok statis ke "from scratch": project sudah ada kodenya / setengah-jadi → rekomendasikan [3] Rapikan ke Standar Tim; project benar-benar KOSONG → rekomendasikan [1] Kickoff. (Kasus paling umum yang memasang lintasAI = project setengah-jadi.) JANGAN auto-pick — tunggu user pilih. Setelah user pilih, HAPUS 3 opsi sisanya + execute Stage yang sesuai.**
+> **AI: kalau section ini masih punya 4 opsi semua ([1]-[4]), berarti user belum pilih scenario. WAJIB tampilkan POPUP KLIK ke user (Tipe A — pakai `AskUserQuestion` kalau tersedia, fallback blok teks; ikut RULE-8 §14.1) di sesi sekarang per `./.lintasai/POST_SETUP_CHECKLIST_PROMPT_v1.md`. Opsi rekomendasi (posisi [1] saat dirender) = HASIL AUTO-DETEKSI kondisi project, BUKAN dipatok statis ke "from scratch": project sudah ada kodenya / setengah-jadi → rekomendasikan [3] Rapikan ke Standar Tim; project benar-benar KOSONG → rekomendasikan [1] Kickoff. (Kasus paling umum yang memasang lintasAI = project setengah-jadi.) JANGAN auto-pick — tunggu user pilih. Setelah user pilih, HAPUS 3 opsi sisanya + execute Stage yang sesuai.**
 
-- **[1] Proyek baru / from scratch** — untuk proyek yang baru dimulai dari nol; AI memandu dari awal lewat Kickoff → `./.claude-kit/PROJECT_LIFECYCLE_PROMPT_v1.md` (Stage 1 (Proyek Baru): Kickoff)
-- **[2] Proyek lama tanpa docs** → `./.claude-kit/PROJECT_LIFECYCLE_PROMPT_v1.md` (Stage 2 (Bikin Catatan Proyek): Bootstrap Docs)
-- **[3] Proyek setengah jadi (sudah ada sebagian docs)** → `./.claude-kit/PROJECT_LIFECYCLE_PROMPT_v1.md` (Stage 4 (Rapikan ke Standar Tim): Migration)
+- **[1] Proyek baru / from scratch** — untuk proyek yang baru dimulai dari nol; AI memandu dari awal lewat Kickoff → `./.lintasai/PROJECT_LIFECYCLE_PROMPT_v1.md` (Stage 1 (Proyek Baru): Kickoff)
+- **[2] Proyek lama tanpa docs** → `./.lintasai/PROJECT_LIFECYCLE_PROMPT_v1.md` (Stage 2 (Bikin Catatan Proyek): Bootstrap Docs)
+- **[3] Proyek setengah jadi (sudah ada sebagian docs)** → `./.lintasai/PROJECT_LIFECYCLE_PROMPT_v1.md` (Stage 4 (Rapikan ke Standar Tim): Migration)
 - **[4] Sudah siap kerja task biasa (tidak butuh kickoff/migrasi)** → langsung pakai
 
-Sesi pertama tim member baru: AI auto-trigger `./.claude-kit/POST_SETUP_CHECKLIST_PROMPT_v1.md` (Phase 5b — beberapa popup pilihan: cara pasang, ukuran tim, audit, pecah-repo bila relevan + tawaran Audit + daftar tugas-menunggu).
+Sesi pertama tim member baru: AI auto-trigger `./.lintasai/POST_SETUP_CHECKLIST_PROMPT_v1.md` (Phase 5b — beberapa popup pilihan: cara pasang, ukuran tim, audit, pecah-repo bila relevan + tawaran Audit + daftar tugas-menunggu).
 
 ---
 
@@ -92,4 +92,4 @@ Sesi pertama tim member baru: AI auto-trigger `./.claude-kit/POST_SETUP_CHECKLIS
 | v2.6.0  | 2026-07-14 | user15  | Update kit lintasAI v1.61.0 → v2.6.0 (rilis keamanan) |
 | v3.1.0  | 2026-07-24 | Cantika (AI-assist) | Update v2.6.0 → v3.1.0: microkernel (aturan pindah ke AGENTS.md), folder workflows/→rules/ & lib/→engine/, AGENTS.md kustom → AGENTS.override.md |
 
-<!-- Tambah baris baru tiap update isi `./.claude-kit/` ke versi lebih baru. -->
+<!-- Tambah baris baru tiap update isi `./.lintasai/` ke versi lebih baru. -->

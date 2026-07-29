@@ -13,7 +13,7 @@ Dokumen ini untuk **staff IT non-programmer** yang pakai kit `lintasAI` di proye
 - Kamu mau tahu apakah update versi baru aman atau bikin file lama berantakan.
 - Kamu mau rollback (balik ke versi lama) karena update terasa "aneh".
 
-Kalau kamu programmer senior dan butuh detail teknis sha256/manifest diff, langsung loncat ke `./.claude-kit/CHANGELOG.md` + baca source `update-kit.mjs`.
+Kalau kamu programmer senior dan butuh detail teknis sha256/manifest diff, langsung loncat ke `./.lintasai/CHANGELOG.md` + baca source `update-kit.mjs`.
 
 ---
 
@@ -31,7 +31,7 @@ Kit `lintasAI` di-update dengan **1 perintah** - entah lewat chat AI ("lintasAI 
 
 > **"Versi naik" (di sisi pembuat) ≠ "kamu WAJIB update" (di sisi pemakai).** Itu DUA hal terpisah.
 
-Pembuat menaikkan nomor versi tiap ada perubahan - itu memang seharusnya (biar tiap perubahan tercatat rapi). Tapi **kamu sebagai pemakai TIDAK harus mengejar tiap nomor.** Kit yang sudah terpasang di proyekmu (`.claude-kit/`) **tetap jalan selamanya walau tak pernah di-update** - tidak ada yang memaksa, tidak rusak kalau dibiarkan.
+Pembuat menaikkan nomor versi tiap ada perubahan - itu memang seharusnya (biar tiap perubahan tercatat rapi). Tapi **kamu sebagai pemakai TIDAK harus mengejar tiap nomor.** Kit yang sudah terpasang di proyekmu (`.lintasai/`) **tetap jalan selamanya walau tak pernah di-update** - tidak ada yang memaksa, tidak rusak kalau dibiarkan.
 
 🏢 **Analogi:** seperti aplikasi di HP (Tokopedia/WhatsApp). Pembuatnya rilis update **terus-menerus**, tapi kamu tidak update tiap kali - HP-mu tetap jalan. Kamu update kalau: (a) ada perbaikan **keamanan penting**, (b) kamu **mau fitur baru**, atau (c) **sekali-sekali** biar tak terlalu ketinggalan.
 
@@ -71,7 +71,7 @@ Tidak semua update sama besarnya. Kit `lintasAI` punya **4 level**, dari yang pa
 
 > 🔒 **Tanda `[SECURITY]` (TERPISAH dari 4 tingkat di atas):** kalau entry CHANGELOG ada `[SECURITY]`, itu perbaikan KEAMANAN — **pasang SEGERA** walau update-nya kecil. Tool update menampilkan peringatan merah. Mirip **"recall mobil"**: komponennya kecil, tapi diganti segera demi keselamatan.
 
-**Cara baca label:** buka `./.claude-kit/CHANGELOG.md`, lihat entry versi terbaru. Kalau ada `[BREAKING]`, `[SCAN-REQUIRED]`, atau `[SECURITY]` di judul, perlu perhatian. Kalau cuma "fix typo di template X", itu Tier 1.
+**Cara baca label:** buka `./.lintasai/CHANGELOG.md`, lihat entry versi terbaru. Kalau ada `[BREAKING]`, `[SCAN-REQUIRED]`, atau `[SECURITY]` di judul, perlu perhatian. Kalau cuma "fix typo di template X", itu Tier 1.
 
 ### 3.1 Arti nomor versi (`BESAR.MENENGAH.KECIL`)
 
@@ -125,7 +125,7 @@ Perintah otomatis classify tier dan kasih output terstruktur di terminal:
 [ACTION REQUIRED] Tier-3 migration needed:
   - Step 1: Rename folder docs/old/ -> docs/legacy/
   - Step 2: Update reference di AGENTS.md line 42
-[BACKUP] 2 files user-modified -> .claude-kit/CLAUDE_universal_v1.md.bak-20260604-1530
+[BACKUP] 2 files user-modified -> .lintasai/CLAUDE_universal_v1.md.bak-20260604-1530
 ```
 
 Mode ini dipakai kalau:
@@ -179,7 +179,7 @@ Mode ini dipakai kalau:
    npx lintasai update
    ```
 4. Baca output, ikuti `[ACTION REQUIRED]` kalau ada.
-5. Kalau Tier 3/4, buka `./.claude-kit/CHANGELOG.md` baca section "Migration Steps" versi itu.
+5. Kalau Tier 3/4, buka `./.lintasai/CHANGELOG.md` baca section "Migration Steps" versi itu.
 
 ---
 
@@ -205,12 +205,12 @@ Update kit pakai **atomic re-clone** (kit lama dihapus, kit baru di-clone fresh)
 
 **Contoh:**
 ```
-./.claude-kit/CLAUDE_universal_v1.md          ← tidak pernah kamu edit, di-overwrite
-./.claude-kit/CLAUDE_universal_v1.md.bak-20260604-1530  ← (tidak dibuat, file aman)
+./.lintasai/CLAUDE_universal_v1.md          ← tidak pernah kamu edit, di-overwrite
+./.lintasai/CLAUDE_universal_v1.md.bak-20260604-1530  ← (tidak dibuat, file aman)
 
-./.claude-kit/templates/INDEX.md              ← kamu edit kemarin
-./.claude-kit/templates/INDEX.md.bak-20260604-1530      ← BACKUP versi kamu disini
-./.claude-kit/templates/INDEX.md              ← versi baru kit di-install di sini
+./.lintasai/templates/INDEX.md              ← kamu edit kemarin
+./.lintasai/templates/INDEX.md.bak-20260604-1530      ← BACKUP versi kamu disini
+./.lintasai/templates/INDEX.md              ← versi baru kit di-install di sini
 ```
 
 Setelah update, kamu bisa **diff manual** antara file baru vs `.bak` kamu, lalu merge perubahan yang masih relevan. AI bisa bantu kalau kamu chat "merge backup INDEX.md kemarin ke versi baru".
@@ -229,8 +229,8 @@ Kalau folder mulai penuh backup, ada **2 cara** membersihkan:
   ```bash
   npx lintasai update --cleanup-backups
   ```
-  Ini menyimpan **3 versi terbaru** + menghapus backup **lebih tua dari 30 hari**, untuk berkas `*.backup-<tanggal>` dan folder cadangan `.claude-kit.backup-<tanggal>`.
-- **Cara B — hapus manual:** hapus sendiri berkas `*.backup-*` / folder `.claude-kit.backup-*` lama saat kamu yakin sudah tidak perlu.
+  Ini menyimpan **3 versi terbaru** + menghapus backup **lebih tua dari 30 hari**, untuk berkas `*.backup-<tanggal>` dan folder cadangan `.lintasai.backup-<tanggal>`.
+- **Cara B — hapus manual:** hapus sendiri berkas `*.backup-*` / folder `.lintasai.backup-*` lama saat kamu yakin sudah tidak perlu.
 
 **Contoh** (yang dibersihkan Cara A):
 ```
@@ -261,18 +261,18 @@ Ada **2 jenis "rollback" yang BERBEDA** — kenali gejalamu dulu, baru pilih:
 npx lintasai rollback --yes
 ```
 
-Memulihkan berkas **project** yang ter-track (AGENTS.md, docs, dll) satu per satu dari cadangan terakhir. Tanpa `--yes` ia hanya menampilkan rencana lalu berhenti aman (default-batal); AI biasanya minta konfirmasi ke kamu dulu. **Catatan penting:** ini **TIDAK** menyentuh folder `.claude-kit/` itu sendiri — jadi kalau masalahmu "kit-nya yang rusak", Cara 1 **tidak akan** memperbaikinya; pakai Cara 2.
+Memulihkan berkas **project** yang ter-track (AGENTS.md, docs, dll) satu per satu dari cadangan terakhir. Tanpa `--yes` ia hanya menampilkan rencana lalu berhenti aman (default-batal); AI biasanya minta konfirmasi ke kamu dulu. **Catatan penting:** ini **TIDAK** menyentuh folder `.lintasai/` itu sendiri — jadi kalau masalahmu "kit-nya yang rusak", Cara 1 **tidak akan** memperbaikinya; pakai Cara 2.
 
 ### Cara 2: kembalikan SELURUH folder kit yang rusak
 
-Versi kit lama tersimpan utuh di folder `.claude-kit.backup-<tanggal>` (dibuat tiap update). Kembalikan dengan menukar nama folder (ganti `<tanggal>` sesuai nama folder yang ada) — di PowerShell:
+Versi kit lama tersimpan utuh di folder `.lintasai.backup-<tanggal>` (dibuat tiap update). Kembalikan dengan menukar nama folder (ganti `<tanggal>` sesuai nama folder yang ada) — di PowerShell:
 
 ```powershell
-Move-Item .claude-kit .claude-kit.broken
-Move-Item .claude-kit.backup-<tanggal> .claude-kit
+Move-Item .lintasai .lintasai.broken
+Move-Item .lintasai.backup-<tanggal> .lintasai
 ```
 
-Atau, kalau kit kamu di-track git: `git restore --source=HEAD~1 -- .claude-kit/` (balik ke versi commit sebelumnya).
+Atau, kalau kit kamu di-track git: `git restore --source=HEAD~1 -- .lintasai/` (balik ke versi commit sebelumnya).
 
 ### Cara 3: chat AI (paling gampang)
 
@@ -290,7 +290,7 @@ AI akan **tanya gejalamu dulu**, lalu jalankan Cara 1 atau Cara 2 yang tepat + v
 Aman, kit lama tetap jalan. Tapi AI mungkin tidak tahu fitur/aturan baru. Best practice: update minimal 1× per 2 minggu, atau tiap kali owner kit announce versi baru di chat tim.
 
 **Q2: Update bisa bikin file `docs/` proyek saya hilang?**
-**TIDAK.** Update cuma sentuh folder `./.claude-kit/`. File proyek (mis. `docs/`, `prisma/`, `app/`) tidak ke-touch sama sekali. Kit dan proyek terpisah, kayak **app WhatsApp vs chat history kamu** - update app tidak hapus chat.
+**TIDAK.** Update cuma sentuh folder `./.lintasai/`. File proyek (mis. `docs/`, `prisma/`, `app/`) tidak ke-touch sama sekali. Kit dan proyek terpisah, kayak **app WhatsApp vs chat history kamu** - update app tidak hapus chat.
 
 **Q3: Saya pernah edit `CLAUDE_universal_v1.md`, edit-an saya hilang setelah update?**
 Tidak. File user-modified auto-backup ke `.bak-YYYYMMDD-HHmm`. Bisa kamu cek + merge manual. AI bisa bantu.
@@ -299,7 +299,7 @@ Tidak. File user-modified auto-backup ke `.bak-YYYYMMDD-HHmm`. Bisa kamu cek + m
 Buka `github.com/ojokesusu/lintasAI` → file `CHANGELOG.md`. Atau chat AI: "versi terbaru lintasAI berapa?".
 
 **Q5: Sesi AI besok pagi otomatis tahu aturan baru, atau saya perlu setting ulang?**
-Auto. Tiap kali AI start sesi, dia baca `./.claude-kit/CLAUDE_universal_v1.md` fresh. Jadi setelah update, sesi berikutnya = pakai aturan baru tanpa setting ulang. Analogi: **Notion update template** → besok kamu buka Notion, template baru langsung ada.
+Auto. Tiap kali AI start sesi, dia baca `./.lintasai/CLAUDE_universal_v1.md` fresh. Jadi setelah update, sesi berikutnya = pakai aturan baru tanpa setting ulang. Analogi: **Notion update template** → besok kamu buka Notion, template baru langsung ada.
 
 **Q6: Saya CI/CD, update di pipeline gimana?**
 Pakai Mode 2 (Terminal/CLI). Tambahin step `npx lintasai update` di pipeline (versi Node non-interaktif secara default). Exit code non-zero kalau ada Tier 3/4 yang butuh manual review.
@@ -311,10 +311,10 @@ Perlu. Owner kit terus improve aturan, prompt, dan analogi. Update = AI kamu mak
 
 ## 11. Cross-reference
 
-- **Istilah teknis** (mis. "sha256", "manifest", "atomic re-clone") → buka `./.claude-kit/templates/ANALOGI_LIBRARY.md` untuk analogi sehari-hari.
-- **Detail per versi** (apa berubah di v1.2.0 vs v1.3.0) → buka `./.claude-kit/CHANGELOG.md`.
-- **Audit setelah update besar** → ikuti pattern di `./.claude-kit/CLAUDE_universal_v1.md` section 4.4 "Audit Post-Setup".
-- **Aturan umum kerja AI-first** → `./.claude-kit/CLAUDE_universal_v1.md` (wajib baca tiap sesi).
+- **Istilah teknis** (mis. "sha256", "manifest", "atomic re-clone") → buka `./.lintasai/templates/ANALOGI_LIBRARY.md` untuk analogi sehari-hari.
+- **Detail per versi** (apa berubah di v1.2.0 vs v1.3.0) → buka `./.lintasai/CHANGELOG.md`.
+- **Audit setelah update besar** → ikuti pattern di `./.lintasai/CLAUDE_universal_v1.md` section 4.4 "Audit Post-Setup".
+- **Aturan umum kerja AI-first** → `./.lintasai/CLAUDE_universal_v1.md` (wajib baca tiap sesi).
 - **Kalau bingung, chat AI**: "saya mau update lintasAI tapi tidak paham langkahnya" - AI guide step-by-step.
 
 ---

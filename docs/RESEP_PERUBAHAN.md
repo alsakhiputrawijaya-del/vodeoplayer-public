@@ -23,13 +23,13 @@ tapi baca daftar tetap. Resep ini daftar tetap itu untuk kode.
 Satu perintah, hitungan detik, biaya token ~nol (skrip, bukan AI baca-baca berkas):
 
 ```bash
-node .claude-kit/engine/consistency-check.mjs --repo-root . --checks-file docs/consistency-map.jsonc
+node .lintasai/engine/consistency-check.mjs --repo-root . --checks-file docs/consistency-map.jsonc
 ```
 
 - ✅ "BERSIH" = semua deklarasi nilai-saat-ini cocok dengan sumber kebenaran.
 - ❌ "[TAK COCOK]/[HILANG]" = ada yang basi (robot sebut berkasnya) → perbaiki.
 
-**Setup sekali (5 menit):** salin `.claude-kit/templates/consistency-map.example.jsonc` →
+**Setup sekali (5 menit):** salin `.lintasai/templates/consistency-map.example.jsonc` →
 `docs/consistency-map.jsonc`, lalu isi fakta-berulang project kamu. Tidak paham? Minta AI:
 *"isi peta-konsistensi untuk project ini"* — AI akan scan + melengkapi (lalu kamu cek).
 

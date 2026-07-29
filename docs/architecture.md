@@ -123,9 +123,9 @@ Default workflow tim TIDAK pakai feature flag. Tiap task diklasifikasi by Risk L
 - **🟡 Medium**: Fitur baru self-contained - test extensive di Vercel preview sebelum merge.
 - **🔴 High**: Sentuh auth/billing/schema-user-visible/destruktif/eksperimental - owner HOLD MERGE sampai yakin, smoke test prod 5+ menit setelah deploy.
 
-Decision tree lengkap: `./.claude-kit/templates/CLAUDE_TEAM_GUIDE.md` section 7b.
+Decision tree lengkap: `./.lintasai/templates/CLAUDE_TEAM_GUIDE.md` section 7b.
 
-Feature flag = ADVANCED option (post-launch only): `./.claude-kit/templates/feature-flags-advanced.md`.
+Feature flag = ADVANCED option (post-launch only): `./.lintasai/templates/feature-flags-advanced.md`.
 
 ### Rollback Strategy
 
@@ -135,7 +135,7 @@ git revert HEAD && git push
 ```
 Vercel auto-deploy versi sebelumnya 2-5 menit.
 
-Playbook lengkap: `./.claude-kit/templates/CLAUDE_TEAM_GUIDE.md` section 13b.
+Playbook lengkap: `./.lintasai/templates/CLAUDE_TEAM_GUIDE.md` section 13b.
 
 ### Database Backup
 

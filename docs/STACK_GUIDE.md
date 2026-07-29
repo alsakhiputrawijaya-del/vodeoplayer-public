@@ -504,7 +504,7 @@ module.exports = {
 > - A/B test gradual rollout (10% → 50% → 100%)
 > - Per-user targeting (beta tester subset)
 
-Detail implementasi lengkap (decision tree, naming convention, cleanup ritual, testing pattern, per-user hash) di **`./.claude-kit/templates/feature-flags-advanced.md`** - file terpisah supaya tidak ngebebanin kit default workflow.
+Detail implementasi lengkap (decision tree, naming convention, cleanup ritual, testing pattern, per-user hash) di **`./.lintasai/templates/feature-flags-advanced.md`** - file terpisah supaya tidak ngebebanin kit default workflow.
 
 **Untuk early-stage <project> (progress ~5%)**: skip section ini, pakai Risk Level (CLAUDE_TEAM_GUIDE.md 7b) + staging-only.
 

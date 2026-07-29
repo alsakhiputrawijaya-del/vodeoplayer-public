@@ -49,7 +49,7 @@ Buka **`docs/SECURITY_INCIDENT_PLAYBOOK.md`** - step-by-step kalau detect **toke
 - [ ] 🔧 (Owner/IT) **Generate Prisma client** (kalau proyek pakai Prisma): brief Claude `Tolong jalankan npx prisma generate`. Tanpa ini, dev server crash. Skip kalau tidak pakai Prisma (cek `package.json`)
 - [ ] 🔧 (Owner/IT) **Jalankan dev server**: `pnpm dev`, buka `localhost:3000`, pastikan load
 - [ ] Buka Claude Code: `claude` di terminal folder proyek
-- [ ] Paste **`JALANKAN_KIT.md`** ke Claude (file di `./.claude-kit/JALANKAN_KIT.md`)
+- [ ] Paste **`JALANKAN_KIT.md`** ke Claude (file di `./.lintasai/JALANKAN_KIT.md`)
 - [ ] **Verifikasi**: tanya Claude "baca `docs/architecture.md` dan jelaskan proyek ini dalam 5 kalimat". Jawaban masuk akal → setup OK
 
 **Mentok (stuck)?** Langkah 🔧 (Owner/IT) macet → minta Owner/IT lanjutin (itu memang tugas mereka). Akses repo/dashboard → DM owner. Env vars → DM senior dev. Lihat `CLAUDE_TEAM_GUIDE.md` §13.
@@ -59,7 +59,7 @@ Buka **`docs/SECURITY_INCIDENT_PLAYBOOK.md`** - step-by-step kalau detect **toke
 ## Day 1 - Baca dokumentasi (30-60 menit, bisa 2 sesi)
 
 **Urutan baca**:
-- [ ] **`./.claude-kit/CLAUDE_universal_v1.md`** - aturan global tim (WAJIB)
+- [ ] **`./.lintasai/CLAUDE_universal_v1.md`** - aturan global tim (WAJIB)
 - [ ] **`AGENTS.md`** proyek (root) - override khusus proyek
 - [ ] **`docs/architecture.md`** - peta makro proyek (WAJIB)
 - [ ] **`docs/glossary.md`** - kamus istilah khusus proyek
@@ -191,9 +191,9 @@ Banyak kemampuan terkuat lintasAI terbuka cukup dengan **mengetik kalimat ke Cla
 | **`uji tampilan situs`** | AI membuka situs + mengklik seperti pengguna asli untuk cek tampilan/alur (mode aman). |
 
 **Menyalakan penjaga yang masih "BELUM"** (lihat panel *STATUS PENJAGA* yang muncul saat pasang kit):
-- *"aktifkan pencegah-drift"* — AI **memindai project + menuliskan sendiri** peta "angka mana yang harus selalu sama di banyak berkas", lalu robot menjaganya (tangkap "diubah di satu berkas, lupa di berkas lain"). Naskah AI: `.claude-kit/templates/WIZARD_PENCEGAH_DRIFT_v1.md`.
+- *"aktifkan pencegah-drift"* — AI **memindai project + menuliskan sendiri** peta "angka mana yang harus selalu sama di banyak berkas", lalu robot menjaganya (tangkap "diubah di satu berkas, lupa di berkas lain"). Naskah AI: `.lintasai/templates/WIZARD_PENCEGAH_DRIFT_v1.md`.
 - *"nyalakan Palang Rem risk-gate"* — minta konfirmasi sebelum aksi berbahaya (hapus data, terobos pengaman).
-- *"buatkan Buku Induk akses"* — AI **mewawancaraimu pakai bahasa biasa lalu menuliskan sendiri** catatan siapa boleh akses repo mana (kamu tak perlu menyentuh format teknisnya). Untuk tim pisah-repo. Naskah AI: `.claude-kit/templates/WIZARD_BUKU_INDUK_v1.md`.
+- *"buatkan Buku Induk akses"* — AI **mewawancaraimu pakai bahasa biasa lalu menuliskan sendiri** catatan siapa boleh akses repo mana (kamu tak perlu menyentuh format teknisnya). Untuk tim pisah-repo. Naskah AI: `.lintasai/templates/WIZARD_BUKU_INDUK_v1.md`.
 - *"cek akses tim"* — AI membandingkan siapa yang **benar-benar** bisa membuka tiap repo di GitHub vs catatan Buku Induk, lalu menunjukkan selisihnya (cuma-baca; butuh `gh` + organisasi GitHub). Tindakan cabut/undang tetap kamu yang lakukan. Untuk tim pisah-repo.
 
 > Tak yakin frasa mana? Cukup jelaskan maksudmu pakai bahasa biasa — AI akan menebak yang tepat.

@@ -29,7 +29,7 @@
 
   // RUJUK: pointer ke sumber lain - JANGAN salin nilainya.
   "refs": {
-    "kit_version": ".claude-kit/.install-manifest.json#metadata.kit_version",
+    "kit_version": ".lintasai/.install-manifest.json#metadata.kit_version",
     "architecture": "docs/architecture.md",
     "glossary": "docs/glossary.md",
     "registry": "docs/architecture_auto.md"

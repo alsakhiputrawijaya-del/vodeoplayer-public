@@ -34,7 +34,7 @@ kunci API - **sebelum** terkirim ke server (saat itu rahasia belum bocor ke mana
 Pasang sekali per project: minta AI **"pasang penjaga rahasia pre-commit"**, atau jalankan:
 
 ```powershell
-.\.claude-kit\templates\hooks\install-secret-hook.ps1
+.\.lintasai\templates\hooks\install-secret-hook.ps1
 ```
 
 Setelah aktif: kalau kamu tak sengaja `git commit` file `.env`, commit **otomatis ditolak** +

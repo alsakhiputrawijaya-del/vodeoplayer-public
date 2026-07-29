@@ -189,7 +189,7 @@ Kondisi di atas → diskusi sama owner, pindah ke GitHub Issues. Format prompt t
 
 Daripada nulis prompt dari nol tiap kali, **tim punya `PROMPT_LIBRARY.md`** - koleksi 10+ prompt yang sudah teruji untuk kasus umum (tambah fitur, fix bug, SEO check, deploy, dll). Baca file itu sekarang kalau belum.
 
-Lokasi: `./.claude-kit/templates/PROMPT_LIBRARY.md` (versi master, tim) atau copy lokal di `docs/PROMPT_LIBRARY.md`.
+Lokasi: `./.lintasai/templates/PROMPT_LIBRARY.md` (versi master, tim) atau copy lokal di `docs/PROMPT_LIBRARY.md`.
 
 Kalau ada pattern baru yang kamu temukan dan terbukti work → **PR ke kit** (lihat seksi 13).
 
@@ -205,7 +205,7 @@ Tim ini pakai MCP servers berikut sebagai standar:
 - **Vercel/Railway MCP** - cek deploy status, env vars.
 - **Filesystem MCP** - baca/tulis file di luar repo (sparingly).
 
-Setup detail (token, config JSON, troubleshooting): lihat `./.claude-kit/templates/MCP_SETUP.md`.
+Setup detail (token, config JSON, troubleshooting): lihat `./.lintasai/templates/MCP_SETUP.md`.
 
 **Aturan**: token MCP **per-orang**, jangan share. Simpan di password manager pribadi (1Password, Bitwarden). Jangan commit ke repo.
 
@@ -263,7 +263,7 @@ Tiap task punya **Risk Level**. Owner WAJIB klasifikasi di awal supaya tim tahu 
 
 ### Kalau Owner Butuh Lebih dari Branch+Revert: Feature Flag (Advanced)
 
-Untuk kasus EKSTREM (mis. payment toggle saat Black Friday), feature flag tetap pilihan. Tapi itu **advanced operation** yang butuh owner familiar dengan Vercel env vars + redeploy cycle. Detail di `./.claude-kit/templates/feature-flags-advanced.md`. Default workflow: **tidak perlu flag**.
+Untuk kasus EKSTREM (mis. payment toggle saat Black Friday), feature flag tetap pilihan. Tapi itu **advanced operation** yang butuh owner familiar dengan Vercel env vars + redeploy cycle. Detail di `./.lintasai/templates/feature-flags-advanced.md`. Default workflow: **tidak perlu flag**.
 
 ---
 
@@ -304,7 +304,7 @@ Tim ini default pakai stack:
 - **CI/CD**: GitHub Actions
 - **Package manager**: pnpm (lebih cepat & disk-efficient)
 
-Detail lengkap (env vars, struktur folder, naming convention, error handling pattern) ada di `./.claude-kit/templates/STACK_GUIDE.md`.
+Detail lengkap (env vars, struktur folder, naming convention, error handling pattern) ada di `./.lintasai/templates/STACK_GUIDE.md`.
 
 Kalau proyek butuh stack berbeda - **tulis alasan di `docs/architecture.md`** dan minta approval owner.
 

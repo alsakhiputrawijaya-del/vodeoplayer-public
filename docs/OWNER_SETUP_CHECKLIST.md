@@ -60,4 +60,4 @@ Yang **berisiko** (hapus data, kirim email massal, ubah database produksi) **tet
 
 - **Ini model "1 orang teknis + banyak non-programmer"**, bukan "nol teknis". Bagian A-C cukup dikerjakan owner/1 lead **sekali**.
 - **Jangan matikan gerbang konfirmasi** untuk aksi berisiko, walau ingin "lebih otomatis" — staff non-programmer tidak bisa mendeteksi kalau AI salah.
-- Tiap baris yang sebut nama file → detail lengkap ada di file itu (di folder `docs/` atau `.claude-kit/`).
+- Tiap baris yang sebut nama file → detail lengkap ada di file itu (di folder `docs/` atau `.lintasai/`).

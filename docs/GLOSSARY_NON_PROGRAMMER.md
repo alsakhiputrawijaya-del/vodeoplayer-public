@@ -263,7 +263,7 @@ Orang yang lagi pegang task tertentu. Ditandai di emoji status: `🟧 WIP - @bag
 ### **AI-First Team**
 Pola tim yang AI (Claude) jadi co-pilot utama, manusia jadi decision maker + reviewer. Kebalikan dari "tim developer biasa yang kebetulan pakai AI".
 
-### **Standar Tim (`./.claude-kit/`)**
+### **Standar Tim (`./.lintasai/`)**
 Folder berisi aturan + template + script tim. Bukan code proyek - ini cara kerja tim.
 
 ---
