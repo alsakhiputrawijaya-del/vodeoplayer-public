@@ -46,16 +46,13 @@
       const sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false } });
 
       async function findVideoMeta(id) {
-        const { data, error } = await sb
-          .from("kv")
-          .select("key,value")
-          .like("key", "playly-state-%");
-        if (error) return null;
-        for (const row of data || []) {
-          const myVids = row.value && Array.isArray(row.value.myVideos) ? row.value.myVideos : [];
-          const hit = myVids.find((v) => v && v.id === id);
-          if (hit) return { meta: hit, creator: hit.creator || String(row.key).replace("playly-state-", "") };
-        }
+        // 28 Jul 2026: via endpoint publik (scan kv playly-state-* sudah kosong
+        // sejak state pindah ke user_state owner-only — semua embed 404).
+        try {
+          const r = await fetch(`/api/public-video?id=${encodeURIComponent(id)}`, { credentials: "same-origin" });
+          const d = await r.json().catch(() => null);
+          if (r.ok && d && d.ok && d.id) return { meta: d, creator: d.creator || "creator" };
+        } catch (e) {}
         return null;
       }
 

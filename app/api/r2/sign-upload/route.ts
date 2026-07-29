@@ -23,6 +23,7 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getR2Config, videoObjectKey, publicUrlFor } from '@/lib/r2/client';
+import { verifyVideoOwnership } from '@/lib/r2/ownership';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { jsonError, jsonOk } from '@/lib/api/responses';
@@ -75,22 +76,19 @@ export async function POST(req: Request) {
   // LAIN lalu MENIMPA (overwrite) file-nya. Verifikasi via service-role:
   //   - baris ADA + pemilik BEDA → tolak 403 (blokir overwrite video orang)
   //   - baris TIDAK ADA (upload baru) / pemilik SAMA (re-upload sendiri) → izinkan
+  //   - id legacy non-uuid (timestamp, "<id>-bgm", "ve-logo-<id>") → izinkan
+  //     (22P02 — tak mungkin ada barisnya; lihat lib/r2/ownership.ts)
   const admin = createAdminClient();
   if (!admin) {
     return jsonError('service_unavailable', 503, {
       message: 'SUPABASE_SERVICE_ROLE_KEY belum di-set — verifikasi kepemilikan tidak bisa dijalankan.',
     });
   }
-  const { data: existing, error: vErr } = await admin
-    .from('videos')
-    .select('owner_id')
-    .eq('id', id)
-    .maybeSingle();
-  if (vErr) {
-    return jsonError('ownership_check_failed', 500, { message: vErr.message });
-  }
-  if (existing && existing.owner_id !== authUserId) {
-    return jsonError('forbidden_not_owner', 403, { message: 'Id video ini sudah dipakai akun lain.' });
+  const verdict = await verifyVideoOwnership(admin, id, authUserId);
+  if (!verdict.ok) {
+    return jsonError(verdict.error, verdict.status, {
+      message: verdict.message || 'Id video ini sudah dipakai akun lain.',
+    });
   }
 
   const sizeBytes = Number(body.sizeBytes) || 0;

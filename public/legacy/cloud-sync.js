@@ -738,8 +738,48 @@
       // karena Supabase limit lebih kecil.
       if (r2Res.error === "file_too_large") return r2Res;
       console.warn("[cloud] R2 upload failed, fallback to Supabase. Reason:", r2Res.error || r2Res.reason);
+      // 29 Jul 2026: file kecil (≤4MB — backsound/logo) coba dulu jalur proxy
+      // server /api/r2/put-object SEBELUM Supabase. Browser→R2 PUT butuh CORS
+      // bucket yang hanya diset utk domain prod → di dev (localhost) PUT selalu
+      // gagal CORS; proxy server tak kena CORS. (Fallback Supabase sendiri masih
+      // bermasalah utk id legacy: path flat tanpa folder owner kena RLS storage
+      // + bucket tolak mime non-video — utang teknis, belum diubah.)
+      if (blob.size <= PROXY_MAX_BYTES) {
+        const pRes = await uploadViaServerProxy(id, blob, opts);
+        if (pRes.ok) return pRes;
+        if (pRes.error === "aborted") return pRes;
+        console.warn("[cloud] proxy upload gagal, lanjut fallback Supabase. Reason:", pRes.error || pRes.reason);
+      }
     }
     return uploadViaSupabase(id, blob);
+  }
+
+  // 29 Jul 2026: upload file kecil via server (POST /api/r2/put-object) —
+  // lihat komentar di uploadVideoBlob. Return { ok, url, error, via }.
+  const PROXY_MAX_BYTES = 4 * 1024 * 1024; // 4 MB — di bawah limit body Vercel
+  async function uploadViaServerProxy(id, blob, opts) {
+    try {
+      const resp = await fetch(
+        "/api/r2/put-object?id=" + encodeURIComponent(String(id)) +
+          "&contentType=" + encodeURIComponent(blob.type || "video/mp4"),
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": blob.type || "application/octet-stream" },
+          body: blob,
+          signal: opts && opts.signal ? opts.signal : undefined,
+        }
+      );
+      let data = null;
+      try { data = await resp.json(); } catch (_) {}
+      if (!resp.ok || !data || !data.ok) {
+        return { ok: false, error: (data && data.error) || ("http_" + resp.status) };
+      }
+      return { ok: true, url: data.url || null, via: "r2-proxy", key: data.key };
+    } catch (e) {
+      if (e && e.name === "AbortError") return { ok: false, error: "aborted" };
+      return { ok: false, error: "proxy_exception", reason: String(e) };
+    }
   }
 
   // PUT blob ke presigned URL via XHR supaya bisa lapor progress byte-level

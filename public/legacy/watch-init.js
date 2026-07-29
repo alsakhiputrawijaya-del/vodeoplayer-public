@@ -68,31 +68,16 @@
 
       const sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false } });
 
-      // 1) Cari metadata video: scan semua `playly-state-*` di kv → temukan myVideos.id
+      // Cari metadata video via endpoint publik (service-role). Sebelumnya scan
+      // kv `playly-state-*` via anon — KOSONG sejak state pindah ke tabel
+      // user_state (owner-only) di migrasi B3/B5, jadi semua link watch 404.
+      // Endpoint menerapkan gate privasi yang sama (Publik/Unlisted + published).
       async function findVideoMeta(id) {
-        const { data, error } = await sb
-          .from("kv")
-          .select("key,value")
-          .like("key", "playly-state-%");
-        if (error) return null;
-        for (const row of data || []) {
-          const myVids = row.value && Array.isArray(row.value.myVideos) ? row.value.myVideos : [];
-          const hit = myVids.find((v) => v && v.id === id);
-          if (hit) {
-            // 26 Jul 2026 (v-sec, hasil audit): GATE visibilitas — sebelumnya SEMUA
-            // video (Pribadi/Draf/terjadwal) bisa ditonton lewat link watch karena
-            // myVideos = 1 baris platform (RLS tak bisa filter per-item di dalamnya).
-            // Hanya Publik/Unlisted yg published & tak terjadwal masa depan yg lolos;
-            // sisanya → null → halaman error "Video tidak ditemukan" (tak bocorkan
-            // eksistensi video privat).
-            const vis = String(hit.visibility || "public").toLowerCase();
-            const st = String(hit.adminStatus || "published").toLowerCase();
-            const inFuture = !!(hit.scheduledAt && Date.parse(hit.scheduledAt) > Date.now());
-            if ((vis !== "public" && vis !== "unlisted") || st === "draft" || inFuture) return null;
-            const username = String(row.key).replace("playly-state-", "");
-            return { meta: hit, creator: hit.creator || username };
-          }
-        }
+        try {
+          const r = await fetch(`/api/public-video?id=${encodeURIComponent(id)}`, { credentials: "same-origin" });
+          const d = await r.json().catch(() => null);
+          if (r.ok && d && d.ok && d.id) return { meta: d, creator: d.creator || "creator" };
+        } catch (e) { console.warn("[watch] public-video fetch:", e); }
         return null;
       }
 

@@ -16,6 +16,7 @@
 
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getR2Config, videoObjectKey } from '@/lib/r2/client';
+import { verifyVideoOwnership } from '@/lib/r2/ownership';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { jsonError, jsonOk } from '@/lib/api/responses';
@@ -78,22 +79,19 @@ export async function POST(req: Request) {
   //     pernah ada / sudah dihapus pemiliknya via jalur Supabase paralel. Orang
   //     lain tak bisa membuat kondisi ini untuk video bukan miliknya karena RLS
   //     mencegahnya menghapus baris video orang).
+  //   - id legacy non-uuid (timestamp, "<id>-bgm", "ve-logo-<id>") → izinkan
+  //     (22P02 — tak mungkin ada barisnya; lihat lib/r2/ownership.ts)
   const admin = createAdminClient();
   if (!admin) {
     return jsonError('service_unavailable', 503, {
       message: 'SUPABASE_SERVICE_ROLE_KEY belum di-set — verifikasi kepemilikan tidak bisa dijalankan.',
     });
   }
-  const { data: vid, error: vErr } = await admin
-    .from('videos')
-    .select('owner_id')
-    .eq('id', vidId)
-    .maybeSingle();
-  if (vErr) {
-    return jsonError('ownership_check_failed', 500, { message: vErr.message });
-  }
-  if (vid && vid.owner_id !== authUserId) {
-    return jsonError('forbidden_not_owner', 403, { message: 'Video ini bukan milikmu.' });
+  const verdict = await verifyVideoOwnership(admin, vidId, authUserId);
+  if (!verdict.ok) {
+    return jsonError(verdict.error, verdict.status, {
+      message: verdict.message || 'Video ini bukan milikmu.',
+    });
   }
 
   if (!key) {

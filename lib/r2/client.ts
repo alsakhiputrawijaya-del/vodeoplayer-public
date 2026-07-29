@@ -14,6 +14,7 @@
 //                            atau custom domain (e.g. "https://cdn.playly.id")
 
 import { S3Client } from '@aws-sdk/client-s3';
+import { FetchHttpHandler } from '@smithy/fetch-http-handler';
 
 export type R2Config = {
   client: S3Client;
@@ -50,6 +51,11 @@ export function getR2Config(): R2Config | null {
     // only add checksum when explicitly asked.
     requestChecksumCalculation: 'WHEN_REQUIRED',
     responseChecksumValidation: 'WHEN_REQUIRED',
+    // 29 Jul 2026: pakai fetch handler (undici) — hormat NODE_USE_ENV_PROXY.
+    // Default node-http-handler konek DIRECT; mesin dev ini wajib lewat proxy
+    // (127.0.0.1:8806) → semua call SDK (Put/DeleteObject) gagal network di
+    // dev tanpa handler ini. Di prod (Vercel) fetch jalan direct, aman.
+    requestHandler: new FetchHttpHandler(),
   });
 
   return {
@@ -74,6 +80,24 @@ export function publicUrlFor(config: R2Config, key: string): string {
 function extFromContentType(ct?: string | null): string {
   if (!ct) return 'mp4';
   const lower = String(ct).toLowerCase();
+  // 29 Jul 2026: audio (backsound editor) & image (logo watermark) juga lewat
+  // jalur R2 — dulu semua non-video jatuh ke "mp4" (URL menyesatkan walau
+  // content-type tersimpan benar).
+  if (lower.startsWith('audio/')) {
+    if (lower.includes('wav')) return 'wav';
+    if (lower.includes('mpeg')) return 'mp3';
+    if (lower.includes('ogg')) return 'ogg';
+    if (lower.includes('mp4') || lower.includes('m4a') || lower.includes('aac')) return 'm4a';
+    return 'mp3';
+  }
+  if (lower.startsWith('image/')) {
+    if (lower.includes('png')) return 'png';
+    if (lower.includes('jpeg') || lower.includes('jpg')) return 'jpg';
+    if (lower.includes('webp')) return 'webp';
+    if (lower.includes('gif')) return 'gif';
+    if (lower.includes('svg')) return 'svg';
+    return 'png';
+  }
   if (lower.includes('webm')) return 'webm';
   if (lower.includes('quicktime') || lower.includes('mov')) return 'mov';
   if (lower.includes('mpeg')) return 'mpeg';
