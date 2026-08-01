@@ -30,6 +30,7 @@ const JS_FILES = [
   'index-ensure.js',
   'watch-init.js',
   'embed-init.js',
+  'video-edit-playback.js', // 28 Jul: mesin edit playback + bake filter (veBuildEditFilter).
 ];
 const CSS_FILES = ['styles.css', 'watch.css', 'embed.css'];
 
