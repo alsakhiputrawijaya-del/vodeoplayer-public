@@ -55362,6 +55362,51 @@ document.getElementById("uploadUrlDetect")?.addEventListener("click", async () =
 // R2) — bukan setInterval acak — dan sukses baru dideklarasikan SETELAH upload
 // cloud benar-benar selesai (bukan saat bar palsu 100%). Tambahan: 1d jadwal,
 // 1g batal, 1h cek kuota saat submit, 1i durasi maks 4 jam.
+// Bangun watermark BRAND Playly (1 Agt 2026): ikon logo "P" (SVG brand, gradient
+// wine→emas) + tulisan "Playly" + "@username" → 1 gambar PNG (offscreen canvas)
+// yg dipakai sbg watermark.img saat bake. Supersample (S) utk tajam. Latar pill
+// semi-transparan supaya terbaca di latar terang/gelap. Fallback: pemanggil pakai
+// teks @username kalau ini gagal.
+async function buildPlaylyWatermark(username) {
+  const S = 3;
+  const icon = 64 * S, pad = 11 * S, gap = 7 * S, fL = 34 * S, fS = 22 * S;
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+    '<defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">' +
+    '<stop offset="0%" stop-color="#6D2932"/><stop offset="45%" stop-color="#C7B7A3"/>' +
+    '<stop offset="100%" stop-color="#E8D8C4"/></linearGradient></defs>' +
+    '<path fill="url(#g)" fill-rule="evenodd" d="M 30 6 L 60 6 C 80 6 92 22 92 38 C 92 58 76 70 56 70 L 42 70 L 42 92 C 42 97 38 98 32 98 C 26 98 22 97 22 92 L 22 14 C 22 10 26 6 30 6 Z M 42 22 L 56 22 C 66 22 72 30 72 38 C 72 46 66 54 56 54 L 42 54 Z"/></svg>';
+  const img = new Image();
+  await new Promise((res) => { img.onload = res; img.onerror = res; img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg); });
+  const uname = username ? ("@" + String(username).replace(/^@+/, "")) : "";
+  const meas = document.createElement("canvas").getContext("2d");
+  meas.font = "800 " + fL + "px Inter, system-ui, sans-serif";
+  const wL = meas.measureText("Playly").width;
+  meas.font = "600 " + fS + "px Inter, system-ui, sans-serif";
+  const wS = uname ? meas.measureText(uname).width : 0;
+  const textW = Math.max(wL, wS);
+  const W = pad + icon + gap + textW + pad, H = pad + icon + pad;
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d");
+  // TANPA latar card/pill (req owner): ikon + teks LANGSUNG di video, pakai bayangan
+  // supaya tetap terbaca di latar terang/gelap (gaya watermark TikTok).
+  x.shadowColor = "rgba(0,0,0,0.6)"; x.shadowBlur = 5 * S; x.shadowOffsetY = 2 * S;
+  try { x.drawImage(img, pad, (H - icon) / 2, icon, icon); } catch {}
+  const tx = pad + icon + gap, blockH = fL + 4 * S + fS, ty = (H - blockH) / 2;
+  x.textBaseline = "top";
+  x.fillStyle = "#FAF3E9";
+  x.font = "800 " + fL + "px Inter, system-ui, sans-serif";
+  x.fillText("Playly", tx, ty);
+  if (uname) {
+    x.fillStyle = "rgba(250,243,233,0.92)";
+    x.font = "600 " + fS + "px Inter, system-ui, sans-serif";
+    x.fillText(uname, tx, ty + fL + 4 * S);
+  }
+  x.shadowColor = "transparent"; x.shadowBlur = 0; x.shadowOffsetY = 0;
+  const out = new Image();
+  await new Promise((res) => { out.onload = res; out.onerror = res; out.src = c.toDataURL("image/png"); });
+  return out;
+}
+
 $("#startUpload")?.addEventListener("click", async () => {
   // URL upload: pendingUpload sudah ada tapi tanpa file. File upload: dengan file.
   const isUrlUpload = pendingUpload && pendingUpload.sourceType && !pendingUpload.file;
@@ -55507,8 +55552,15 @@ $("#startUpload")?.addEventListener("click", async () => {
             opacity: Number(document.getElementById("upWmLogoOpacity")?.value) || 80,
           };
         } else {
-          const _handle = "@" + String((typeof user !== "undefined" && user && user.username) || "playly").replace(/^@+/, "");
-          _wmOpts = { text: _handle, pos: "br", size: 4.2, opacity: 88 };
+          // Watermark OTOMATIS = BRAND Playly (ikon P + "Playly" + @username).
+          const _uname = (typeof user !== "undefined" && user && user.username) || "";
+          try {
+            const _brandImg = await buildPlaylyWatermark(_uname);
+            _wmOpts = { img: _brandImg, pos: "br", size: 12, opacity: 92, animate: true };
+          } catch (e) {
+            // Fallback teks kalau bangun gambar brand gagal.
+            _wmOpts = { text: "@" + String(_uname || "playly").replace(/^@+/, ""), pos: "br", size: 4.2, opacity: 88 };
+          }
         }
         const _baked = await transcodeVideo(captured.file, {
           signal: ctrl ? ctrl.signal : undefined,
@@ -58519,7 +58571,19 @@ function transcodeVideo(file, opts) {
         const m = Math.round(w * 0.03); // margin 3% dari tepi
         const p = String(wmk.pos || "br").toLowerCase();
         const prev = ctx.globalAlpha;
-        ctx.globalAlpha = Math.max(0, Math.min(1, (wmk.opacity != null ? Number(wmk.opacity) : 80) / 100));
+        // ANIMASI GERAK (opsional, wmk.animate): float lembut (mengambang naik-turun
+        // + geser kiri-kanan) + "napas" opasitas, berbasis video.currentTime → gerak
+        // mulus ter-BAKE tiap frame. Cukup terlihat tapi tetap tak menutupi konten.
+        let dx = 0, dy = 0, opMul = 1, scl = 1;
+        if (wmk.animate) {
+          const t = video.currentTime || 0;
+          // Frekuensi diperlambat + diselaraskan → gerak melayang mulus, tak tersentak.
+          dy = Math.sin(t * 0.85) * (h * 0.036);  // mengambang naik-turun ~3.6% tinggi
+          dx = Math.cos(t * 0.55) * (h * 0.020);  // geser kiri-kanan (lebih pelan)
+          scl = 1 + 0.09 * Math.sin(t * 0.70);    // "napas" ukuran ±9% (pelan)
+          opMul = 0.85 + 0.15 * (0.5 + 0.5 * Math.sin(t * 0.50));
+        }
+        ctx.globalAlpha = Math.max(0, Math.min(1, ((wmk.opacity != null ? Number(wmk.opacity) : 80) / 100) * opMul));
         if (wmk.img) {
           const img = wmk.img;
           if (img.complete && img.naturalWidth) {
@@ -58529,16 +58593,21 @@ function transcodeVideo(file, opts) {
             if (p.indexOf("t") >= 0) ly = m;       // top
             if (p.indexOf("l") >= 0) lx = m;       // left
             if (p === "center" || p === "c") { lx = Math.round((w - lw) / 2); ly = Math.round((h - lh) / 2); }
-            try { ctx.drawImage(img, lx, ly, lw, lh); } catch {}
+            // Scale (napas ukuran) di sekitar pusat + float offset.
+            ctx.save();
+            ctx.translate(lx + lw / 2 + dx, ly + lh / 2 + dy);
+            ctx.scale(scl, scl);
+            try { ctx.drawImage(img, -lw / 2, -lh / 2, lw, lh); } catch {}
+            ctx.restore();
           }
         } else if (wmk.text) {
           // Teks watermark (mis. "@username"). Font ~size% lebar (default 4.2%).
-          const fs = Math.max(14, Math.round(w * (Number(wmk.size) || 4.2) / 100));
+          const fs = Math.max(14, Math.round(w * (Number(wmk.size) || 4.2) / 100 * scl));
           ctx.font = `600 ${fs}px Inter, system-ui, -apple-system, sans-serif`;
           ctx.textAlign = (p.indexOf("l") >= 0) ? "left" : (p === "center" || p === "c") ? "center" : "right";
           ctx.textBaseline = (p.indexOf("t") >= 0) ? "top" : (p === "center" || p === "c") ? "middle" : "bottom";
-          const tx = (p.indexOf("l") >= 0) ? m : (p === "center" || p === "c") ? Math.round(w / 2) : (w - m);
-          const ty = (p.indexOf("t") >= 0) ? m : (p === "center" || p === "c") ? Math.round(h / 2) : (h - m);
+          const tx = ((p.indexOf("l") >= 0) ? m : (p === "center" || p === "c") ? Math.round(w / 2) : (w - m)) + dx;
+          const ty = ((p.indexOf("t") >= 0) ? m : (p === "center" || p === "c") ? Math.round(h / 2) : (h - m)) + dy;
           ctx.fillStyle = "#fff";
           ctx.shadowColor = "rgba(0,0,0,.65)"; // bayangan → terbaca di latar terang
           ctx.shadowBlur = Math.round(fs * 0.28);
