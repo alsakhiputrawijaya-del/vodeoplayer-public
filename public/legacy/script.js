@@ -3162,20 +3162,36 @@ function closeApKebabPanels() {
       const langLabels = window.LIB_CC_LANG_LABELS || {};
       const lbl = document.getElementById("apCcLabel");
       if (lbl) lbl.textContent = langLabels[cc] || (cc === "off" ? "Mati" : cc);
-      const ccOverlay = document.getElementById("apCcOverlay");
-      if (ccOverlay) {
-        if (cc === "off") { ccOverlay.hidden = true; ccOverlay.textContent = ""; }
-        else {
-          ccOverlay.hidden = false;
-          const vid = document.getElementById("apVideo");
-          const vObj = (typeof getAllAdminVideos === "function" ? getAllAdminVideos() : []).find(x => x.id === __apCurrentId);
-          if (typeof buildAutoSubtitle === "function" && vObj) {
-            ccOverlay.textContent = buildAutoSubtitle(cc, vObj);
-          }
-        }
-      }
-      toast(`📝 Subtitle: ${langLabels[cc] || cc}`, "success");
       const cm = document.getElementById("apCcMenu"); if (cm) cm.hidden = true;
+      if (cc === "off") {
+        stopApSubtitle();
+        toast("Subtitle dimatikan", "success");
+        return;
+      }
+      // Nyalakan subtitle ASLI (bukan lagi teks karangan buildAutoSubtitle);
+      // kalau bahasa dipilih ≠ bahasa asli → terjemah otomatis via DeepL.
+      const vObj = (typeof getAllAdminVideos === "function" ? getAllAdminVideos() : []).find(x => x.id === __apCurrentId)
+                || (typeof findVideo === "function" ? findVideo(__apCurrentId) : null);
+      if (!vObj || !vObj.subtitleVtt) {
+        // Video ini tak punya subtitle asli → kembalikan tombol ke "Mati" + jujur.
+        document.querySelectorAll("[data-ap-cc]").forEach(b => b.classList.toggle("active", b.dataset.apCc === "off"));
+        if (lbl) lbl.textContent = "Mati";
+        stopApSubtitle();
+        toast("Video ini belum punya subtitle", "success");
+        return;
+      }
+      const _origLang = String(vObj.subtitleLang || "").toLowerCase();
+      if (window.__CC_TO_DEEPL[cc] && cc !== _origLang) {
+        toast(`🌐 Menerjemahkan subtitle → ${langLabels[cc] || cc}…`, "info");
+      }
+      startApSubtitle(vObj, cc).then((res) => {
+        if (!res || res.note === "stale") return;
+        if (!res.ok) { // hanya terjadi kalau cue kosong → balik ke Mati
+          document.querySelectorAll("[data-ap-cc]").forEach(b => b.classList.toggle("active", b.dataset.apCc === "off"));
+          if (lbl) lbl.textContent = "Mati";
+        }
+        window.__subTransToast(res.note, cc);
+      });
       return;
     }
 
@@ -3198,6 +3214,12 @@ async function openAdminPlayer(id) {
   if (!v) return;
   __apCurrentId = id;
   window.__apPrevScrollY = window.scrollY;
+  // Reset subtitle tiap buka/ganti video: matikan interval lama + kembalikan
+  // tombol CC ke "Mati" (cegah interval bocor + overlay basi dari video sebelumnya).
+  if (typeof stopApSubtitle === "function") stopApSubtitle();
+  document.querySelectorAll("[data-ap-cc]").forEach(b => b.classList.toggle("active", b.dataset.apCc === "off"));
+  const apCcLbl0 = document.getElementById("apCcLabel"); if (apCcLbl0) apCcLbl0.textContent = "Mati";
+  document.getElementById("apCtrlCC")?.classList.remove("ap-ctrl-on");
 
   // Switch ke view admin-player
   if (typeof switchView === "function") switchView("admin-player");
@@ -3329,6 +3351,7 @@ document.addEventListener("click", (e) => {
   // Back button → return to admin-videos, restore scroll position
   if (e.target.closest("#apBackBtn")) {
     e.preventDefault();
+    if (typeof stopApSubtitle === "function") stopApSubtitle(); // hentikan interval CC saat keluar player
     if (typeof switchView === "function") switchView("admin-videos");
     const savedY = window.__apPrevScrollY || 0;
     requestAnimationFrame(() => window.scrollTo({ top: savedY, behavior: "instant" }));
@@ -57847,236 +57870,68 @@ function closeLibInlinePlayer() {
     vi:  "Phụ đề",
     hi:  "उपशीर्षक"
   };
-  window.buildAutoSubtitle = function(lang) {
-    const prefix = LIB_CC_PREFIX[lang] || "Subtitle";
-    let title = "";
-    try {
-      const id = window.__libInlineVid;
-      const v = (state?.myVideos || []).find(x => x.id === id) ||
-                (typeof getPlatformVideos === "function" ? getPlatformVideos().find(x => x.id === id) : null);
-      title = v?.title || "";
-    } catch {}
-    if (!title) title = "Video Playly";
-    return `[${prefix} · ${LIB_CC_LANG_LABELS[lang] || lang}] ${title}`;
-  };
+  // (buildAutoSubtitle DIHAPUS 1 Agt 2026 — dulu CC palsu player utama: label
+  //  "[Subtitle · Bhs] Judul" statis. Player utama kini pakai subtitle ASLI via
+  //  startApSubtitle. LIB_CC_PREFIX/LIB_CC_LANG_LABELS masih dipakai label menu CC.)
 
-  // === Auto-translated subtitle phrases (rotating) per language ===
-  // Phrase list yang berganti setiap beberapa detik mengikuti video currentTime.
-  // Bukan transkripsi real (tidak ada API STT), tapi simulasi auto-subtitle yang
-  // running. Tiap phrase ~4 detik, loop ulang.
-  window.LIB_CC_PHRASES = {
-    id: [
-      "Halo, selamat datang di video ini.",
-      "Hari ini kita akan bahas topik menarik.",
-      "Pastikan untuk menyimak sampai akhir.",
-      "Semoga konten ini bermanfaat untuk kamu.",
-      "Jangan lupa like dan share videonya.",
-      "Subscribe untuk update video terbaru.",
-      "Komentar dan saran silakan tulis di bawah.",
-      "Terima kasih sudah menonton sampai sini."
-    ],
-    en: [
-      "Hello, welcome to this video.",
-      "Today we'll discuss an interesting topic.",
-      "Make sure to watch until the end.",
-      "Hope this content is useful for you.",
-      "Don't forget to like and share the video.",
-      "Subscribe for the latest video updates.",
-      "Leave your comments and suggestions below.",
-      "Thank you for watching until the end."
-    ],
-    ms: [
-      "Helo, selamat datang ke video ini.",
-      "Hari ini kita akan membincangkan topik menarik.",
-      "Pastikan menonton sehingga akhir.",
-      "Semoga kandungan ini bermanfaat.",
-      "Jangan lupa suka dan kongsi video.",
-      "Langgan untuk video terkini.",
-      "Tinggalkan komen di bawah.",
-      "Terima kasih kerana menonton."
-    ],
-    ja: [
-      "こんにちは、この動画へようこそ。",
-      "今日は面白いトピックについて話します。",
-      "最後までご覧ください。",
-      "このコンテンツが役立つことを願っています。",
-      "いいねとシェアをお忘れなく。",
-      "最新動画の通知を受けるには登録を。",
-      "コメントは下にお願いします。",
-      "ご視聴ありがとうございました。"
-    ],
-    ko: [
-      "안녕하세요, 이 영상에 오신 것을 환영합니다.",
-      "오늘은 흥미로운 주제를 다룰 거예요.",
-      "끝까지 시청해주세요.",
-      "이 콘텐츠가 도움이 되길 바랍니다.",
-      "좋아요와 공유 부탁드려요.",
-      "최신 영상 알림은 구독 버튼으로.",
-      "댓글로 의견을 남겨주세요.",
-      "시청해주셔서 감사합니다."
-    ],
-    zh: [
-      "大家好，欢迎观看本视频。",
-      "今天我们将讨论一个有趣的话题。",
-      "请观看到最后。",
-      "希望这个内容对你有帮助。",
-      "别忘了点赞和分享。",
-      "订阅以获取最新视频更新。",
-      "请在下方留下评论。",
-      "感谢您的观看。"
-    ],
-    ar: [
-      "مرحبًا، أهلاً بكم في هذا الفيديو.",
-      "اليوم سنناقش موضوعًا مثيرًا للاهتمام.",
-      "تأكدوا من المشاهدة حتى النهاية.",
-      "نأمل أن يكون هذا المحتوى مفيدًا.",
-      "لا تنسوا الإعجاب والمشاركة.",
-      "اشتركوا للحصول على آخر التحديثات.",
-      "اتركوا تعليقاتكم بالأسفل.",
-      "شكرًا لمشاهدتكم."
-    ],
-    es: [
-      "Hola, bienvenidos a este video.",
-      "Hoy discutiremos un tema interesante.",
-      "Asegúrate de ver hasta el final.",
-      "Espero que este contenido te sea útil.",
-      "No olvides dar like y compartir.",
-      "Suscríbete para nuevas actualizaciones.",
-      "Deja tus comentarios abajo.",
-      "Gracias por ver hasta aquí."
-    ],
-    fr: [
-      "Bonjour, bienvenue dans cette vidéo.",
-      "Aujourd'hui nous discutons d'un sujet intéressant.",
-      "Regardez jusqu'à la fin.",
-      "J'espère que ce contenu vous sera utile.",
-      "N'oubliez pas de liker et partager.",
-      "Abonnez-vous pour les nouveautés.",
-      "Laissez vos commentaires ci-dessous.",
-      "Merci d'avoir regardé."
-    ],
-    de: [
-      "Hallo, willkommen zu diesem Video.",
-      "Heute besprechen wir ein interessantes Thema.",
-      "Schaut bis zum Ende.",
-      "Ich hoffe, der Inhalt ist nützlich.",
-      "Vergesst nicht zu liken und zu teilen.",
-      "Abonniert für neue Videos.",
-      "Hinterlasst Kommentare unten.",
-      "Danke fürs Zuschauen."
-    ],
-    pt: [
-      "Olá, bem-vindos a este vídeo.",
-      "Hoje discutiremos um tópico interessante.",
-      "Assistam até o fim.",
-      "Espero que este conteúdo seja útil.",
-      "Não esqueçam de curtir e compartilhar.",
-      "Inscrevam-se para novidades.",
-      "Deixem comentários abaixo.",
-      "Obrigado por assistir."
-    ],
-    ru: [
-      "Привет, добро пожаловать в это видео.",
-      "Сегодня обсудим интересную тему.",
-      "Смотрите до конца.",
-      "Надеюсь, контент будет полезен.",
-      "Не забудьте лайкнуть и поделиться.",
-      "Подпишитесь на новые видео.",
-      "Оставляйте комментарии ниже.",
-      "Спасибо за просмотр."
-    ],
-    th: [
-      "สวัสดีครับ ยินดีต้อนรับสู่วิดีโอนี้",
-      "วันนี้เราจะพูดถึงเรื่องที่น่าสนใจ",
-      "ดูจนจบนะครับ",
-      "หวังว่าเนื้อหาจะมีประโยชน์",
-      "อย่าลืมกดไลค์และแชร์",
-      "กดติดตามเพื่อรับวิดีโอใหม่",
-      "แสดงความคิดเห็นด้านล่าง",
-      "ขอบคุณที่รับชม"
-    ],
-    vi: [
-      "Xin chào, chào mừng đến với video này.",
-      "Hôm nay chúng ta sẽ thảo luận chủ đề thú vị.",
-      "Hãy xem đến hết video.",
-      "Hy vọng nội dung này hữu ích cho bạn.",
-      "Đừng quên thích và chia sẻ.",
-      "Đăng ký để nhận video mới.",
-      "Để lại bình luận bên dưới.",
-      "Cảm ơn bạn đã xem."
-    ],
-    hi: [
-      "नमस्ते, इस वीडियो में आपका स्वागत है।",
-      "आज हम एक दिलचस्प विषय पर बात करेंगे।",
-      "कृपया अंत तक देखें।",
-      "उम्मीद है यह सामग्री उपयोगी होगी।",
-      "लाइक और शेयर करना न भूलें।",
-      "नए वीडियो के लिए सब्सक्राइब करें।",
-      "नीचे कमेंट करें।",
-      "देखने के लिए धन्यवाद।"
-    ]
-  };
+  // (LIB_CC_PHRASES + arraynya DIHAPUS 1 Agt 2026 — dulu frasa palsu berputar
+  //  sbg simulasi auto-subtitle. MUSTAHIL cocok isi video → menyesatkan. Subtitle
+  //  kini SELALU asli (subtitleVtt via Whisper/upload) + terjemah DeepL saat diminta.)
 
-  // Auto-running subtitle: real VTT cues (kalau video punya subtitleVtt) atau
-  // fallback ke phrase placeholder (kalau video belum punya subtitle).
+  // Subtitle Pustaka — translation-aware: subtitle ASLI (subtitleVtt), dan kalau
+  // user memilih bahasa ≠ bahasa asli → terjemah otomatis (getSubtitleCuesForLang).
+  // Tanpa subtitle asli → CC kosong (tak ada teks karangan; frasa palsu LIB_CC_PHRASES
+  // sudah dihapus 30 Jul 2026). opts.silent = jangan toast (dipakai auto-enable).
   window.__libCcInterval = null;
   window.__libCcLang = null;
-  window.__libCcCues = null; // parsed VTT cues array
-  window.startAutoSubtitle = function(lang) {
+  window.__libCcCues = null; // cue yang sedang tampil (asli / terjemahan)
+  window.__libCcReq = 0;     // token anti-race saat ganti bahasa cepat
+  window.startAutoSubtitle = async function(lang, opts) {
+    const silent = !!(opts && opts.silent);
     const ccEl = document.getElementById("libInlineCC");
     const videoEl = document.getElementById("libInlineVideo");
     if (!ccEl || !videoEl) return;
-    if (lang === "off" || !lang) {
-      stopAutoSubtitle();
-      return;
-    }
+    if (lang === "off" || !lang) { stopAutoSubtitle(); return; }
     window.__libCcLang = lang;
-    ccEl.hidden = false;
-    // Cek apakah video aktif punya subtitleVtt — pakai real cues
-    let cues = null;
+    // Video aktif
+    let v = null;
     try {
       const id = window.__libInlineVid;
-      if (id) {
-        const v = (state?.myVideos || []).find(x => x.id === id) ||
+      if (id) v = (state?.myVideos || []).find(x => x.id === id) ||
                   (typeof getPlatformVideos === "function" ? getPlatformVideos().find(x => x.id === id) : null);
-        if (v?.subtitleVtt && typeof parseSubtitleVtt === "function") {
-          cues = parseSubtitleVtt(v.subtitleVtt);
-        }
-      }
     } catch {}
-    window.__libCcCues = cues;
-    // 30 Jul 2026: HAPUS mode "placeholder phrase" — dulu kalau video tak punya
-    // subtitle ASLI, ditampilkan frasa palsu berputar (LIB_CC_PHRASES: "Hari ini
-    // kita akan bahas topik menarik" dst). Itu MUSTAHIL cocok dgn isi video →
-    // menyesatkan. Kini HANYA subtitle ASLI (subtitleVtt) yg tampil; tanpa itu
-    // CC dikosongkan (tak ada teks karangan).
+    const myReq = ++window.__libCcReq;
+    const origLang = String(v?.subtitleLang || "").toLowerCase();
+    if (!silent && window.__CC_TO_DEEPL[lang] && lang !== origLang && v?.subtitleVtt) {
+      toast(`🌐 Menerjemahkan subtitle → ${(LIB_CC_LANG_LABELS[lang] || lang)}…`, "info");
+    }
+    const { cues, note } = await window.getSubtitleCuesForLang(v, lang);
+    if (myReq !== window.__libCcReq) return; // pilihan lebih baru menang
+    window.__libCcCues = (cues && cues.length) ? cues : null;
+    ccEl.hidden = !window.__libCcCues;
+    if (!silent) window.__subTransToast(note, lang);
     const updateCc = () => {
-      if (!cues || !cues.length) { ccEl.style.visibility = "hidden"; ccEl.textContent = ""; return; }
+      const cur = window.__libCcCues;
+      if (!cur || !cur.length) { ccEl.style.visibility = "hidden"; ccEl.textContent = ""; return; }
       const t = videoEl.currentTime || 0;
-      const cue = cues.find(c => t >= c.start && t < c.end);
+      const cue = cur.find(c => t >= c.start && t < c.end);
       ccEl.textContent = cue ? cue.text : "";
       ccEl.style.visibility = cue ? "visible" : "hidden";
     };
     updateCc();
     if (window.__libCcInterval) clearInterval(window.__libCcInterval);
-    // Tick tiap 250ms supaya VTT cue sync lebih akurat
-    const tickRate = (cues && cues.length) ? 250 : 1000;
     window.__libCcInterval = setInterval(() => {
       if (videoEl.paused || videoEl.ended) return;
       updateCc();
-    }, tickRate);
+    }, 250); // tick 250ms → sync cue akurat
   };
   window.stopAutoSubtitle = function() {
     const ccEl = document.getElementById("libInlineCC");
-    if (window.__libCcInterval) {
-      clearInterval(window.__libCcInterval);
-      window.__libCcInterval = null;
-    }
+    if (window.__libCcInterval) { clearInterval(window.__libCcInterval); window.__libCcInterval = null; }
+    window.__libCcReq++; // batalkan permintaan terjemah async yang tertunda
     window.__libCcLang = null;
-    if (ccEl) {
-      ccEl.hidden = true;
-      ccEl.textContent = "";
-    }
+    window.__libCcCues = null;
+    if (ccEl) { ccEl.hidden = true; ccEl.textContent = ""; ccEl.style.visibility = "hidden"; }
   };
   // Auto-enable subtitle saat video mulai play, pakai bahasa user saat ini.
   window.autoEnableSubtitle = function() {
@@ -58090,15 +57945,22 @@ function closeLibInlinePlayer() {
       hasRealSub = !!(v && v.subtitleVtt);
     } catch {}
     if (!hasRealSub) return;
-    const lang = (typeof currentLang === "function" ? currentLang() : null) || "id";
-    const supported = LIB_CC_PHRASES[lang] ? lang : "en";
-    startAutoSubtitle(supported);
-    // Sync UI button active state di Cc submenu
+    // Auto-enable tampilkan subtitle ASLI (bahasa aslinya) — JANGAN auto-terjemah
+    // saat play (boros kuota DeepL). Terjemahan hanya saat user PILIH bahasa lain.
+    let vObj = null;
+    try {
+      const id = window.__libInlineVid;
+      vObj = id && ((state?.myVideos || []).find(x => x.id === id) ||
+             (typeof getPlatformVideos === "function" ? getPlatformVideos().find(x => x.id === id) : null));
+    } catch {}
+    const orig = String(vObj?.subtitleLang || "").toLowerCase() || "id";
+    startAutoSubtitle(orig, { silent: true }); // silent: tak toast saat autoplay
+    // Sync UI button active state di Cc submenu (kalau bahasa asli ada di menu)
     document.querySelectorAll('[data-lib-cc]').forEach(b => {
-      b.classList.toggle("active", b.dataset.libCc === supported);
+      b.classList.toggle("active", b.dataset.libCc === orig);
     });
     const label = document.getElementById("libCcLabel");
-    if (label) label.textContent = LIB_CC_LANG_LABELS[supported] || supported;
+    if (label) label.textContent = LIB_CC_LANG_LABELS[orig] || orig;
   };
   // Hook: saat video element pertama kali play, auto-enable subtitle
   document.addEventListener("play", e => {
@@ -58110,6 +57972,102 @@ function closeLibInlinePlayer() {
       }
     }
   }, true);
+
+  // ============================================================
+  //  TERJEMAHAN SUBTITLE PER-BAHASA di PEMUTAR (dipakai bersama:
+  //  pemutar utama #apVideo + pemutar Pustaka #libInlineVideo)
+  // ============================================================
+  // Peta kode menu CC (lowercase) → kode DeepL (uppercase). Bahasa yang TAK ada
+  // (ms/th/vi/hi) = DeepL tidak mendukung → fallback tampil subtitle ASLI (jujur,
+  // tak memaksa terjemah yang mustahil). DeepL = layanan terjemah BERBAYAR.
+  window.__CC_TO_DEEPL = { id:"ID", en:"EN", ja:"JA", ko:"KO", zh:"ZH", ar:"AR", es:"ES", fr:"FR", de:"DE", pt:"PT", ru:"RU" };
+  // Cache cue terjemahan per (videoId → lang): DeepL berbayar + butuh login →
+  // sekali terjemah, pakai lagi dari memori (hemat kuota + instan saat re-pilih).
+  window.__subTransCache = window.__subTransCache || {};
+  // Ambil cue subtitle utk bahasa target. Return {cues, note}. note =
+  // original|translated|cached|unsupported|no_api_key|not_authenticated|failed|no_sub.
+  // Perintah (translate) dipisah dari tampilan — fungsi ini murni ambil data (§3.7).
+  window.getSubtitleCuesForLang = async function(vObj, lang) {
+    if (!vObj || !vObj.subtitleVtt || typeof parseSubtitleVtt !== "function") return { cues: [], note: "no_sub" };
+    const baseCues = parseSubtitleVtt(vObj.subtitleVtt);
+    if (!baseCues.length) return { cues: [], note: "no_sub" };
+    const origLang = String(vObj.subtitleLang || "").toLowerCase();
+    if (!lang || lang === origLang) return { cues: baseCues, note: "original" };
+    const deepl = window.__CC_TO_DEEPL[lang];
+    if (!deepl) return { cues: baseCues, note: "unsupported" };          // ms/th/vi/hi
+    if (origLang && origLang.toUpperCase() === deepl) return { cues: baseCues, note: "original" };
+    const vid = vObj.id;
+    if (window.__subTransCache[vid] && window.__subTransCache[vid][lang]) {
+      return { cues: window.__subTransCache[vid][lang], note: "cached" };
+    }
+    try {
+      const resp = await fetch("/api/translate-subtitle", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cues: baseCues.map(c => ({ start: c.start, end: c.end, text: c.text })),
+          targetLang: deepl,
+          sourceLang: origLang ? origLang.toUpperCase() : null,
+        }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        const note = data && data.error === "no_api_key" ? "no_api_key"
+                   : data && data.error === "not_authenticated" ? "not_authenticated" : "failed";
+        return { cues: baseCues, note };                                 // fallback: tampil asli
+      }
+      const tcues = Array.isArray(data.cues) ? data.cues : [];
+      if (!tcues.length) return { cues: baseCues, note: "failed" };
+      (window.__subTransCache[vid] = window.__subTransCache[vid] || {})[lang] = tcues;
+      return { cues: tcues, note: "translated" };
+    } catch { return { cues: baseCues, note: "failed" }; }
+  };
+  // Toast ramah utk hasil terjemahan (dipakai kedua pemutar). silent=lewati.
+  window.__subTransToast = function(note, lang) {
+    if (typeof toast !== "function") return;
+    const nm = (window.LIB_CC_LANG_LABELS && window.LIB_CC_LANG_LABELS[lang]) || lang;
+    if (note === "translated" || note === "cached") toast(`📝 Subtitle diterjemahkan → ${nm}`, "success");
+    else if (note === "original") toast(`📝 Subtitle: ${nm}`, "success");
+    else if (note === "unsupported") toast(`ℹ️ Terjemahan ke ${nm} belum didukung — tampil subtitle asli`, "info");
+    else if (note === "no_api_key") toast("⚠️ Terjemahan mati (DEEPL_API_KEY belum di-set) — tampil subtitle asli", "warning");
+    else if (note === "not_authenticated") toast("⚠️ Login dulu untuk terjemahan — tampil subtitle asli", "warning");
+    else if (note === "failed") toast("⚠️ Terjemahan gagal — tampil subtitle asli", "warning");
+  };
+
+  // === Subtitle PEMUTAR UTAMA (#apVideo / openAdminPlayer) — translation-aware ===
+  // Ganti CC PALSU lama (buildAutoSubtitle, label statis). Baca subtitleVtt ASLI →
+  // (opsional terjemah via getSubtitleCuesForLang) → cue disinkron ke #apCcOverlay
+  // via #apVideo.currentTime. vObj dioper sbg argumen supaya fungsi mudah diuji.
+  window.__apCcInterval = null;
+  window.__apCcReq = 0; // token anti-race: pilihan bahasa terbaru yang menang
+  window.startApSubtitle = async function(vObj, lang) {
+    const ccEl = document.getElementById("apCcOverlay");
+    const videoEl = document.getElementById("apVideo");
+    if (!ccEl || !videoEl) return { ok: false, note: "no_dom" };
+    const myReq = ++window.__apCcReq;
+    const { cues, note } = await window.getSubtitleCuesForLang(vObj, lang);
+    if (myReq !== window.__apCcReq) return { ok: false, note: "stale" }; // sudah ada pilihan lebih baru
+    if (!cues || !cues.length) { stopApSubtitle(); return { ok: false, note }; }
+    ccEl.hidden = false;
+    const updateCc = () => {
+      const t = videoEl.currentTime || 0;
+      const cue = cues.find(c => t >= c.start && t < c.end);
+      ccEl.textContent = cue ? cue.text : "";
+      ccEl.style.visibility = cue ? "visible" : "hidden";
+    };
+    updateCc();
+    if (window.__apCcInterval) clearInterval(window.__apCcInterval);
+    window.__apCcInterval = setInterval(() => {
+      if (videoEl.paused || videoEl.ended) return;
+      updateCc();
+    }, 250); // tick 250ms → sync cue cukup akurat tanpa boros
+    return { ok: true, note };
+  };
+  window.stopApSubtitle = function() {
+    if (window.__apCcInterval) { clearInterval(window.__apCcInterval); window.__apCcInterval = null; }
+    window.__apCcReq++; // batalkan permintaan terjemah async yang masih tertunda
+    const ccEl = document.getElementById("apCcOverlay");
+    if (ccEl) { ccEl.hidden = true; ccEl.textContent = ""; ccEl.style.visibility = "hidden"; }
+  };
 
   // === Helper: anchor lib kebab panel/submenu near trigger button via fixed
   // positioning. Dipakai untuk panel utama + 3 submenu (quality/speed/cc).
@@ -58358,10 +58316,11 @@ function closeLibInlinePlayer() {
       window.__libCcUserOverride = true;
       if (cc === "off") {
         stopAutoSubtitle();
+        toast("Subtitle dimatikan", "success");
       } else {
+        // Toast hasil (asli / diterjemahkan / fallback) diurus di dalam startAutoSubtitle.
         startAutoSubtitle(cc);
       }
-      toast(`📝 Subtitle: ${labelMap[cc] || "Off"}`, "success");
       document.getElementById("libCcMenu").hidden = true;
       return;
     }
