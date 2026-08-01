@@ -82760,6 +82760,11 @@ body:not([data-role="admin"]) .upf-field .upf-tags-wrap input#upTagsInput { font
 /* Baris picker: kotak ter-pusat bergaris putus-putus (senada dropzone video/
    thumbnail) supaya empty-state 'Belum ada logo' mengisi lebar dengan rapi,
    bukan tombol+teks pendek yang menyisakan ruang kosong lebar (req user 2026-07-29). */
+/* Kartu "Logo Watermark" manual DISEMBUNYIKAN (owner 1 Agt 2026): watermark kini
+   OTOMATIS "@username" ter-bake tiap upload → logo manual redundan + bikin kolom
+   kanan terlihat terisolasi/kosong. Aman: window._wmLogo tetap null → jalur
+   watermark otomatis dipakai. Hapus rule ini untuk mengembalikan. */
+.upf-wmlogo-section { display: none !important; }
 .upf-wmlogo-row { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 18px 16px; border: 1.5px dashed var(--border-strong); border-radius: 12px; }
 .upf-wmlogo-row .btn { flex: 0 0 auto; }
 .upf-wmlogo-name { flex: 0 1 auto; min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
