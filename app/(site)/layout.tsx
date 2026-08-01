@@ -101,6 +101,12 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   const vPicons = assetVersion('picons.js', '20260516-settings-ico-v188');
   const vParticles = assetVersion('particles-bg.js', '20260516-particles-v2');
   const vVePlayback = assetVersion('video-edit-playback.js', '20260728-vepb1');
+  // 30 Jul 2026 (fix "Legacy API keys are disabled" 401 badai): index-config.js
+  // berisi kunci Supabase (PLAYLY_SUPABASE.key). Saat kunci dirotasi (anon lama →
+  // sb_publishable), file di-update TAPI dulu dimuat TANPA ?v= → browser nyangkut
+  // versi lama berkunci mati → cloud-sync 401 terus. Kini di-hash spt script lain
+  // → berubah otomatis tiap isi (kunci) berubah, browser ambil yg baru.
+  const vConfig = assetVersion('index-config.js', '20260730-supabase-key-rotation');
   return (
     <html lang="id" suppressHydrationWarning>
       <body data-theme="dark" className="auth-mode" suppressHydrationWarning>
@@ -123,7 +129,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             Tanpa async (script klasik): React tidak me-hoist-nya ("async prop
             must be true to allow scripts to be safely moved" — react.dev), jadi
             server & client sama → tanpa hydration mismatch. */}
-        <script src={legacyAsset('index-config.js')} />
+        <script src={legacyAsset('index-config.js', vConfig)} />
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" />
         {/* 28 Jul 2026: mesin penerap edit playback bersama (dipakai app + watch) —
             HARUS sebelum script.js (openPlayer/export preview memanggilnya). */}

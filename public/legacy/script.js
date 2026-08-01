@@ -1798,7 +1798,20 @@ function saveState() {
   // (online indicator) di-derive dari aktivitas real, bukan random.
   // Fix B5 audit 2026-05-02.
   state.lastActivityAt = Date.now();
-  localStorage.setItem(`playly-state-${user.username}`, JSON.stringify(state));
+  // 30 Jul 2026: DULU tanpa try/catch → saat localStorage PENUH (QuotaExceeded:
+  // banyak kunci yatim + video duplikat), setItem THROW → saveState throw →
+  // perubahan (mis. hapus video) TAK tersimpan + kode setelahnya (refresh grid,
+  // cloud sync) tak jalan = gejala "hapus video tapi muncul lagi". Kini gagal
+  // ditangani + disurface, dan cloud sync TETAP jalan (biar hapus tetap terkirim
+  // ke cloud walau localStorage macet → sumber kebenaran lintas-perangkat).
+  try {
+    localStorage.setItem(`playly-state-${user.username}`, JSON.stringify(state));
+  } catch (err) {
+    console.error("[saveState] localStorage gagal (kemungkinan penuh):", err);
+    if (typeof toast === "function") {
+      toast("⚠️ Penyimpanan browser penuh — perubahan mungkin tak tersimpan lokal. Bersihkan data situs / video lama.", "error");
+    }
+  }
   // Phase B3 (2026-05-25) — dual-write ke Supabase user_state.
   // Bridge punya internal debounce 1.5s + no-op delta dedup, jadi
   // aman dipanggil tiap saveState (65+ call sites di script.js ini).
@@ -42994,7 +43007,19 @@ function renderVideoGrid() {
     // Bind delete buttons di tiap card
     $$("[data-delete-vid]", grid).forEach(b => b.addEventListener("click", e => {
       e.stopPropagation();
-      moveVideoToTrash(+b.dataset.deleteVid);
+      const _id = +b.dataset.deleteVid;
+      const _v = (state.myVideos || []).find(x => x.id === _id);
+      const _go = () => deleteMyVideoPermanent(_id);
+      // Konfirmasi dulu (permanen = destruktif, §5.1) — pakai modal bertema app.
+      if (typeof openConfirm === "function") {
+        openConfirm({
+          icon: "🗑️", iconClass: "danger",
+          title: "Hapus video permanen?",
+          desc: `Video <b>${escapeHtml((_v && _v.title) || "ini")}</b> akan dihapus PERMANEN dan tidak bisa dipulihkan.`,
+          btnText: "Hapus Permanen", btnClass: "danger",
+          onConfirm: _go,
+        });
+      } else { _go(); }
     }));
   }
 }
@@ -43068,17 +43093,41 @@ function trashCardHTML(v) {
 }
 
 // ----------------------- DELETE / RESTORE / PERMA-DELETE -----------------------
-function moveVideoToTrash(id) {
+// Hapus video PERMANEN dari pustaka (owner 30 Jul 2026: klik hapus = langsung
+// hilang permanen, BUKAN ke Sampah). Membuang dari state → state MENGECIL →
+// localStorage berhasil tersimpan walau tadinya penuh → hapus MENEMPEL. (Dulu
+// "pindah ke Sampah" TAK mengecilkan state — video cuma pindah array — jadi saat
+// localStorage penuh saveState gagal → hapus tak tersimpan → video muncul lagi.)
+// Sekalian buang file R2 + turunannya (bgm/logo) + blob IndexedDB → benar-benar
+// permanen + bebaskan storage. TAK bisa dipulihkan → pemanggil WAJIB konfirmasi.
+function deleteMyVideoPermanent(id) {
   const idx = state.myVideos.findIndex(v => v.id === id);
-  if (idx < 0) return;
-  const [v] = state.myVideos.splice(idx, 1);
-  v.deletedAt = Date.now();
-  state.deletedVideos = state.deletedVideos || [];
-  state.deletedVideos.unshift(v);
+  let v = null;
+  if (idx >= 0) { [v] = state.myVideos.splice(idx, 1); }
+  // Bersihkan juga bila entri nyangkut di Sampah lama (deletedVideos).
+  if (Array.isArray(state.deletedVideos)) {
+    const tIdx = state.deletedVideos.findIndex(x => x.id === id);
+    if (tIdx >= 0) { const [tv] = state.deletedVideos.splice(tIdx, 1); if (!v) v = tv; }
+  }
+  if (!v && idx < 0) return;
+  // Buang file R2 + objek bgm/logo + blob IndexedDB → permanen + bebaskan ruang.
+  try {
+    if (window.cloudSync?.deleteVideoBlob) {
+      Promise.resolve(window.cloudSync.deleteVideoBlob(id, (v && v.videoUrl) || null)).catch(() => {});
+      Promise.resolve(window.cloudSync.deleteVideoBlob(id + "-bgm", null)).catch(() => {});
+      Promise.resolve(window.cloudSync.deleteVideoBlob(id + "-logo", null)).catch(() => {});
+    }
+  } catch {}
+  try {
+    openVideoDB().then(db => {
+      const tx = db.transaction(VIDEO_STORE, "readwrite");
+      tx.objectStore(VIDEO_STORE).delete(id);
+    }).catch(() => {});
+  } catch {}
   saveState();
   refreshAllVideoGrids();
   renderUserStats();
-  toast(`🗑️ <b>${escapeHtml(v.title)}</b> dipindah ke Sampah`, "warning");
+  if (typeof toast === "function") toast(`🗑️ <b>${escapeHtml((v && v.title) || "Video")}</b> dihapus permanen`, "success");
 }
 
 function restoreVideo(id) {
@@ -43390,16 +43439,16 @@ function _libHandleBulk(action) {
   }
   if (action === "delete") {
     const doDelete = () => {
-      ids.forEach(id => { if (typeof moveVideoToTrash === "function") moveVideoToTrash(id); });
+      ids.forEach(id => { if (typeof deleteMyVideoPermanent === "function") deleteMyVideoPermanent(id); });
       _libApplySelectMode(false);
       if (typeof renderMyLibrary === "function") renderMyLibrary();
-      if (typeof toast === "function") toast(`<b>${ids.length} video</b> dipindahkan ke Sampah`, "success");
+      if (typeof toast === "function") toast(`<b>${ids.length} video</b> dihapus permanen`, "success");
     };
     if (typeof openConfirm === "function") {
       openConfirm({
         icon: "🗑️", iconClass: "danger", title: "Hapus video terpilih?",
-        desc: `<b>${ids.length} video</b> akan dipindahkan ke Sampah. Bisa dipulihkan dari Status Video → Sampah.`,
-        btnText: "Hapus", btnClass: "danger", onConfirm: doDelete
+        desc: `<b>${ids.length} video</b> akan dihapus PERMANEN dan tidak bisa dipulihkan.`,
+        btnText: "Hapus Permanen", btnClass: "danger", onConfirm: doDelete
       });
     } else doDelete();
     return;
@@ -43977,7 +44026,7 @@ function renderMyLibrary() {
         if (typeof toast === "function") toast(`<b>${escapeHtml(v.title || "Video")}</b> berhasil dipublikasikan<span class="toast-sub">Kini tampil publik di tab Video Saya.</span>`, "success published", TOAST_ICONS.published);
         return;
       }
-      // Delete button — konfirmasi → moveVideoToTrash
+      // Delete button — konfirmasi → deleteMyVideoPermanent
       const delBtn = e.target.closest("[data-lib-delete]");
       if (delBtn) {
         e.stopPropagation();
@@ -43990,13 +44039,13 @@ function renderMyLibrary() {
         if (typeof openConfirm === "function") {
           openConfirm({
             icon: "🗑️", iconClass: "danger",
-            title: "Hapus Video?",
-            desc: `Video <b>${escapeHtml(v.title || "")}</b> akan dipindahkan ke Sampah. Bisa dipulihkan kapan saja dari Status Videos → Sampah.`,
-            btnText: "Hapus", btnClass: "danger",
-            onConfirm: () => { if (typeof moveVideoToTrash === "function") moveVideoToTrash(id); renderMyLibrary(); }
+            title: "Hapus video permanen?",
+            desc: `Video <b>${escapeHtml(v.title || "")}</b> akan dihapus PERMANEN dan tidak bisa dipulihkan.`,
+            btnText: "Hapus Permanen", btnClass: "danger",
+            onConfirm: () => { if (typeof deleteMyVideoPermanent === "function") deleteMyVideoPermanent(id); renderMyLibrary(); }
           });
         } else {
-          if (typeof moveVideoToTrash === "function") moveVideoToTrash(id);
+          if (typeof deleteMyVideoPermanent === "function") deleteMyVideoPermanent(id);
           renderMyLibrary();
         }
         return;
@@ -53535,6 +53584,18 @@ self.onmessage = async (e) => {
     }
   }
 
+  // Pra-cek backend Whisper: ONNX runtime (WASM) BUTUH WebAssembly SIMD.
+  // Browser tanpa SIMD (mis. lama/terbatas) → onnxruntime gagal dgn error
+  // KRIPTIK: v2 melapor "Unsupported model type: whisper", v3 "no available
+  // backend". Cek sekali di awal (murah) → pesan jelas + arahkan ke manual,
+  // bukan error membingungkan. (Browser modern normal MENDUKUNG SIMD.)
+  function _whisperBackendOk() {
+    try {
+      // modul wasm minimal berisi instruksi SIMD (v128) — valid hanya bila SIMD ada
+      return WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]));
+    } catch { return false; }
+  }
+
   async function autoGenerateSubtitle() {
     // Cancel handler — post abort msg ke worker. Worker bakal stop di chunk
     // boundary berikutnya. Listener `aborted` reject promise di main thread.
@@ -53544,6 +53605,11 @@ self.onmessage = async (e) => {
       resetAutoBtn();
       if (progress) progress.hidden = true;
       toast("⛔ Auto-generate dibatalkan", "warning");
+      return;
+    }
+    if (!_whisperBackendOk()) {
+      toast("Browser ini belum mendukung auto-subtitle AI (perlu WebAssembly SIMD). Pakai browser terbaru, atau unggah file subtitle (.vtt/.srt) manual.", "warning");
+      if (progress) progress.hidden = true;
       return;
     }
     // Get current uploaded video file
@@ -54099,6 +54165,14 @@ self.onmessage = async (e) => {
       resetAutoBtn();
       if (progress) progress.hidden = true;
       toast("⛔ Auto-generate dibatalkan", "warning");
+      return;
+    }
+    // Pra-cek WASM SIMD — Whisper (ONNX WASM) butuh SIMD; tanpa itu error kriptik.
+    // (Cek mandiri: scope editor-modal terpisah dari autoGenerateSubtitle upload.)
+    function _simdOk() { try { return WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11])); } catch { return false; } }
+    if (!_simdOk()) {
+      toast("Browser ini belum mendukung auto-subtitle AI (perlu WebAssembly SIMD). Pakai browser terbaru, atau unggah file subtitle (.vtt/.srt) manual.", "warning");
+      if (progress) progress.hidden = true;
       return;
     }
     const id = +(document.getElementById("vemId")?.value || 0);
@@ -55060,6 +55134,7 @@ function clearUploadFieldError(input) {
       film:   I('<rect x="4" y="6.5" width="12" height="11" rx="2"/><path d="M16 10.5l4-2.5v8l-4-2.5Z"/>'),
       clock:  I('<circle cx="12" cy="12" r="8"/><path d="M12 8v4.2l2.8 2"/>'),
       chat:   I('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M8 9.5h8"/><path d="M8 13h5"/>'),
+      drop:   I('<path d="M12 3.6c2.6 3 5 5.9 5 8.4a5 5 0 0 1-10 0c0-2.5 2.4-5.4 5-8.4Z"/>'),
     };
     const pickIcon = (t) => {
       t = (t || "").toLowerCase();
@@ -55071,6 +55146,9 @@ function clearUploadFieldError(input) {
       if (t.includes("kategori") || t.includes("category")) return ICONS.tag;
       if (t.includes("deskripsi") || t.includes("description")) return ICONS.desc;
       if (t.includes("subtitle")) return ICONS.cc;
+      // Logo Watermark — dulu tak ada case → card ini nihil ikon (beda dari card
+      // lain) → tampak "acak"/tak konsisten. Pakai ikon tetesan (lambang watermark).
+      if (t.includes("watermark") || t.includes("logo")) return ICONS.drop;
       if (t.includes("visibilit")) return ICONS.eye;
       if (t.includes("audiens") || t.includes("audience")) return ICONS.users;
       if (t.includes("interaksi") || t.includes("komentar") || t.includes("engagement")) return ICONS.chat;
@@ -55401,6 +55479,67 @@ $("#startUpload")?.addEventListener("click", async () => {
   };
 
   try {
+    // 0) BAKE watermark ke video (Jalur A, req owner 2026-07-29): kalau ada logo
+    //    watermark, transcode video DI BROWSER supaya logo MENEMPEL PERMANEN di
+    //    pixel file → ikut saat di-download/kirim/embed (bukan cuma overlay di
+    //    player Playly). Lambat (~durasi video) + kualitas turun + cenderung WebM
+    //    = konsekuensi Jalur A yg dipilih owner. Gagal/tak didukung = fallback
+    //    upload video asli (watermark tetap jalan sbg overlay lama).
+    let wmBaked = false;
+    // Watermark OTOMATIS (30 Jul 2026, permintaan owner): SEMUA video di-bake.
+    // Kreator pasang logo kustom (window._wmLogo) → pakai logo itu; kalau tidak →
+    // DEFAULT teks "@username" (branding kreator gaya TikTok) di kanan-bawah.
+    // wmBaked=true = watermark menyatu di pixel file → ikut saat download/kirim.
+    const _hasCustomLogo = !!(window._wmLogo && window._wmLogo.dataUrl);
+    if (captured.file && typeof transcodeVideo === "function") {
+      try {
+        status.textContent = "Menempelkan watermark ke video…";
+        bar.classList.add("up-bar-indeterminate");
+        let _wmOpts;
+        if (_hasCustomLogo) {
+          const _wmImg = new Image();
+          _wmImg.src = window._wmLogo.dataUrl;
+          await new Promise((res) => { _wmImg.onload = res; _wmImg.onerror = res; });
+          _wmOpts = {
+            img: _wmImg,
+            pos: document.getElementById("upWmLogoPos")?.value || "br",
+            size: Number(document.getElementById("upWmLogoSize")?.value) || 12,
+            opacity: Number(document.getElementById("upWmLogoOpacity")?.value) || 80,
+          };
+        } else {
+          const _handle = "@" + String((typeof user !== "undefined" && user && user.username) || "playly").replace(/^@+/, "");
+          _wmOpts = { text: _handle, pos: "br", size: 4.2, opacity: 88 };
+        }
+        const _baked = await transcodeVideo(captured.file, {
+          signal: ctrl ? ctrl.signal : undefined,
+          onProgress: (p) => { status.textContent = "Memproses video… " + Math.round(p * 100) + "%"; },
+          watermark: _wmOpts,
+          edit: captured.videoEdit || null, // bake filter warna + flip/rotate/zoom
+        });
+        if (_baked && _baked.blob) {
+          const _base = (captured.file.name || "video").replace(/\.[^.]+$/, "");
+          captured.file = new File([_baked.blob], _base + "." + _baked.ext, { type: _baked.mime });
+          wmBaked = true;
+          // Efek visual sudah MENYATU di pixel → buang dari videoEdit tersimpan
+          // supaya playback (applyVideoEditCss) tak menempelkannya LAGI (dobel).
+          // Sisakan field non-baked: trim/speed/muted/volume/fade/audio/teks/crop.
+          if (captured.videoEdit) {
+            ["brightness","contrast","saturation","temperature","preset","hue",
+             "flipH","flipV","rotate","zoom","posX","posY",
+             "trimStart","trimEnd","speed",
+             "text","textSize","textColor","textFont","textPos",
+             "crop","volume","muted","fadeIn","fadeOut","audio"].forEach(k => { delete captured.videoEdit[k]; });
+          }
+        }
+      } catch (e) {
+        if (e && e.aborted) { abortAndCleanup(); return; }
+        console.warn("[upload] bake watermark gagal → upload video asli (watermark tetap overlay):", e);
+      } finally {
+        bar.classList.remove("up-bar-indeterminate");
+      }
+    }
+    if (isCancelled()) { abortAndCleanup(); return; }
+
     // 1) Simpan blob ke IndexedDB (lokal) — playback di device ini.
     if (captured.file) {
       status.textContent = "Menyimpan lokal…";
@@ -55465,8 +55604,10 @@ $("#startUpload")?.addEventListener("click", async () => {
     // 2c (26 Jul 2026): LOGO WATERMARK ikut ke cloud — pola sama dgn backsound
     // (blob → IDB + R2 id "<vidId>-logo"). Metadata posisi/ukuran/transparansi
     // ikut disimpan di newVid.wmLogo; gagal upload = logo hanya lokal.
+    // Kalau watermark SUDAH DI-BAKE ke pixel video (langkah 0), JANGAN simpan
+    // metadata overlay — biar player tak menumpuk watermark 2x (baked + overlay).
     let wmLogoMeta = null;
-    if (window._wmLogo && window._wmLogo.file) {
+    if (!wmBaked && window._wmLogo && window._wmLogo.file) {
       try {
         const logoId = "ve-logo-" + vidId;
         try { await saveVideoBlob(logoId, window._wmLogo.file); } catch (e) { console.warn("[upload] wmLogo IDB:", e); }
@@ -57331,6 +57472,70 @@ async function openLibInlinePlayer(id) {
   }
   videoEl.src = src || SAMPLE;
 
+  // ── Ketahanan pemutar (30 Jul 2026) ──────────────────────────────────────
+  // (a) PULIHKAN DURASI: video hasil MediaRecorder / stream sering tak menulis
+  //     durasi total di header → duration=Infinity → timeline mentok "0:00" dan
+  //     play/seek macet (persis gejala "video tidak bisa di play"). Trik baku:
+  //     seek 1x ke ujung → browser hitung durasi asli → balik ke 0. Hanya jalan
+  //     saat durasi TAK finite (video normal tak tersentuh → aman).
+  videoEl.addEventListener("loadedmetadata", function onDurFix() {
+    videoEl.removeEventListener("loadedmetadata", onDurFix);
+    if (isFinite(videoEl.duration) && videoEl.duration > 0) return;
+    const onTU = () => {
+      if (isFinite(videoEl.duration) && videoEl.duration > 0) {
+        videoEl.removeEventListener("timeupdate", onTU);
+        try { videoEl.currentTime = 0; } catch {}
+        try { videoEl.dispatchEvent(new Event("durationchange")); } catch {}
+      }
+    };
+    videoEl.addEventListener("timeupdate", onTU);
+    try { videoEl.currentTime = 1e101; } catch {}
+  });
+
+  // (b) VIDEO HANTU: file benar-benar hilang dari server (dihapus/tak terjangkau)
+  //     → <video> gagal muat. Jangan diam-diam macet: tampil pesan jelas + tombol
+  //     hapus dari daftar. KONFIRMASI user (bukan auto-delete) → aman dari salah
+  //     hapus video sehat yang cuma lambat/putus jaringan sesaat.
+  videoEl.addEventListener("error", function onGhost() {
+    videoEl.removeEventListener("error", onGhost);
+    const scr = videoEl.closest(".lib-inline-screen");
+    if (!scr || scr.querySelector(".lib-ghost-overlay")) return;
+    const ov = document.createElement("div");
+    ov.className = "lib-ghost-overlay";
+    ov.style.cssText = "position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);text-align:center;padding:20px";
+    ov.innerHTML =
+      '<div style="max-width:340px;color:#fff">' +
+      '<div style="font-size:34px;margin-bottom:8px">⚠️</div>' +
+      '<p style="margin:0 0 14px;font-size:14px;line-height:1.5;color:rgba(255,255,255,.9)">Video ini tidak tersedia lagi — kemungkinan sudah dihapus dari server.</p>' +
+      '<button type="button" class="lib-ghost-rm" style="padding:9px 18px;border-radius:8px;border:0;background:#b0413e;color:#fff;font-weight:600;cursor:pointer">Hapus dari daftar</button>' +
+      '</div>';
+    ov.querySelector(".lib-ghost-rm").addEventListener("click", () => {
+      // Pakai modal bertema app (openConfirm) — BUKAN confirm() bawaan browser
+      // (dialog OS mentah "localhost says", tak menyatu dgn desain).
+      const doRemove = async () => {
+        try { await deleteAdminVideo(v.id); } catch (e) { console.warn("[ghost] delete gagal:", e); }
+        // Tutup pemutar dgn BENAR: closeLibInlinePlayer memanggil exitLibWatchMode
+        // → KEMBALI ke grid pustaka. (wrap.hidden=true saja meninggalkan mode
+        // nonton kosong → halaman blank.)
+        try { closeLibInlinePlayer(); } catch { try { wrap.hidden = true; } catch {} }
+        try { if (typeof renderAll === "function") renderAll(); } catch {}
+        if (typeof toast === "function") toast("🗑 Video dihapus dari daftar", "success");
+      };
+      if (typeof openConfirm === "function") {
+        openConfirm({
+          icon: "🗑", iconClass: "danger",
+          title: "Hapus video dari daftar?",
+          desc: "File videonya sudah tidak ada di server, jadi entri ini cuma sisa di daftarmu.",
+          btnText: "Hapus", btnClass: "danger",
+          onConfirm: doRemove,
+        });
+      } else {
+        doRemove(); // fallback defensif kalau modal belum siap
+      }
+    });
+    scr.appendChild(ov);
+  });
+
   // Auto-detect video orientation from metadata
   videoEl.addEventListener("loadedmetadata", function onOrient() {
     videoEl.removeEventListener("loadedmetadata", onOrient);
@@ -57788,22 +57993,17 @@ function closeLibInlinePlayer() {
       }
     } catch {}
     window.__libCcCues = cues;
-    // Phrase fallback kalau no cues
-    const phrases = LIB_CC_PHRASES[lang] || LIB_CC_PHRASES.en;
+    // 30 Jul 2026: HAPUS mode "placeholder phrase" — dulu kalau video tak punya
+    // subtitle ASLI, ditampilkan frasa palsu berputar (LIB_CC_PHRASES: "Hari ini
+    // kita akan bahas topik menarik" dst). Itu MUSTAHIL cocok dgn isi video →
+    // menyesatkan. Kini HANYA subtitle ASLI (subtitleVtt) yg tampil; tanpa itu
+    // CC dikosongkan (tak ada teks karangan).
     const updateCc = () => {
+      if (!cues || !cues.length) { ccEl.style.visibility = "hidden"; ccEl.textContent = ""; return; }
       const t = videoEl.currentTime || 0;
-      if (cues && cues.length) {
-        // Real VTT mode — find current cue based on currentTime
-        const cue = cues.find(c => t >= c.start && t < c.end);
-        ccEl.textContent = cue ? cue.text : "";
-        // Hide div kalau lagi gap antar cue, biar tidak ada blank box
-        ccEl.style.visibility = cue ? "visible" : "hidden";
-      } else {
-        // Placeholder phrase mode — rotate per 4s
-        ccEl.style.visibility = "visible";
-        const idx = Math.floor(t / 4) % phrases.length;
-        ccEl.textContent = phrases[idx];
-      }
+      const cue = cues.find(c => t >= c.start && t < c.end);
+      ccEl.textContent = cue ? cue.text : "";
+      ccEl.style.visibility = cue ? "visible" : "hidden";
     };
     updateCc();
     if (window.__libCcInterval) clearInterval(window.__libCcInterval);
@@ -57826,8 +58026,18 @@ function closeLibInlinePlayer() {
       ccEl.textContent = "";
     }
   };
-  // Auto-enable subtitle saat video mulai play, pakai bahasa user saat ini
+  // Auto-enable subtitle saat video mulai play, pakai bahasa user saat ini.
   window.autoEnableSubtitle = function() {
+    // Hanya auto-nyalakan CC kalau video punya subtitle ASLI (subtitleVtt).
+    // Tanpa itu, dulu memaksa CC nyala → frasa palsu (kini kosong) + toast sia2.
+    let hasRealSub = false;
+    try {
+      const id = window.__libInlineVid;
+      const v = id && ((state?.myVideos || []).find(x => x.id === id) ||
+                (typeof getPlatformVideos === "function" ? getPlatformVideos().find(x => x.id === id) : null));
+      hasRealSub = !!(v && v.subtitleVtt);
+    } catch {}
+    if (!hasRealSub) return;
     const lang = (typeof currentLang === "function" ? currentLang() : null) || "id";
     const supported = LIB_CC_PHRASES[lang] ? lang : "en";
     startAutoSubtitle(supported);
@@ -58186,9 +58396,11 @@ function transcodeVideo(file, opts) {
   return new Promise(async (resolve, reject) => {
     const fail = (err) => { cleanup(); reject(err); };
     let video = null, stream = null, recorder = null, actx = null, objUrl = null, rafId = 0, done = false;
+    let _audioGain = null, _bgmEl = null, _baseVol = 1; // audio: gain (volume/fade) + backsound elem
     const cleanup = () => {
       try { cancelAnimationFrame(rafId); } catch {}
       try { video && video.pause(); } catch {}
+      try { _bgmEl && _bgmEl.pause(); } catch {}
       try { stream && stream.getTracks().forEach(t => t.stop()); } catch {}
       try { actx && actx.close && actx.close(); } catch {}
       if (objUrl) { try { URL.revokeObjectURL(objUrl); } catch {} }
@@ -58203,7 +58415,12 @@ function transcodeVideo(file, opts) {
       if (!MIME) return resolve(null);
 
       video = document.createElement("video");
-      video.volume = 0; video.playsInline = true; video.preload = "auto";
+      // volume=1 WAJIB: createMediaElementSource menarik audio SETELAH volume elemen
+      // → volume=0 = sumber SENYAP → output bisu (bug: SEMUA video ter-bake tanpa
+      // suara). Audio dirutekan ke MediaStreamDestination (rekaman), TIDAK ke
+      // actx.destination → user tetap tak mendengar saat transcode. Fallback bisu
+      // (kalau capture audio gagal) di-set video.muted=true di catch audio.
+      video.volume = 1; video.playsInline = true; video.preload = "auto";
       objUrl = URL.createObjectURL(file);
       video.src = objUrl;
       await new Promise((res, rej) => {
@@ -58211,8 +58428,20 @@ function transcodeVideo(file, opts) {
         video.addEventListener("error", () => rej(new Error("video_load_failed")), { once: true });
       });
       const vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
-      const scale = Math.min(1, 1920 / vw); // resolusi asli (cap 1920 utk performa)
-      const w = Math.round(vw * scale), h = Math.round(vh * scale);
+      // Crop "Bebas" DI-BAKE: output = region crop (source-rect drawImage). Default
+      // = full frame. Region crop % → pixel; canvas = ukuran region (cap 1920).
+      const _ed = (opts && opts.edit) ? opts.edit : null;
+      let srcX = 0, srcY = 0, srcW = vw, srcH = vh;
+      const _cr = _ed && _ed.aspect === "bebas" ? _ed.crop : null;
+      if (_cr && Number(_cr.w) > 0 && Number(_cr.h) > 0 &&
+          !(Number(_cr.x) === 0 && Number(_cr.y) === 0 && Number(_cr.w) === 100 && Number(_cr.h) === 100)) {
+        srcX = Math.max(0, Number(_cr.x) / 100 * vw);
+        srcY = Math.max(0, Number(_cr.y) / 100 * vh);
+        srcW = Math.min(vw - srcX, Number(_cr.w) / 100 * vw);
+        srcH = Math.min(vh - srcY, Number(_cr.h) / 100 * vh);
+      }
+      const scale = Math.min(1, 1920 / srcW); // cap 1920 berdasar lebar region
+      const w = Math.round(srcW * scale), h = Math.round(srcH * scale);
       const canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext("2d");
@@ -58222,11 +58451,37 @@ function transcodeVideo(file, opts) {
         actx = new (window.AudioContext || window.webkitAudioContext)();
         const srcNode = actx.createMediaElementSource(video);
         const dest = actx.createMediaStreamDestination();
-        srcNode.connect(dest);
+        // Volume/mute DI-BAKE via GainNode (edit.volume 0..100, edit.muted). Fade
+        // (opsional) diotomasikan pada gain ini saat play. Default gain 1 = no-op.
+        _audioGain = actx.createGain();
+        _baseVol = 1;
+        if (_ed) {
+          if (_ed.muted) _baseVol = 0;
+          else if (_ed.volume != null) _baseVol = Math.max(0, Math.min(1, Number(_ed.volume) / 100));
+        }
+        _audioGain.gain.value = _baseVol;
+        srcNode.connect(_audioGain); _audioGain.connect(dest);
+        // Backsound/musik (opsional): mix sumber audio ke-2 ke dest. Resolve URL
+        // dari edit.audio via _veBgmResolveUrl (cloud/preset sintetis/IndexedDB).
+        const _au = _ed && _ed.audio;
+        if (_au && (_au.url || _au.preset || _au.key) && typeof window._veBgmResolveUrl === "function") {
+          try {
+            const _bgmUrl = await window._veBgmResolveUrl(_au);
+            if (_bgmUrl) {
+              _bgmEl = document.createElement("audio");
+              _bgmEl.src = _bgmUrl; _bgmEl.loop = _au.loop !== false; _bgmEl.crossOrigin = "anonymous";
+              await new Promise((res) => { _bgmEl.addEventListener("canplaythrough", res, { once: true }); _bgmEl.addEventListener("error", res, { once: true }); setTimeout(res, 3000); });
+              const _bgmSrc = actx.createMediaElementSource(_bgmEl);
+              const _bgmGain = actx.createGain();
+              _bgmGain.gain.value = Math.max(0, Math.min(1, (_au.volume != null ? _au.volume : 40) / 100));
+              _bgmSrc.connect(_bgmGain); _bgmGain.connect(dest);
+            }
+          } catch (e) { console.warn("[transcode] backsound dilewati:", e); }
+        }
         const at = dest.stream.getAudioTracks();
         if (at.length) stream.addTrack(at[0]);
         if (actx.state === "suspended") { try { await actx.resume(); } catch {} }
-      } catch (e) { console.warn("[transcode] audio track dilewati:", e); }
+      } catch (e) { console.warn("[transcode] audio track dilewati:", e); try { video.muted = true; } catch {} }
 
       const chunks = [];
       recorder = new MediaRecorder(stream, {
@@ -58253,18 +58508,149 @@ function transcodeVideo(file, opts) {
       const guard = setTimeout(stopAndResolve, (video.duration || 60) * 1000 + 15000);
       const _stop = stopAndResolve; stopAndResolve = () => { clearTimeout(guard); _stop(); };
 
+      // Watermark yg akan DI-BAKE ke tiap frame (opsional). opts.watermark =
+      //   { img:HTMLImageElement, ... }  → gambar logo, ATAU
+      //   { text:"@username", ... }      → teks (watermark otomatis kreator).
+      // pos:"br|bl|tr|tl|center", size:%lebar (gambar) / %lebar utk font (teks),
+      // opacity:%. Beda dgn overlay lama (cuma di player Playly): ini menempel
+      // PERMANEN di pixel video → ikut saat di-download/kirim/embed.
+      const wmk = (opts && opts.watermark && (opts.watermark.img || opts.watermark.text)) ? opts.watermark : null;
+      const drawWatermark = () => {
+        const m = Math.round(w * 0.03); // margin 3% dari tepi
+        const p = String(wmk.pos || "br").toLowerCase();
+        const prev = ctx.globalAlpha;
+        ctx.globalAlpha = Math.max(0, Math.min(1, (wmk.opacity != null ? Number(wmk.opacity) : 80) / 100));
+        if (wmk.img) {
+          const img = wmk.img;
+          if (img.complete && img.naturalWidth) {
+            const lw = Math.max(1, Math.round(w * (Number(wmk.size) || 12) / 100));
+            const lh = Math.max(1, Math.round(lw * (img.naturalHeight / img.naturalWidth)));
+            let lx = w - lw - m, ly = h - lh - m; // default kanan-bawah (br)
+            if (p.indexOf("t") >= 0) ly = m;       // top
+            if (p.indexOf("l") >= 0) lx = m;       // left
+            if (p === "center" || p === "c") { lx = Math.round((w - lw) / 2); ly = Math.round((h - lh) / 2); }
+            try { ctx.drawImage(img, lx, ly, lw, lh); } catch {}
+          }
+        } else if (wmk.text) {
+          // Teks watermark (mis. "@username"). Font ~size% lebar (default 4.2%).
+          const fs = Math.max(14, Math.round(w * (Number(wmk.size) || 4.2) / 100));
+          ctx.font = `600 ${fs}px Inter, system-ui, -apple-system, sans-serif`;
+          ctx.textAlign = (p.indexOf("l") >= 0) ? "left" : (p === "center" || p === "c") ? "center" : "right";
+          ctx.textBaseline = (p.indexOf("t") >= 0) ? "top" : (p === "center" || p === "c") ? "middle" : "bottom";
+          const tx = (p.indexOf("l") >= 0) ? m : (p === "center" || p === "c") ? Math.round(w / 2) : (w - m);
+          const ty = (p.indexOf("t") >= 0) ? m : (p === "center" || p === "c") ? Math.round(h / 2) : (h - m);
+          ctx.fillStyle = "#fff";
+          ctx.shadowColor = "rgba(0,0,0,.65)"; // bayangan → terbaca di latar terang
+          ctx.shadowBlur = Math.round(fs * 0.28);
+          ctx.shadowOffsetY = Math.max(1, Math.round(fs * 0.04));
+          try { ctx.fillText(wmk.text, tx, ty); } catch {}
+          ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        }
+        ctx.globalAlpha = prev;
+      };
+
+      // Edit visual yg DI-BAKE ke pixel (30 Jul 2026): filter warna (via
+      // ctx.filter — sintaks = CSS filter, jadi 1:1 dgn preview) + transform
+      // flip/rotate/zoom/geser. TIDAK termasuk crop/trim/teks/audio (belum di
+      // scope ini). Filter cuma ke video, watermark digambar setelah restore.
+      const edit = (opts && opts.edit) ? opts.edit : null;
+      const editFilter = edit && typeof veBuildEditFilter === "function" ? veBuildEditFilter(edit) : "";
+      const editTf = !!(edit && (edit.flipH || edit.flipV || edit.rotate ||
+        (edit.zoom != null && Number(edit.zoom) !== 100) || edit.posX || edit.posY));
+      // Trim (potong durasi) + speed (kecepatan) di-BAKE: rekaman dimulai dari
+      // trimStart, berhenti di trimEnd; playbackRate=speed bikin output ter-cepat/
+      // lambat (canvas stream rekam real-time → durasi = (end-start)/speed).
+      const _trimStart = Math.max(0, (edit && Number(edit.trimStart)) || 0);
+      const _trimEndRaw = (edit && Number(edit.trimEnd)) || 0;
+      const _trimEnd = (_trimEndRaw > _trimStart) ? _trimEndRaw : 0;
+      const _speed = (edit && Number(edit.speed) > 0) ? Number(edit.speed) : 1;
+      const drawVideoFrame = () => {
+        if (!editFilter && !editTf) { ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, w, h); return; }
+        ctx.save();
+        if (editFilter) ctx.filter = editFilter;
+        if (editTf) {
+          const sx = edit.flipH ? -1 : 1, sy = edit.flipV ? -1 : 1;
+          const zoom = (edit.zoom != null ? Number(edit.zoom) : 100) / 100;
+          ctx.translate(w / 2 + (Number(edit.posX) || 0) / 100 * w,
+                        h / 2 + (Number(edit.posY) || 0) / 100 * h);
+          ctx.rotate((Number(edit.rotate) || 0) * Math.PI / 180);
+          ctx.scale(zoom * sx, zoom * sy);
+          ctx.drawImage(video, srcX, srcY, srcW, srcH, -w / 2, -h / 2, w, h);
+        } else {
+          ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, w, h);
+        }
+        ctx.restore();
+      };
+
+      // Teks overlay (opsional) di-BAKE di ATAS video+watermark. Posisi = TETAP
+      // (tak ikut transform video — sama spt overlay editor yg sibling di luar
+      // video). Ukuran editor (px) tak resolusi-relatif → skalakan ~tinggi output
+      // (REF 480 = perkiraan tinggi stage editor); posisi vertikal = % (persis CSS).
+      const editText = (edit && edit.text && String(edit.text).trim()) ? String(edit.text).trim() : "";
+      const drawEditText = () => {
+        const fs = Math.max(10, Math.round((Number(edit.textSize) || 24) * h / 480));
+        ctx.save();
+        ctx.font = `800 ${fs}px ${edit.textFont || "Inter"}, system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillStyle = edit.textColor || "#ffffff";
+        ctx.shadowColor = "rgba(0,0,0,.7)"; ctx.shadowBlur = Math.round(fs * 0.25); ctx.shadowOffsetY = Math.round(fs * 0.08);
+        const pos = edit.textPos || "bottom";
+        let y;
+        if (pos === "top") { ctx.textBaseline = "top"; y = Math.round(h * 0.08); }
+        else if (pos === "center") { ctx.textBaseline = "middle"; y = Math.round(h * 0.5); }
+        else { ctx.textBaseline = "alphabetic"; y = Math.round(h * 0.88); }
+        const lines = editText.split("\n"), lh = Math.round(fs * 1.25);
+        lines.forEach((ln, i) => { try { ctx.fillText(ln, w / 2, y + i * lh); } catch {} });
+        ctx.restore();
+      };
+
       const loop = () => {
         if (done) return;
-        ctx.drawImage(video, 0, 0, w, h);
-        if (opts && typeof opts.onProgress === "function" && video.duration) {
-          try { opts.onProgress(Math.min(1, video.currentTime / video.duration)); } catch {}
+        // Trim: hentikan rekaman begitu mencapai trimEnd.
+        if (_trimEnd && video.currentTime >= _trimEnd) { stopAndResolve(); return; }
+        drawVideoFrame();
+        if (wmk) drawWatermark();
+        if (editText) drawEditText();
+        if (opts && typeof opts.onProgress === "function") {
+          try {
+            const _dur = _trimEnd ? (_trimEnd - _trimStart) : (video.duration || 0);
+            const _cur = video.currentTime - _trimStart;
+            if (_dur > 0) opts.onProgress(Math.min(1, Math.max(0, _cur / _dur)));
+          } catch {}
         }
         if (video.requestVideoFrameCallback) rafId = video.requestVideoFrameCallback(loop);
         else rafId = requestAnimationFrame(loop);
       };
       recorder.start(250);
+      // Speed + seek ke trimStart SEBELUM play (tunggu 'seeked' agar akurat).
+      if (_speed !== 1) { try { video.playbackRate = _speed; } catch {} }
+      if (_trimStart > 0) {
+        try {
+          video.currentTime = _trimStart;
+          await new Promise((res) => { video.addEventListener("seeked", res, { once: true }); setTimeout(res, 1500); });
+        } catch {}
+      }
       loop();
       await video.play();
+      // Backsound mulai sinkron + fade in/out diotomasikan pada gain (edit.fadeIn/
+      // fadeOut detik, dianchor ke actx.currentTime saat play; durasi ikut speed).
+      if (_bgmEl) { try { _bgmEl.currentTime = 0; _bgmEl.play().catch(() => {}); } catch {} }
+      if (_audioGain && _ed && _baseVol > 0 && (Number(_ed.fadeIn) > 0 || Number(_ed.fadeOut) > 0)) {
+        try {
+          const g = _audioGain.gain, t0 = actx.currentTime;
+          const spanV = _trimEnd ? (_trimEnd - _trimStart) : (video.duration || 0);
+          const spanW = spanV > 0 ? spanV / _speed : 0;
+          const fi = Math.max(0, Number(_ed.fadeIn) || 0) / _speed;
+          const fo = Math.max(0, Number(_ed.fadeOut) || 0) / _speed;
+          g.cancelScheduledValues(t0);
+          if (fi > 0) { g.setValueAtTime(0.0001, t0); g.linearRampToValueAtTime(_baseVol, t0 + fi); }
+          else { g.setValueAtTime(_baseVol, t0); }
+          if (fo > 0 && spanW > fo) {
+            g.setValueAtTime(_baseVol, t0 + Math.max(fi, spanW - fo));
+            g.linearRampToValueAtTime(0.0001, t0 + spanW);
+          }
+        } catch {}
+      }
     } catch (err) { fail(err); }
   });
 }
@@ -58321,7 +58707,16 @@ async function openPlayer(id) {
       // rekomendasi (mirip platform video profesional).
       let all = [];
       try { all = (typeof allVideos === "function") ? allVideos() : ((typeof videos !== "undefined" && Array.isArray(videos)) ? videos : []); } catch { all = []; }
-      const others = all.filter(x => x && x.id !== id && x.thumb).slice(0, 12);
+      // Dedupe by id (req user 2026-07-29): cegah video yang SAMA muncul
+      // berkali-kali di "Selanjutnya" — allVideos() bisa menggabung beberapa
+      // sumber (state.myVideos + kv + demo) yg beririsan → entri dobel.
+      const _seenUpNext = new Set();
+      const others = all.filter(x => {
+        if (!x || x.id === id || !x.thumb) return false;
+        if (_seenUpNext.has(x.id)) return false;
+        _seenUpNext.add(x.id);
+        return true;
+      }).slice(0, 12);
       // Video "berikutnya" untuk autoplay = rekomendasi teratas.
       state._upNextFirstId = others.length ? others[0].id : null;
       // Sinkronkan visual toggle Autoplay dengan preferensi tersimpan.
@@ -58430,6 +58825,20 @@ async function openPlayer(id) {
 
   const videoEl = $("#videoEl");
   videoEl.poster = v.thumb;
+  // Backdrop blur (isi bilah kosong video potret/aspek-beda dgn thumbnail ter-blur
+  // — senada platform video modern; ganti bilah hitam kaku). CSS .player-screen::before
+  // yg me-render; di sini cukup set thumb sbg CSS var. Tanpa thumb → backdrop mati.
+  try {
+    const _pscreen = videoEl.closest(".player-screen");
+    if (_pscreen) {
+      if (v.thumb) {
+        _pscreen.style.setProperty("--pv-thumb", 'url("' + String(v.thumb).replace(/["\\\n]/g, "") + '")');
+        _pscreen.style.setProperty("--pv-thumb-on", "1");
+      } else {
+        _pscreen.style.setProperty("--pv-thumb-on", "0");
+      }
+    }
+  } catch {}
   // Resolve src: coba videoUrl yang ada → IDB → fallback ke sample
   const SAMPLE_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   const resolved = await resolveVideoSource(v);
@@ -65196,16 +65605,16 @@ function maybeOfferSaveCard() {
       if (typeof openConfirm === "function") {
         openConfirm({
           icon: "🗑️", iconClass: "danger",
-          title: "Hapus Video?",
-          desc: `Video <b>${escapeHtml(v.title || "")}</b> akan dipindahkan ke Sampah. Bisa dipulihkan kapan saja dari Status Videos → Sampah.`,
-          btnText: "Hapus", btnClass: "danger",
+          title: "Hapus video permanen?",
+          desc: `Video <b>${escapeHtml(v.title || "")}</b> akan dihapus PERMANEN dan tidak bisa dipulihkan.`,
+          btnText: "Hapus Permanen", btnClass: "danger",
           onConfirm: () => {
-            if (typeof moveVideoToTrash === "function") moveVideoToTrash(id);
+            if (typeof deleteMyVideoPermanent === "function") deleteMyVideoPermanent(id);
             if (typeof renderMyLibrary === "function") renderMyLibrary();
           }
         });
       } else {
-        if (typeof moveVideoToTrash === "function") moveVideoToTrash(id);
+        if (typeof deleteMyVideoPermanent === "function") deleteMyVideoPermanent(id);
         if (typeof renderMyLibrary === "function") renderMyLibrary();
       }
       return;
@@ -65895,10 +66304,28 @@ function saveVideoEdit() {
     if (e.key === "Escape") closeAllPopups();
   });
 
+  // Fix layout halaman Unggah (regresi 26 Jul / commit bf443ff9): saat fitur
+  // "Logo Watermark" ditambah, .upf-wmlogo-section ke-render sebagai grid-item
+  // KE-3 langsung di .upload-layout-bare (merebut kolom kanan) SEDANGKAN
+  // .upload-col-right (Judul/Deskripsi/Subtitle/Visibilitas/…) ke-render DI LUAR
+  // grid. Akibat di layar lebar: kolom kanan cuma berisi Logo Watermark + kosong
+  // besar, sisanya menumpuk di kolom kiri. Susun ulang struktur (idempoten):
+  //   1) pindah wmlogo ke DALAM col-right (jadi bagian kolom kanan, bukan grid-item)
+  //   2) masukkan col-right ke grid sebagai KOLOM 2 → 2 kolom seimbang lagi.
+  function fixUploadLayout() {
+    var grid = document.querySelector('section[data-view="upload"] .upload-layout-bare');
+    var colRight = document.querySelector('section[data-view="upload"] .upload-col-right');
+    if (!grid || !colRight) return;
+    var wmlogo = grid.querySelector(":scope > .upf-wmlogo-section");
+    if (wmlogo && wmlogo.parentElement === grid) colRight.insertBefore(wmlogo, colRight.firstChild);
+    if (colRight.parentElement !== grid) grid.appendChild(colRight);
+  }
+
   function tryInit() {
+    fixUploadLayout();
     initUploadSelects();
-    setTimeout(initUploadSelects, 600);
-    setTimeout(initUploadSelects, 1500);
+    setTimeout(function () { fixUploadLayout(); initUploadSelects(); }, 600);
+    setTimeout(function () { fixUploadLayout(); initUploadSelects(); }, 1500);
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", tryInit);
@@ -68876,16 +69303,16 @@ function getNotifList() {
       void exportBar.offsetWidth;
       exportBar.style.transition = "";
     }
-    if (exportProgress) exportProgress.textContent = "Menerapkan efek edit (0%)";
+    if (exportProgress) exportProgress.textContent = "Menyimpan editan (0%)";
 
-    // Simulate processing — fake progress bar 0 → 100% in ~2.5s
+    // JUJUR (30 Jul 2026): dulu langkah ini bohong ("Encoding video...") padahal
+    // tak ada encoding di sini. Encoding SUNGGUHAN (bake filter/flip/rotate/zoom/
+    // trim/speed ke pixel) terjadi SAAT UPLOAD (transcodeVideo). Di editor kita
+    // cuma SIMPAN pengaturan (cepat) + pratinjau (CSS = sama dgn hasil baked).
     const steps = [
-      { pct: 15, msg: "Membaca metadata video..." },
-      { pct: 30, msg: "Menerapkan trim & crop..." },
-      { pct: 50, msg: "Menerapkan filter warna..." },
-      { pct: 70, msg: "Render text overlay..." },
-      { pct: 88, msg: "Encoding video..." },
-      { pct: 100, msg: "Selesai!" },
+      { pct: 45, msg: "Menyimpan pengaturan edit..." },
+      { pct: 85, msg: "Menyiapkan pratinjau..." },
+      { pct: 100, msg: "Editan tersimpan!" },
     ];
     let i = 0;
     // v681: error path exists & is reachable — set window._veForceExportFail=true

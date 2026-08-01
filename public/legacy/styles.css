@@ -9465,7 +9465,24 @@ body[data-role="admin"] #playerSidebar { display: none; }
   overflow: hidden;
   margin-bottom: 0;
 }
-.player-screen video { width: 100%; height: 100%; display: block; background: #000; object-fit: contain; }
+/* Video transparan di area letterbox + di ATAS backdrop blur (z-index 1) supaya
+   bilah kosong video potret/aspek-beda menampilkan backdrop, bukan hitam kaku. */
+.player-screen video { width: 100%; height: 100%; display: block; background: transparent; object-fit: contain; position: relative; z-index: 1; }
+/* Backdrop blur: thumbnail ter-blur mengisi bilah kosong (senada YouTube/platform
+   video). --pv-thumb & --pv-thumb-on di-set oleh openPlayer per video; tanpa thumb
+   → opacity 0 → jatuh ke background #000 .player-screen (perilaku lama). */
+.player-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--pv-thumb, none) center / cover no-repeat;
+  filter: blur(38px) brightness(0.5) saturate(1.15);
+  transform: scale(1.2);
+  opacity: var(--pv-thumb-on, 0);
+  transition: opacity .3s ease;
+  pointer-events: none;
+}
 /* Light theme: dark-to-wine gradient on .main — same approach as dark theme */
 body[data-theme="light"].player-view-active .main {
   background: linear-gradient(180deg,
@@ -9543,7 +9560,15 @@ body[data-theme="light"].player-view-active .main {
 .player-screen:hover .cpl-hover-title { opacity: 1; }
 
 /* Bottom: progress + controls */
-.cpl-bottom { flex-shrink: 0; }
+.cpl-bottom {
+  flex-shrink: 0;
+  /* Scrim mandiri: jamin deret kontrol punya latar gelap SERAGAM walau video
+     potret/backdrop menjulur sampai dasar di belakangnya. Tanpa ini bilah
+     kontrol terlihat belang (tengah terang tembus video, sisi gelap). */
+  background: linear-gradient(180deg,
+    rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 38%, rgba(0,0,0,.85) 100%);
+  padding-top: 6px;
+}
 
 .cpl-progress {
   position: relative;
@@ -79488,7 +79513,18 @@ section[data-view="videos"] .view-header .lib-header-text > #libVideoCount::befo
 
 /* Baris aksi = baris kreator (kiri) + tombol (kanan), sejajar tengah */
 .view[data-view="videos"] #libInlineActions { align-items: center !important; }
-.view[data-view="videos"] .lib-creator { display: flex; align-items: center; gap: 11px; min-width: 0; }
+/* FIX susunan acak (v2): pemutar pustaka FULL-WIDTH (tanpa sidebar) → baris
+   berisi kreator (kiri) + tombol (kanan) selalu tersebar ke dua ujung dgn celah
+   ~965px di tengah = terlihat "terpencar". Apalagi kreator di sini kecil (cuma
+   avatar+nama, tanpa tombol Follow di video sendiri) → celah makin lebar.
+   Solusi paling bersih: TUMPUK — kreator baris atas, deretan tombol baris bawah
+   rata-kiri. Semua rata kiri, tanpa celah menganga. */
+.view[data-view="videos"] .lib-ytp-action-bar {
+  justify-content: flex-start !important;
+  flex-wrap: wrap !important;
+  row-gap: 12px !important;
+}
+.view[data-view="videos"] .lib-creator { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 100%; }
 .view[data-view="videos"] .lib-cr-avatar {
   width: 42px; height: 42px; flex: none; border-radius: 50%;
   background: var(--primary); background-size: cover; background-position: center;
@@ -82721,9 +82757,12 @@ body:not([data-role="admin"]) .upf-field .upf-tags-wrap input#upTagsInput { font
    LOGO WATERMARK — seksi form upload (26 Jul 2026). Kartu ringkas: tombol pilih,
    nama file, preview + kontrol posisi/ukuran/transparansi.
    ========================================================================== */
-.upf-wmlogo-row { display: flex; align-items: center; gap: 10px; }
+/* Baris picker: kotak ter-pusat bergaris putus-putus (senada dropzone video/
+   thumbnail) supaya empty-state 'Belum ada logo' mengisi lebar dengan rapi,
+   bukan tombol+teks pendek yang menyisakan ruang kosong lebar (req user 2026-07-29). */
+.upf-wmlogo-row { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 18px 16px; border: 1.5px dashed var(--border-strong); border-radius: 12px; }
 .upf-wmlogo-row .btn { flex: 0 0 auto; }
-.upf-wmlogo-name { flex: 1; min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upf-wmlogo-name { flex: 0 1 auto; min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .upf-wmlogo-settings { display: flex; gap: 14px; align-items: flex-start; margin-top: 10px; }
 .upf-wmlogo-preview {
   width: 72px; height: 72px; object-fit: contain; flex: 0 0 auto;

@@ -64,5 +64,11 @@ export async function GET(req: Request) {
     wmLogo: v.wmLogo ?? null,
     desc: v.desc ?? null,
     category: v.category ?? null,
+    // Subtitle (Fase 2): sudah tersimpan di myVideos saat upload. Expose ke
+    // viewer link publik supaya CC muncul lintas-perangkat tanpa tabel terpisah.
+    // Aman: video ini sudah lolos gate publik/unlisted di atas; VTT = teks caption
+    // yang memang untuk ditonton (bukan data sensitif).
+    subtitleVtt: v.subtitleVtt ?? null,
+    subtitleLang: v.subtitleLang ?? null,
   });
 }

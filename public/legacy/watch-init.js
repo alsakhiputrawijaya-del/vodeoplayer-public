@@ -154,6 +154,67 @@
         }
       }
 
+      // === SUBTITLE CC (Fase 2) — parser VTT minimal + overlay ter-sinkron ===
+      // watch publik tak load parseSubtitleVtt dari script.js → self-contained.
+      function parseVttCues(vtt) {
+        const out = [];
+        const blocks = String(vtt).replace(/\r/g, "").split(/\n\n+/);
+        for (const b of blocks) {
+          const lines = b.split("\n").filter((l) => l.trim());
+          const tl = lines.find((l) => l.includes("-->"));
+          if (!tl) continue;
+          const parts = tl.split("-->");
+          const start = vttSeconds(parts[0]);
+          const end = vttSeconds(parts[1]);
+          if (start == null || end == null || end < start) continue;
+          const text = lines.slice(lines.indexOf(tl) + 1).join("\n").trim();
+          if (text) out.push({ start, end, text });
+        }
+        return out;
+      }
+      // "HH:MM:SS.mmm" / "MM:SS.mmm" / "SS.mmm" → detik. Toleran koma desimal.
+      function vttSeconds(s) {
+        const clean = String(s).trim().split(/\s+/)[0];
+        if (!clean) return null;
+        let sec = 0;
+        for (const p of clean.split(":")) {
+          const n = parseFloat(p.replace(",", "."));
+          if (isNaN(n)) return null;
+          sec = sec * 60 + n;
+        }
+        return sec;
+      }
+      // Overlay CC di atas <video>, di-update lewat timeupdate. pointer-events
+      // none supaya tak menghalangi kontrol native. Guarded di pemanggil.
+      function attachCcOverlay(video, cues) {
+        const wrap = video.parentElement;
+        if (!wrap) return;
+        if (getComputedStyle(wrap).position === "static") wrap.style.position = "relative";
+        const el = document.createElement("div");
+        el.className = "watch-cc";
+        el.setAttribute("aria-live", "polite");
+        el.style.cssText =
+          "position:absolute;left:50%;bottom:9%;transform:translateX(-50%);max-width:88%;" +
+          "padding:.2em .55em;background:rgba(0,0,0,.72);color:#fff;border-radius:8px;" +
+          "font:600 clamp(14px,2.4vw,22px)/1.35 system-ui,sans-serif;text-align:center;" +
+          "white-space:pre-wrap;text-shadow:0 1px 2px rgba(0,0,0,.6);pointer-events:none;z-index:5;display:none;";
+        wrap.appendChild(el);
+        let cur = -1;
+        video.addEventListener("timeupdate", function () {
+          const t = video.currentTime;
+          const i = cues.findIndex((c) => t >= c.start && t <= c.end);
+          if (i === cur) return;
+          cur = i;
+          if (i < 0) {
+            el.style.display = "none";
+            el.textContent = "";
+          } else {
+            el.textContent = cues[i].text;
+            el.style.display = "block";
+          }
+        });
+      }
+
       // === ADS: fetch config dari Supabase kv (admin set via Ad Manager dashboard) ===
       async function fetchAdConfig() {
         try {
@@ -422,6 +483,19 @@
           try {
             if (typeof applyVideoEditCss === "function") applyVideoEditCss(v, found.meta.videoEdit || null);
           } catch (e) { console.warn("[watch] applyVideoEditCss:", e); }
+
+          // ── Subtitle CC (Fase 2) ─────────────────────────────────────────
+          // Video publik menyimpan subtitleVtt di myVideos → di-expose lewat
+          // /api/public-video. Tampilkan sbg overlay ter-sinkron. Self-contained
+          // (watch publik tak load parseSubtitleVtt dari script.js). Additive +
+          // guarded: kalau gagal, subtitle tak muncul TAPI video tetap jalan.
+          try {
+            const _vtt = found.meta.subtitleVtt;
+            if (_vtt && typeof _vtt === "string" && _vtt.trim()) {
+              const _cues = parseVttCues(_vtt);
+              if (_cues.length) attachCcOverlay(v, _cues);
+            }
+          } catch (e) { console.warn("[watch] subtitle overlay:", e); }
 
           // Tunggu ad config (max 2 detik — kalau lambat, skip iklan dan langsung putar)
           const adCfg = await Promise.race([

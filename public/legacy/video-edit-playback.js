@@ -174,6 +174,35 @@ async function _veBgmResolveUrl(audio) {
 // elemen, file asli tidak diubah.
 // 25 Jul 2026: crop "Bebas" TER-CENTER di box player (region dipotong clip-path
 // lalu digeser+diskalakan ke tengah via suffix transform — meniru cropView).
+// Bangun STRING CSS filter dari videoEdit (warna: brightness/contrast/saturasi/
+// temperature/preset/hue). Dipisah jadi fungsi sendiri supaya SATU sumber
+// kebenaran: dipakai playback (applyVideoEditCss) DAN bake ke file (transcodeVideo
+// pakai ctx.filter — sintaks sama persis). Kembalikan "" kalau tak ada edit.
+function veBuildEditFilter(edit) {
+  if (!edit) return "";
+  const bPct = (1 + (edit.brightness || 0) / 100) * 100;
+  const cPct = (1 + (edit.contrast || 0) / 100) * 100;
+  const sPct = (1 + (edit.saturation || 0) / 100) * 100;
+  let f = `brightness(${bPct}%) contrast(${cPct}%) saturate(${sPct}%)`;
+  const t = edit.temperature || 0;
+  if (t > 0)      f += ` sepia(${Math.min(0.4, t / 75)}) saturate(${1 + t / 200})`;
+  else if (t < 0) f += ` hue-rotate(${Math.max(-25, t)}deg) saturate(${1 - Math.abs(t) / 300})`;
+  switch (edit.preset) {
+    case "vintage":   f += " sepia(.4) contrast(1.05)"; break;
+    case "bw":        f += " grayscale(1)"; break;
+    case "cool":      f += " hue-rotate(-12deg) saturate(1.1)"; break;
+    case "warm":      f += " sepia(.18) saturate(1.18)"; break;
+    case "vivid":     f += " saturate(1.3) contrast(1.1)"; break;
+    case "cinematic": f += " contrast(1.15) saturate(.85) brightness(.95) sepia(.08)"; break;
+    case "dramatic":  f += " contrast(1.3) saturate(1.2) brightness(.92)"; break;
+    case "faded":     f += " contrast(.85) saturate(.7) brightness(1.05)"; break;
+    case "noir":      f += " grayscale(1) contrast(1.4) brightness(.9)"; break;
+  }
+  if (edit.hue) f += ` hue-rotate(${edit.hue}deg)`;
+  return f;
+}
+if (typeof window !== "undefined") window.veBuildEditFilter = veBuildEditFilter;
+
 function applyVideoEditCss(el, edit) {
   if (!el) return;
   // Simpan edit terakhir & hitung ulang otomatis: videoWidth/Height baru ada
@@ -229,28 +258,8 @@ function applyVideoEditCss(el, edit) {
     el.style.clipPath = "";
   }
   el.style.transform = `translate(${tx}%, ${ty}%) rotate(${edit.rotate || 0}deg) scale(${scale}) scaleX(${sx}) scaleY(${sy})${cropTf}`;
-  const bPct = (1 + (edit.brightness || 0) / 100) * 100;
-  const cPct = (1 + (edit.contrast || 0) / 100) * 100;
-  const sPct = (1 + (edit.saturation || 0) / 100) * 100;
-  let f = `brightness(${bPct}%) contrast(${cPct}%) saturate(${sPct}%)`;
-  const t = edit.temperature || 0;
-  if (t > 0)      f += ` sepia(${Math.min(0.4, t / 75)}) saturate(${1 + t / 200})`;
-  else if (t < 0) f += ` hue-rotate(${Math.max(-25, t)}deg) saturate(${1 - Math.abs(t) / 300})`;
-  switch (edit.preset) {
-    case "vintage":   f += " sepia(.4) contrast(1.05)"; break;
-    case "bw":        f += " grayscale(1)"; break;
-    case "cool":      f += " hue-rotate(-12deg) saturate(1.1)"; break;
-    case "warm":      f += " sepia(.18) saturate(1.18)"; break;
-    case "vivid":     f += " saturate(1.3) contrast(1.1)"; break;
-    case "cinematic": f += " contrast(1.15) saturate(.85) brightness(.95) sepia(.08)"; break;
-    case "dramatic":  f += " contrast(1.3) saturate(1.2) brightness(.92)"; break;
-    case "faded":     f += " contrast(.85) saturate(.7) brightness(1.05)"; break;
-    case "noir":      f += " grayscale(1) contrast(1.4) brightness(.9)"; break;
-  }
-  // 4 Jun 2026: Rona (hue) ikut diterapkan saat playback. (Sharpen = preview-only
-  // krn pakai SVG filter di editor; tidak dibawa ke player.)
-  if (edit.hue) f += ` hue-rotate(${edit.hue}deg)`;
-  el.style.filter = f;
+  // Filter warna: satu sumber kebenaran veBuildEditFilter (dipakai jg saat bake).
+  el.style.filter = veBuildEditFilter(edit);
   // 28 Jul 2026 (fix gap): TRIM & SPEED ditegakkan saat playback — tersimpan di
   // videoEdit oleh handler trim tapi dulu tak pernah diterapkan. Kini:
   // playbackRate = edit.speed, seek ke trimStart saat metadata siap, dan berhenti
