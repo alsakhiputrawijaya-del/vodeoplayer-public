@@ -2498,12 +2498,12 @@ function applyRoleToUI() {
       utb.hidden = false;
       if (utbTitle) utbTitle.textContent = "Premium · Kuota 100 GB/bulan";
       if (utbDesc)  utbDesc.textContent  = "Tanpa batas ukuran file & durasi — kuota 100 GB + 100 video / bulan (10x lipat Free). Reset tiap tanggal 1.";
-      if (dzLimit)  dzLimit.innerHTML  = 'Format: MP4, MOV, MKV · 100 GB + 100 video/bulan<br/><span class="dz-promo">( Kamu Premium — tanpa batas ukuran file &amp; durasi <svg class="dz-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17V8l4.5 3L12 5l4.5 6L21 8v9z"/><path d="M3 17h18"/></svg> )</span>';
+      if (dzLimit)  dzLimit.innerHTML  = 'Format: MP4, MOV, MKV, WebM · 100 GB + 100 video/bulan<br/><span class="dz-promo">( Kamu Premium — tanpa batas ukuran file &amp; durasi <svg class="dz-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17V8l4.5 3L12 5l4.5 6L21 8v9z"/><path d="M3 17h18"/></svg> )</span>';
     } else {
       utb.hidden = true;
       // G audit (2026-05-25): copy informatif + framing "Butuh lebih?" supaya
       // tidak terasa limit-pressure. (5 Jun 2026: kuota free 10 GB + 30 video.)
-      if (dzLimit) dzLimit.innerHTML = 'Format: MP4, MOV, MKV · 10 GB + 30 video/bulan<br/><span class="dz-promo">( Butuh lebih? Premium 100 GB + 100 video/bulan <svg class="dz-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17V8l4.5 3L12 5l4.5 6L21 8v9z"/><path d="M3 17h18"/></svg> )</span>';
+      if (dzLimit) dzLimit.innerHTML = 'Format: MP4, MOV, MKV, WebM · 10 GB + 30 video/bulan<br/><span class="dz-promo">( Butuh lebih? Premium 100 GB + 100 video/bulan <svg class="dz-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17V8l4.5 3L12 5l4.5 6L21 8v9z"/><path d="M3 17h18"/></svg> )</span>';
     }
   }
 
@@ -5636,7 +5636,7 @@ const I18N = {
     "upload.desc":               "Share your creation to the world.",
     "upload.pickvideo":          "Pick a video",
     "upload.dragvideo":          "or drag here",
-    "upload.maxsize":            "MP4, MOV, MKV — no size or duration limit",
+    "upload.maxsize":            "MP4, MOV, MKV, WebM — no size or duration limit",
     "upload.titlefield":         "Video Title",
     "upload.titleph":            "Give a catchy title...",
     "upload.descfield":          "Description",
@@ -6614,8 +6614,8 @@ const I18N = {
     "help.auditdel.q":            "Can it be deleted / edited?",
     "help.auditdel.a":            "No. Audit log is permanent for accountability. Read-only and filter-only.",
     "help.upload.q":              "How do I upload a video?",
-    "help.upload.a.tail":         "in the sidebar, choose a video file (MP4/MOV/MKV/WebM, max 500 MB), fill in title & description, then click",
-    "help.upload.formats":        "Playly supports MP4, MOV, MKV, WebM, and AVI. Max resolution 4K, max duration 4 hours.",
+    "help.upload.a.tail":         "in the sidebar, choose a video file (MP4/MOV/MKV/WebM), fill in title & description, then click",
+    "help.upload.formats":        "Playly supports MP4, MOV, MKV, WebM. Max resolution 4K, max duration 4 hours.",
     "help.cloudsync":             "Automatically via cloud (Supabase kv). Open in another browser/phone with the same account — all videos & data will appear.",
     "help.editprofile.q":         "How do I edit my profile?",
     "help.editprofile.a.head":    "Click your avatar at the top right →",
@@ -6632,7 +6632,7 @@ const I18N = {
     "user.upload.nofilecap":      "No file-size or duration cap — upload files > 1 GB & > 1 hour freely. Quota 100 GB + 100 videos/month.",
     "user.upload.fromurl":        "From URL",
     "user.upload.dropor":         "or drag it here",
-    "user.upload.formats":        "MP4, MOV, MKV — Free: 10 GB + 30 video/month · Premium: 100 GB + 100 video/month",
+    "user.upload.formats":        "MP4, MOV, MKV, WebM — Free: 10 GB + 30 video/month · Premium: 100 GB + 100 video/month",
     "user.upload.url.supported":  "Supported: YouTube, Vimeo, TikTok, Dailymotion, Twitch, direct .mp4/.webm URLs.",
     "user.upload.public.tail":    "— everyone can find & watch.",
     "user.live.desc":             "Stream live to your followers in real-time. Premium feature.",
@@ -7477,7 +7477,7 @@ const I18N = {
     "upload.desc":               "Bagikan kreasimu ke seluruh dunia.",
     "upload.pickvideo":          "Pilih video",
     "upload.dragvideo":          "atau tarik ke sini",
-    "upload.maxsize":            "MP4, MOV, MKV — tidak ada batas ukuran/durasi",
+    "upload.maxsize":            "MP4, MOV, MKV, WebM — tidak ada batas ukuran/durasi",
     "upload.titlefield":         "Judul Video",
     "upload.titleph":            "Beri judul yang menarik...",
     "upload.descfield":          "Deskripsi",
@@ -8519,8 +8519,8 @@ const I18N = {
     "help.auditdel.q":            "Bisakah dihapus / diedit?",
     "help.auditdel.a":            "Tidak. Audit log permanen untuk akuntabilitas. Read-only dan filter-only.",
     "help.upload.q":              "Bagaimana cara upload video?",
-    "help.upload.a.tail":         "di sidebar, pilih file video (MP4/MOV/MKV/WebM, maks 500 MB), isi judul & deskripsi, lalu klik",
-    "help.upload.formats":        "Playly mendukung MP4, MOV, MKV, WebM, dan AVI. Resolusi maks 4K, durasi maks 4 jam.",
+    "help.upload.a.tail":         "di sidebar, pilih file video (MP4/MOV/MKV/WebM), isi judul & deskripsi, lalu klik",
+    "help.upload.formats":        "Playly mendukung MP4, MOV, MKV, WebM. Resolusi maks 4K, durasi maks 4 jam.",
     "help.cloudsync":             "Otomatis via cloud (Supabase kv). Buka di browser/HP lain dengan akun yang sama — semua video & data akan muncul.",
     "help.editprofile.q":         "Bagaimana cara edit profil?",
     "help.editprofile.a.head":    "Klik avatar di pojok kanan atas →",
@@ -8537,7 +8537,7 @@ const I18N = {
     "user.upload.nofilecap":      "Tanpa batas ukuran file & durasi — unggah file > 1 GB & > 1 jam bebas. Kuota 100 GB + 100 video/bulan.",
     "user.upload.fromurl":        "Dari URL",
     "user.upload.dropor":         "atau seret ke sini",
-    "user.upload.formats":        "MP4, MOV, MKV — Gratis: 10 GB + 30 video/bulan · Premium: 100 GB + 100 video/bulan",
+    "user.upload.formats":        "MP4, MOV, MKV, WebM — Gratis: 10 GB + 30 video/bulan · Premium: 100 GB + 100 video/bulan",
     "user.upload.url.supported":  "Didukung: YouTube, Vimeo, TikTok, Dailymotion, Twitch, URL .mp4/.webm langsung.",
     "user.upload.public.tail":    "— semua orang bisa cari & tonton.",
     "user.live.desc":             "Stream live ke followers kamu real-time. Fitur Premium.",
@@ -9304,7 +9304,7 @@ const I18N = {
     "upload.desc":               "Kongsi ciptaan anda kepada dunia.",
     "upload.pickvideo":          "Pilih video",
     "upload.dragvideo":          "atau seret ke sini",
-    "upload.maxsize":            "MP4, MOV, MKV — tiada had saiz atau tempoh",
+    "upload.maxsize":            "MP4, MOV, MKV, WebM — tiada had saiz atau tempoh",
     "upload.titlefield":         "Tajuk Video",
     "upload.titleph":            "Berikan tajuk yang menarik...",
     "upload.descfield":          "Penerangan",
@@ -10050,8 +10050,8 @@ const I18N = {
     "help.auditdel.q":            "Bolehkah ia dipadam / diubah?",
     "help.auditdel.a":            "Tidak. Log audit kekal untuk akauntabiliti. Baca-sahaja dan tapis-sahaja.",
     "help.upload.q":              "Bagaimana saya muat naik video?",
-    "help.upload.a.tail":         "di bar sisi, pilih fail video (MP4/MOV/MKV/WebM, maks 500 MB), isi tajuk & penerangan, kemudian klik",
-    "help.upload.formats":        "Playly menyokong MP4, MOV, MKV, WebM, dan AVI. Resolusi maks 4K, tempoh maks 4 jam.",
+    "help.upload.a.tail":         "di bar sisi, pilih fail video (MP4/MOV/MKV/WebM), isi tajuk & penerangan, kemudian klik",
+    "help.upload.formats":        "Playly menyokong MP4, MOV, MKV, WebM. Resolusi maks 4K, tempoh maks 4 jam.",
     "help.cloudsync":             "Automatik melalui awan (Supabase kv). Buka di pelayar/telefon lain dengan akaun yang sama — semua video & data akan muncul.",
     "help.editprofile.q":         "Bagaimana saya ubah profil saya?",
     "help.editprofile.a.head":    "Klik avatar anda di kanan atas →",
@@ -10067,7 +10067,7 @@ const I18N = {
     "user.upload.nofilecap":      "Tiada had saiz fail & tempoh — muat naik fail > 1 GB & > 1 jam bebas. Kuota 100 GB + 100 video/bulan.",
     "user.upload.fromurl":        "Daripada URL",
     "user.upload.dropor":         "atau seret ke sini",
-    "user.upload.formats":        "MP4, MOV, MKV — Percuma: 10 GB + 30 video/bulan · Premium: 100 GB + 100 video/bulan",
+    "user.upload.formats":        "MP4, MOV, MKV, WebM — Percuma: 10 GB + 30 video/bulan · Premium: 100 GB + 100 video/bulan",
     "user.upload.url.supported":  "Disokong: YouTube, Vimeo, TikTok, Dailymotion, Twitch, URL .mp4/.webm langsung.",
     "user.upload.public.tail":    "— semua orang boleh cari & tonton.",
     "user.live.desc":             "Siar langsung kepada pengikut anda secara masa nyata. Ciri Premium.",
@@ -10874,7 +10874,7 @@ const I18N = {
     "upload.desc":               "あなたの作品を世界へ。",
     "upload.pickvideo":          "動画を選択",
     "upload.dragvideo":          "またはここにドラッグ",
-    "upload.maxsize":            "MP4、MOV、MKV — サイズや時間の制限なし",
+    "upload.maxsize":            "MP4、MOV、MKV、WebM — サイズや時間の制限なし",
     "upload.titlefield":         "動画タイトル",
     "upload.titleph":            "魅力的なタイトルを付けましょう...",
     "upload.descfield":          "説明",
@@ -11620,8 +11620,8 @@ const I18N = {
     "help.auditdel.q":            "削除/編集できますか？",
     "help.auditdel.a":            "いいえ。監査ログは説明責任のために永続的。読み取り専用、フィルタ専用。",
     "help.upload.q":              "動画をアップロードするには？",
-    "help.upload.a.tail":         "サイドバー内、動画ファイル（MP4/MOV/MKV/WebM、最大500 MB）を選択、タイトルと説明を入力、その後クリック",
-    "help.upload.formats":        "PlaylyはMP4、MOV、MKV、WebM、AVIをサポート。最大解像度4K、最大4時間。",
+    "help.upload.a.tail":         "サイドバー内、動画ファイル（MP4/MOV/MKV/WebM）を選択、タイトルと説明を入力、その後クリック",
+    "help.upload.formats":        "PlaylyはMP4、MOV、MKV、WebMをサポート。最大解像度4K、最大4時間。",
     "help.cloudsync":             "クラウド（Supabase kv）経由で自動。同じアカウントで別のブラウザ/電話で開く — 全動画とデータが表示。",
     "help.editprofile.q":         "プロフィールを編集するには？",
     "help.editprofile.a.head":    "右上のアバターをクリック →",
@@ -11637,7 +11637,7 @@ const I18N = {
     "user.upload.nofilecap":      "ファイルサイズ・時間制限なし — 1 GB超・1時間超のファイルも自由にアップロード。月100 GB + 100動画のクォータ。",
     "user.upload.fromurl":        "URLから",
     "user.upload.dropor":         "またはここにドラッグ",
-    "user.upload.formats":        "MP4、MOV、MKV — 無料：月10 GB + 30動画 · プレミアム：月100 GB + 100動画",
+    "user.upload.formats":        "MP4、MOV、MKV、WebM — 無料：月10 GB + 30動画 · プレミアム：月100 GB + 100動画",
     "user.upload.url.supported":  "サポート：YouTube、Vimeo、TikTok、Dailymotion、Twitch、直接 .mp4/.webm URL。",
     "user.upload.public.tail":    "— 誰でも見つけて視聴可能。",
     "user.live.desc":             "フォロワーへリアルタイムでライブ配信。プレミアム機能。",
@@ -12444,7 +12444,7 @@ const I18N = {
     "upload.desc":               "شارك إبداعك مع العالم.",
     "upload.pickvideo":          "اختر فيديو",
     "upload.dragvideo":          "أو اسحب هنا",
-    "upload.maxsize":            "MP4، MOV، MKV — لا يوجد حد للحجم أو المدة",
+    "upload.maxsize":            "MP4، MOV، MKV، WebM — لا يوجد حد للحجم أو المدة",
     "upload.titlefield":         "عنوان الفيديو",
     "upload.titleph":            "أعطه عنوانًا جذابًا...",
     "upload.descfield":          "الوصف",
@@ -13190,8 +13190,8 @@ const I18N = {
     "help.auditdel.q":            "هل يمكن حذفه / تعديله؟",
     "help.auditdel.a":            "لا. سجل التدقيق دائم للمساءلة. للقراءة فقط والتصفية فقط.",
     "help.upload.q":              "كيف أرفع فيديو؟",
-    "help.upload.a.tail":         "في الشريط الجانبي، اختر ملف فيديو (MP4/MOV/MKV/WebM، بحد أقصى 500 ميجا)، املأ العنوان والوصف، ثم انقر",
-    "help.upload.formats":        "يدعم Playly MP4، MOV، MKV، WebM، و AVI. أقصى دقة 4K، أقصى مدة 4 ساعات.",
+    "help.upload.a.tail":         "في الشريط الجانبي، اختر ملف فيديو (MP4/MOV/MKV/WebM)، املأ العنوان والوصف، ثم انقر",
+    "help.upload.formats":        "يدعم Playly MP4، MOV، MKV، WebM. أقصى دقة 4K، أقصى مدة 4 ساعات.",
     "help.cloudsync":             "تلقائيًا عبر السحابة (Supabase kv). افتح في متصفح/هاتف آخر بنفس الحساب — ستظهر جميع الفيديوهات والبيانات.",
     "help.editprofile.q":         "كيف أعدل ملفي الشخصي؟",
     "help.editprofile.a.head":    "انقر على صورتك الرمزية في أعلى اليمين →",
@@ -13207,7 +13207,7 @@ const I18N = {
     "user.upload.nofilecap":      "لا حد لحجم الملف أو المدة — ارفع ملفات > 1 جيجا و > 1 ساعة بحرية. حصة 100 جيجا + 100 فيديو/شهر.",
     "user.upload.fromurl":        "من URL",
     "user.upload.dropor":         "أو اسحب هنا",
-    "user.upload.formats":        "MP4، MOV، MKV — مجاني: 10 جيجا + 30 فيديو/شهر · مميز: 100 جيجا + 100 فيديو/شهر",
+    "user.upload.formats":        "MP4، MOV، MKV، WebM — مجاني: 10 جيجا + 30 فيديو/شهر · مميز: 100 جيجا + 100 فيديو/شهر",
     "user.upload.url.supported":  "مدعوم: YouTube، Vimeo، TikTok، Dailymotion، Twitch، روابط .mp4/.webm المباشرة.",
     "user.upload.public.tail":    "— يمكن للجميع العثور عليه ومشاهدته.",
     "user.live.desc":             "بث مباشر لمتابعيك في الوقت الفعلي. ميزة المميز.",
@@ -14014,7 +14014,7 @@ const I18N = {
     "upload.desc":               "把你的作品分享给世界。",
     "upload.pickvideo":          "选择视频",
     "upload.dragvideo":          "或拖拽到此处",
-    "upload.maxsize":            "MP4、MOV、MKV — 无文件大小或时长限制",
+    "upload.maxsize":            "MP4、MOV、MKV、WebM — 无文件大小或时长限制",
     "upload.titlefield":         "视频标题",
     "upload.titleph":            "起一个吸引人的标题...",
     "upload.descfield":          "描述",
@@ -14760,8 +14760,8 @@ const I18N = {
     "help.auditdel.q":            "可以删除/编辑吗？",
     "help.auditdel.a":            "不能。审计日志为问责而永久保留。仅可读和仅可筛选。",
     "help.upload.q":              "如何上传视频？",
-    "help.upload.a.tail":         "在侧边栏中，选择视频文件（MP4/MOV/MKV/WebM，最大 500 MB），填写标题和描述，然后点击",
-    "help.upload.formats":        "Playly 支持 MP4、MOV、MKV、WebM 和 AVI。最高分辨率 4K，最长时长 4 小时。",
+    "help.upload.a.tail":         "在侧边栏中，选择视频文件（MP4/MOV/MKV/WebM），填写标题和描述，然后点击",
+    "help.upload.formats":        "Playly 支持 MP4、MOV、MKV、WebM。最高分辨率 4K，最长时长 4 小时。",
     "help.cloudsync":             "通过云（Supabase kv）自动同步。在另一个浏览器/手机上使用相同账户打开 — 所有视频和数据都会出现。",
     "help.editprofile.q":         "如何编辑我的资料？",
     "help.editprofile.a.head":    "点击右上角的头像 →",
@@ -14777,7 +14777,7 @@ const I18N = {
     "user.upload.nofilecap":      "无文件大小和时长限制 — 自由上传 > 1 GB 和 > 1 小时的文件。每月配额 100 GB + 100 视频。",
     "user.upload.fromurl":        "从 URL",
     "user.upload.dropor":         "或拖拽到这里",
-    "user.upload.formats":        "MP4、MOV、MKV — 免费版：每月 10 GB + 30 视频 · 高级版：每月 100 GB + 100 视频",
+    "user.upload.formats":        "MP4、MOV、MKV、WebM — 免费版：每月 10 GB + 30 视频 · 高级版：每月 100 GB + 100 视频",
     "user.upload.url.supported":  "支持：YouTube、Vimeo、TikTok、Dailymotion、Twitch、直接 .mp4/.webm URL。",
     "user.upload.public.tail":    "— 任何人都可以发现并观看。",
     "user.live.desc":             "实时直播给你的粉丝。高级功能。",
@@ -15584,7 +15584,7 @@ const I18N = {
     "upload.desc":               "당신의 작품을 세상과 공유하세요.",
     "upload.pickvideo":          "동영상 선택",
     "upload.dragvideo":          "또는 여기로 끌어오기",
-    "upload.maxsize":            "MP4, MOV, MKV — 크기나 시간 제한 없음",
+    "upload.maxsize":            "MP4, MOV, MKV, WebM — 크기나 시간 제한 없음",
     "upload.titlefield":         "동영상 제목",
     "upload.titleph":            "매력적인 제목을 지어주세요...",
     "upload.descfield":          "설명",
@@ -16330,8 +16330,8 @@ const I18N = {
     "help.auditdel.q":            "삭제/편집할 수 있나요?",
     "help.auditdel.a":            "아니요. 감사 로그는 책임을 위해 영구적입니다. 읽기 전용 및 필터 전용.",
     "help.upload.q":              "동영상을 어떻게 업로드하나요?",
-    "help.upload.a.tail":         "사이드바에서, 동영상 파일 (MP4/MOV/MKV/WebM, 최대 500 MB) 선택, 제목과 설명 입력 후 클릭",
-    "help.upload.formats":        "Playly는 MP4, MOV, MKV, WebM 및 AVI를 지원합니다. 최대 해상도 4K, 최대 시간 4시간.",
+    "help.upload.a.tail":         "사이드바에서, 동영상 파일 (MP4/MOV/MKV/WebM) 선택, 제목과 설명 입력 후 클릭",
+    "help.upload.formats":        "Playly는 MP4, MOV, MKV, WebM을 지원합니다. 최대 해상도 4K, 최대 시간 4시간.",
     "help.cloudsync":             "클라우드 (Supabase kv)를 통해 자동. 같은 계정으로 다른 브라우저/전화에서 열기 — 모든 동영상과 데이터가 표시됩니다.",
     "help.editprofile.q":         "프로필을 어떻게 편집하나요?",
     "help.editprofile.a.head":    "오른쪽 상단의 아바타 클릭 →",
@@ -16347,7 +16347,7 @@ const I18N = {
     "user.upload.nofilecap":      "파일 크기·시간 제한 없음 — > 1 GB 및 > 1 시간 파일도 자유롭게 업로드. 월 100 GB + 100 동영상 할당량.",
     "user.upload.fromurl":        "URL에서",
     "user.upload.dropor":         "또는 여기로 끌어오기",
-    "user.upload.formats":        "MP4, MOV, MKV — 무료: 월 10 GB + 30 동영상 · 프리미엄: 월 100 GB + 100 동영상",
+    "user.upload.formats":        "MP4, MOV, MKV, WebM — 무료: 월 10 GB + 30 동영상 · 프리미엄: 월 100 GB + 100 동영상",
     "user.upload.url.supported":  "지원: YouTube, Vimeo, TikTok, Dailymotion, Twitch, 직접 .mp4/.webm URL.",
     "user.upload.public.tail":    "— 누구나 찾고 시청할 수 있습니다.",
     "user.live.desc":             "팔로워에게 실시간 라이브 스트림. 프리미엄 기능.",
@@ -17154,7 +17154,7 @@ const I18N = {
     "upload.desc":               "Comparte tu creación con el mundo.",
     "upload.pickvideo":          "Elegir un video",
     "upload.dragvideo":          "o arrástralo aquí",
-    "upload.maxsize":            "MP4, MOV, MKV — sin límite de tamaño o duración",
+    "upload.maxsize":            "MP4, MOV, MKV, WebM — sin límite de tamaño o duración",
     "upload.titlefield":         "Título del Video",
     "upload.titleph":            "Da un título atractivo...",
     "upload.descfield":          "Descripción",
@@ -17900,8 +17900,8 @@ const I18N = {
     "help.auditdel.q":            "¿Se puede eliminar / editar?",
     "help.auditdel.a":            "No. El registro de auditoría es permanente para responsabilidad. Solo lectura y solo filtro.",
     "help.upload.q":              "¿Cómo subo un video?",
-    "help.upload.a.tail":         "en la barra lateral, elige un archivo de video (MP4/MOV/MKV/WebM, máx 500 MB), llena título y descripción, luego haz clic",
-    "help.upload.formats":        "Playly soporta MP4, MOV, MKV, WebM y AVI. Resolución máx 4K, duración máx 4 horas.",
+    "help.upload.a.tail":         "en la barra lateral, elige un archivo de video (MP4/MOV/MKV/WebM), llena título y descripción, luego haz clic",
+    "help.upload.formats":        "Playly soporta MP4, MOV, MKV, WebM. Resolución máx 4K, duración máx 4 horas.",
     "help.cloudsync":             "Automáticamente vía nube (Supabase kv). Abre en otro navegador/teléfono con la misma cuenta — todos los videos y datos aparecerán.",
     "help.editprofile.q":         "¿Cómo edito mi perfil?",
     "help.editprofile.a.head":    "Haz clic en tu avatar arriba a la derecha →",
@@ -17917,7 +17917,7 @@ const I18N = {
     "user.upload.nofilecap":      "Sin límite de tamaño ni duración — sube archivos > 1 GB y > 1 hora libremente. Cuota 100 GB + 100 videos/mes.",
     "user.upload.fromurl":        "Desde URL",
     "user.upload.dropor":         "o arrástralo aquí",
-    "user.upload.formats":        "MP4, MOV, MKV — Gratis: 10 GB + 30 video/mes · Premium: 100 GB + 100 video/mes",
+    "user.upload.formats":        "MP4, MOV, MKV, WebM — Gratis: 10 GB + 30 video/mes · Premium: 100 GB + 100 video/mes",
     "user.upload.url.supported":  "Soportado: YouTube, Vimeo, TikTok, Dailymotion, Twitch, URLs directas .mp4/.webm.",
     "user.upload.public.tail":    "— todos pueden encontrarlo y verlo.",
     "user.live.desc":             "Transmite en vivo a tus seguidores en tiempo real. Función Premium.",
@@ -54768,9 +54768,23 @@ function freeTierQuotaWarn(fileSize) {
   }
 }
 
+// Format video yang DIDUKUNG (selaras label UI: MP4, MOV, MKV, WebM). WebM ikut
+// karena itu format hasil transcode aplikasi sendiri. Cek by-ekstensi ATAU by-MIME
+// (sebagian file MP4 punya MIME kosong → ekstensi jadi penyelamat, & sebaliknya).
+const ALLOWED_VIDEO_EXT = ["mp4", "mov", "mkv", "webm"];
+const ALLOWED_VIDEO_MIME = ["video/mp4", "video/quicktime", "video/x-matroska", "video/webm"];
 async function handlePickedFile(file) {
   if (!file) return;
-  if (!file.type.startsWith("video/")) return toast("⚠️ File harus berupa video", "warning");
+  const ext = (String(file.name || "").split(".").pop() || "").toLowerCase();
+  const mime = String(file.type || "").toLowerCase();
+  const okByExt = ALLOWED_VIDEO_EXT.includes(ext);
+  const okByMime = ALLOWED_VIDEO_MIME.includes(mime);
+  // Bukan video sama sekali → pesan umum. Video tapi container tak didukung
+  // (mis. .avi/.flv/.wmv) → pesan spesifik + sebut format yang boleh.
+  if (!mime.startsWith("video/") && !okByExt) return toast("⚠️ File harus berupa video", "warning");
+  if (!okByExt && !okByMime) {
+    return toast(`⚠️ Format ${ext ? "." + ext : mime || "ini"} belum didukung. Pakai MP4, MOV, MKV, atau WebM.`, "warning");
+  }
 
   // === FREE TIER LIMITS (per request 2026-05-03 — Free vs Premium) ===
   // Kuota BULANAN (per request 2026-05-03; angka diperbarui 5 Jun 2026):
