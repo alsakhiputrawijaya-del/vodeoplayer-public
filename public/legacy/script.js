@@ -57451,6 +57451,66 @@ document.addEventListener("click", (e) => {
   if (typeof openVideoEditModal === "function" && __libInlineVid != null) openVideoEditModal(__libInlineVid);
 });
 
+// Upload ulang / pulihkan FILE video yang hilang TANPA kehilangan id/statistik/status.
+// Beda dari upload biasa (yang bikin entri BARU + views/likes/komentar RESET ke 0):
+// ini mengganti file di R2 pada id yang SAMA → views, suka, komentar, adminStatus,
+// tanggal, dan link tetap SAMA. Dipakai dari overlay "video tidak tersedia".
+async function restoreVideoFile(v, overlayEl) {
+  if (!v || v.id == null) return;
+  const ALLOWED_EXT = ["mp4", "mov", "mkv", "webm"];
+  const ALLOWED_MIME = ["video/mp4", "video/quicktime", "video/x-matroska", "video/webm"];
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = ".mp4,.mov,.mkv,.webm,video/mp4,video/quicktime,video/x-matroska,video/webm";
+  inp.style.display = "none";
+  document.body.appendChild(inp);
+  inp.addEventListener("change", async () => {
+    const file = inp.files && inp.files[0];
+    try { inp.remove(); } catch {}
+    if (!file) return;
+    const ext = (String(file.name).split(".").pop() || "").toLowerCase();
+    const mime = String(file.type || "").toLowerCase();
+    if (!(ALLOWED_EXT.includes(ext) || ALLOWED_MIME.includes(mime))) {
+      if (typeof toast === "function") toast("⚠️ Format tidak didukung. Pakai MP4, MOV, MKV, atau WebM.", "warning");
+      return;
+    }
+    if (!window.cloudSync || !window.cloudSync.uploadVideoBlob) {
+      if (typeof toast === "function") toast("⚠️ Sinkron cloud tak tersedia — coba lagi nanti.", "error");
+      return;
+    }
+    try {
+      if (typeof toast === "function") toast("⏳ Memproses & mengunggah ulang…", "info");
+      // Bake watermark brand (konsisten dgn upload biasa); gagal → pakai file asli.
+      let up = file;
+      try {
+        if (typeof transcodeVideo === "function" && typeof buildPlaylyWatermark === "function") {
+          const uname = v.creator || (typeof user !== "undefined" && user && user.username) || "";
+          const brand = await buildPlaylyWatermark(uname);
+          const baked = await transcodeVideo(file, { watermark: { img: brand, pos: "br", size: 12, opacity: 92, animate: true } });
+          if (baked && baked.blob) up = new File([baked.blob], (String(file.name).replace(/\.[^.]+$/, "") || "video") + "." + baked.ext, { type: baked.mime });
+        }
+      } catch (e) { console.warn("[restore] bake watermark gagal, pakai file asli:", e); }
+      // Simpan lokal (IDB) + upload ke R2 dgn ID SAMA → file pulih di URL yang sama.
+      try { if (typeof saveVideoBlob === "function") await saveVideoBlob(v.id, up); } catch (e) { console.warn("[restore] IDB:", e); }
+      const r = await window.cloudSync.uploadVideoBlob(v.id, up);
+      if (!r || !r.ok || !r.url) { if (typeof toast === "function") toast("❌ Upload ke cloud gagal — coba lagi.", "error"); return; }
+      // Ganti HANYA file — id/views/likes/komentar/adminStatus/createdAt TETAP.
+      v.videoUrl = r.url;
+      v.fileSize = up.size;
+      v.sourceType = "file";
+      try { saveState(); } catch {}
+      try { if (typeof refreshAllVideoGrids === "function") refreshAllVideoGrids(); } catch {}
+      if (typeof toast === "function") toast("✓ Video dipulihkan — statistik & status tetap sama.", "success");
+      try { if (overlayEl) overlayEl.remove(); } catch {}
+      try { if (typeof openLibInlinePlayer === "function") openLibInlinePlayer(v.id); } catch {} // buka ulang, file kini ada
+    } catch (e) {
+      console.error("[restore] gagal:", e);
+      if (typeof toast === "function") toast("❌ Gagal memulihkan: " + (e && e.message ? e.message : e), "error");
+    }
+  }, { once: true });
+  inp.click();
+}
+
 async function openLibInlinePlayer(id) {
   const v = findVideo(id);
   if (!v) return;
@@ -57657,11 +57717,18 @@ async function openLibInlinePlayer(id) {
     ov.className = "lib-ghost-overlay";
     ov.style.cssText = "position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);text-align:center;padding:20px";
     ov.innerHTML =
-      '<div style="max-width:340px;color:#fff">' +
+      '<div style="max-width:360px;color:#fff">' +
       '<div style="font-size:34px;margin-bottom:8px">⚠️</div>' +
-      '<p style="margin:0 0 14px;font-size:14px;line-height:1.5;color:rgba(255,255,255,.9)">Video ini tidak tersedia lagi — kemungkinan sudah dihapus dari server.</p>' +
+      '<p style="margin:0 0 14px;font-size:14px;line-height:1.5;color:rgba(255,255,255,.9)">Video ini tidak tersedia lagi — file-nya sudah tak ada di server. Kamu bisa <b>upload ulang file-nya</b> (statistik &amp; status TETAP), atau hapus entri ini.</p>' +
+      '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
+      '<button type="button" class="lib-ghost-reup" style="padding:9px 18px;border-radius:8px;border:0;background:#2f7d4f;color:#fff;font-weight:600;cursor:pointer">📤 Upload ulang file</button>' +
       '<button type="button" class="lib-ghost-rm" style="padding:9px 18px;border-radius:8px;border:0;background:#b0413e;color:#fff;font-weight:600;cursor:pointer">Hapus dari daftar</button>' +
+      '</div>' +
       '</div>';
+    // Upload ulang: pulihkan file di id yg SAMA → statistik & status tetap (bukan entri baru).
+    ov.querySelector(".lib-ghost-reup").addEventListener("click", () => {
+      if (typeof restoreVideoFile === "function") restoreVideoFile(v, ov);
+    });
     ov.querySelector(".lib-ghost-rm").addEventListener("click", () => {
       // Pakai modal bertema app (openConfirm) — BUKAN confirm() bawaan browser
       // (dialog OS mentah "localhost says", tak menyatu dgn desain).
