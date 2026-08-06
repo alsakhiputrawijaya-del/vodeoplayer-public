@@ -5425,7 +5425,7 @@ const I18N = {
     "up.makeRef": "Generate Suggestions",
     "up.subtitle": "Subtitle",
     "up.autoSubtitle": "Auto-generate with AI",
-    "up.subtitleDesc": "Auto-generate subtitles from the video audio using Whisper Tiny.",
+    "up.subtitleDesc": "Auto-generate subtitles from the video audio using Whisper.",
     "up.generateNow": "Generate Now",
     "up.manualUpload": "Manual Upload",
     "up.haveFile": "Already have a",
@@ -5666,7 +5666,7 @@ const I18N = {
     "upload.ai.note.locked":     "✨ Auto title, description & tag ideas — available on Premium.",
     "upload.ai.note.quota":      "✨ Premium generates title / description / tag ideas from your topic.",
     "upload.sub.autogen":        "Auto-generate AI",
-    "upload.sub.autogen.desc":   "Auto-generate subtitles from the video's audio using Whisper Tiny.",
+    "upload.sub.autogen.desc":   "Auto-generate subtitles from the video's audio using Whisper.",
     "upload.sub.gen.now":        "Generate Now",
     "upload.sub.note.locked":    "✨ Auto subtitle from your video's audio — available on Premium.",
     "upload.sub.note.quota":     "🎁 {n} of 3 free runs left this month",
@@ -7278,7 +7278,7 @@ const I18N = {
     "up.makeRef": "Buat Referensi",
     "up.subtitle": "Subtitle",
     "up.autoSubtitle": "Buat Otomatis AI",
-    "up.subtitleDesc": "Buat subtitle otomatis dari audio video pakai Whisper Tiny.",
+    "up.subtitleDesc": "Buat subtitle otomatis dari audio video pakai Whisper.",
     "up.generateNow": "Buat Sekarang",
     "up.manualUpload": "Unggah Manual",
     "up.haveFile": "Sudah punya file",
@@ -7507,7 +7507,7 @@ const I18N = {
     "upload.ai.note.locked":     "✨ Saran judul, deskripsi & tag otomatis — tersedia di Premium.",
     "upload.ai.note.quota":      "✨ Premium bikin saran judul / deskripsi / tag dari topik. Coba upgrade kapan-kapan.",
     "upload.sub.autogen":        "Buat Otomatis AI",
-    "upload.sub.autogen.desc":   "Buat subtitle otomatis dari audio video pakai Whisper Tiny.",
+    "upload.sub.autogen.desc":   "Buat subtitle otomatis dari audio video pakai Whisper.",
     "upload.sub.gen.now":        "Buat Sekarang",
     "upload.sub.note.locked":    "✨ Subtitle otomatis dari audio video — tersedia di Premium.",
     "upload.sub.note.quota":     "🎁 Sisa {n} dari 3 percobaan gratis bulan ini",
@@ -8933,7 +8933,7 @@ const I18N = {
     "upload.ai.assist.desc": "Masukkan tajuk/topik — AI cadangkan tajuk, penerangan & tag sedia guna.",
     "upload.ai.gen.btn": "Jana Idea",
     "upload.sub.autogen": "Jana Auto AI",
-    "upload.sub.autogen.desc": "Jana sari kata automatik daripada audio video menggunakan Whisper Tiny.",
+    "upload.sub.autogen.desc": "Jana sari kata automatik daripada audio video menggunakan Whisper.",
     "upload.sub.gen.now": "Jana Sekarang",
     "subprev.see": "Lihat",
     "subprev.apply": "Guna",
@@ -9109,7 +9109,7 @@ const I18N = {
     "up.makeRef": "Jana Cadangan",
     "up.subtitle": "Sari Kata",
     "up.autoSubtitle": "Jana Auto dengan AI",
-    "up.subtitleDesc": "Jana sari kata automatik daripada audio video menggunakan Whisper Tiny.",
+    "up.subtitleDesc": "Jana sari kata automatik daripada audio video menggunakan Whisper.",
     "up.generateNow": "Jana Sekarang",
     "up.manualUpload": "Muat Naik Manual",
     "up.haveFile": "Sudah ada fail",
@@ -10503,7 +10503,7 @@ const I18N = {
     "upload.ai.assist.desc": "タイトル/トピックを入力 — AIがタイトル・説明・タグを提案します。",
     "upload.ai.gen.btn": "アイデアを生成",
     "upload.sub.autogen": "AIで自動生成",
-    "upload.sub.autogen.desc": "Whisper Tiny を使って動画の音声から字幕を自動生成します。",
+    "upload.sub.autogen.desc": "Whisper を使って動画の音声から字幕を自動生成します。",
     "upload.sub.gen.now": "今すぐ生成",
     "subprev.see": "表示",
     "subprev.apply": "適用",
@@ -10679,7 +10679,7 @@ const I18N = {
     "up.makeRef": "提案を生成",
     "up.subtitle": "字幕",
     "up.autoSubtitle": "AIで自動生成",
-    "up.subtitleDesc": "Whisper Tiny を使って動画の音声から字幕を自動生成します。",
+    "up.subtitleDesc": "Whisper を使って動画の音声から字幕を自動生成します。",
     "up.generateNow": "今すぐ生成",
     "up.manualUpload": "手動アップロード",
     "up.haveFile": "すでにファイルがある場合",
@@ -12073,7 +12073,7 @@ const I18N = {
     "upload.ai.assist.desc": "أدخل عنوانًا/موضوعًا — يقترح الذكاء الاصطناعي عناوين ووصفًا ووسومًا جاهزة.",
     "upload.ai.gen.btn": "أنشئ أفكارًا",
     "upload.sub.autogen": "إنشاء تلقائي بالذكاء الاصطناعي",
-    "upload.sub.autogen.desc": "أنشئ الترجمة تلقائيًا من صوت الفيديو باستخدام Whisper Tiny.",
+    "upload.sub.autogen.desc": "أنشئ الترجمة تلقائيًا من صوت الفيديو باستخدام Whisper.",
     "upload.sub.gen.now": "أنشئ الآن",
     "subprev.see": "عرض",
     "subprev.apply": "تطبيق",
@@ -12249,7 +12249,7 @@ const I18N = {
     "up.makeRef": "أنشئ اقتراحات",
     "up.subtitle": "الترجمة",
     "up.autoSubtitle": "إنشاء تلقائي بالذكاء الاصطناعي",
-    "up.subtitleDesc": "أنشئ الترجمة تلقائيًا من صوت الفيديو باستخدام Whisper Tiny.",
+    "up.subtitleDesc": "أنشئ الترجمة تلقائيًا من صوت الفيديو باستخدام Whisper.",
     "up.generateNow": "أنشئ الآن",
     "up.manualUpload": "رفع يدوي",
     "up.haveFile": "لديك ملف",
@@ -13643,7 +13643,7 @@ const I18N = {
     "upload.ai.assist.desc": "输入标题/主题 — AI 提供可用的标题、描述和标签。",
     "upload.ai.gen.btn": "生成创意",
     "upload.sub.autogen": "AI 自动生成",
-    "upload.sub.autogen.desc": "使用 Whisper Tiny 从视频音频自动生成字幕。",
+    "upload.sub.autogen.desc": "使用 Whisper 从视频音频自动生成字幕。",
     "upload.sub.gen.now": "立即生成",
     "subprev.see": "查看",
     "subprev.apply": "应用",
@@ -13819,7 +13819,7 @@ const I18N = {
     "up.makeRef": "生成建议",
     "up.subtitle": "字幕",
     "up.autoSubtitle": "AI 自动生成",
-    "up.subtitleDesc": "使用 Whisper Tiny 从视频音频自动生成字幕。",
+    "up.subtitleDesc": "使用 Whisper 从视频音频自动生成字幕。",
     "up.generateNow": "立即生成",
     "up.manualUpload": "手动上传",
     "up.haveFile": "已有文件",
@@ -15213,7 +15213,7 @@ const I18N = {
     "upload.ai.assist.desc": "제목/주제를 입력하세요 — AI가 제목, 설명, 태그를 제안합니다.",
     "upload.ai.gen.btn": "아이디어 생성",
     "upload.sub.autogen": "AI 자동 생성",
-    "upload.sub.autogen.desc": "Whisper Tiny로 동영상 오디오에서 자막을 자동 생성합니다.",
+    "upload.sub.autogen.desc": "Whisper로 동영상 오디오에서 자막을 자동 생성합니다.",
     "upload.sub.gen.now": "지금 생성",
     "subprev.see": "보기",
     "subprev.apply": "적용",
@@ -15389,7 +15389,7 @@ const I18N = {
     "up.makeRef": "추천 생성",
     "up.subtitle": "자막",
     "up.autoSubtitle": "AI 자동 생성",
-    "up.subtitleDesc": "Whisper Tiny로 동영상 오디오에서 자막을 자동 생성합니다.",
+    "up.subtitleDesc": "Whisper로 동영상 오디오에서 자막을 자동 생성합니다.",
     "up.generateNow": "지금 생성",
     "up.manualUpload": "수동 업로드",
     "up.haveFile": "이미 파일이 있나요",
@@ -16783,7 +16783,7 @@ const I18N = {
     "upload.ai.assist.desc": "Escribe un título/tema: la IA sugiere títulos, una descripción y etiquetas.",
     "upload.ai.gen.btn": "Generar ideas",
     "upload.sub.autogen": "Generar automáticamente con IA",
-    "upload.sub.autogen.desc": "Genera subtítulos automáticamente del audio del video con Whisper Tiny.",
+    "upload.sub.autogen.desc": "Genera subtítulos automáticamente del audio del video con Whisper.",
     "upload.sub.gen.now": "Generar ahora",
     "subprev.see": "Ver",
     "subprev.apply": "Aplicar",
@@ -16959,7 +16959,7 @@ const I18N = {
     "up.makeRef": "Generar sugerencias",
     "up.subtitle": "Subtítulos",
     "up.autoSubtitle": "Generar automáticamente con IA",
-    "up.subtitleDesc": "Genera subtítulos automáticamente del audio del video con Whisper Tiny.",
+    "up.subtitleDesc": "Genera subtítulos automáticamente del audio del video con Whisper.",
     "up.generateNow": "Generar ahora",
     "up.manualUpload": "Subida manual",
     "up.haveFile": "¿Ya tienes un archivo",
@@ -53655,7 +53655,7 @@ self.onmessage = async (e) => {
       return toast("⏳ Sudah ada proses transkripsi berjalan", "warning");
     }
     __whisperBusy = true;
-    const modelKey = (modelSelect?.value === "base") ? "base" : "tiny";
+    const modelKey = (modelSelect?.value === "tiny") ? "tiny" : "base"; // default = base (lebih akurat); "tiny" hanya bila UI menyetel eksplisit
     const modelLabel = modelKey === "base" ? "base ~150 MB" : "tiny ~75 MB";
     if (autoBtn) {
       autoBtn.dataset.running = "1";
@@ -53947,6 +53947,20 @@ self.onmessage = async (e) => {
     };
   }
 
+  // Tombol "Simpan perubahan" disuntik sekali ke panel modal (bukan markup).
+  // Muncul di footer; menyimpan teks yg diedit ke window._uploadSubtitle.
+  function ensureSaveButton() {
+    if (document.getElementById("spvSaveBtn")) return;
+    const panel = modal ? modal.querySelector(".spv-panel") : null;
+    if (!panel) return;
+    const bar = document.createElement("div");
+    bar.style.cssText = "display:flex;justify-content:flex-end;gap:8px;margin-top:14px";
+    bar.innerHTML =
+      '<button type="button" id="spvSaveBtn" class="btn primary small">✓ Simpan perubahan</button>';
+    panel.appendChild(bar);
+    bar.querySelector("#spvSaveBtn").addEventListener("click", saveEdits);
+  }
+
   function openPreview() {
     if (!modal) return;
     const { sub, cues } = currentCues();
@@ -53954,17 +53968,43 @@ self.onmessage = async (e) => {
       if (typeof toast === "function") toast(t("subprev.empty"), "warning");
       return;
     }
-    if (meta) meta.textContent = cues.length + " cues · " + ((sub && sub.lang) || "auto");
+    if (meta) meta.textContent = cues.length + " cues · " + ((sub && sub.lang) || "auto") + " · klik teks untuk memperbaiki";
     const H = [];
     cues.forEach(function (c, i) {
+      // Teks jadi contenteditable → kreator bisa betulkan salah-dengar Whisper /
+      // typo sebelum unggah. Nomor & waktu tetap read-only.
       H.push(
         '<div class="spv-cue"><span class="spv-idx">' + (i + 1) +
         '</span><span class="spv-time">' + fmt(c.start) + " → " + fmt(c.end) +
-        '</span><span class="spv-txt">' + esc(c.text).replace(/\n/g, "<br>") + "</span></div>"
+        '</span><span class="spv-txt" contenteditable="true" spellcheck="false" data-spv-i="' + i +
+        '" style="outline:none;border-bottom:1px dashed rgba(180,180,180,.35);min-width:40px;cursor:text">' +
+        esc(c.text).replace(/\n/g, "<br>") + "</span></div>"
       );
     });
     if (body) { body.innerHTML = H.join(""); body.scrollTop = 0; }
+    ensureSaveButton();
     modal.classList.add("show");
+  }
+
+  // Simpan teks hasil edit → rebuild VTT (waktu tetap) → tulis ke _uploadSubtitle
+  // (otomatis dipakai saat upload + burn-in). Perintah menyimpan dipisah dari baca.
+  function saveEdits() {
+    const { sub, cues } = currentCues();
+    if (!cues.length || !body) { if (typeof toast === "function") toast(t("subprev.empty"), "warning"); return; }
+    const newCues = cues.map(function (c, i) {
+      const el = body.querySelector('[data-spv-i="' + i + '"]');
+      let txt = el ? (el.innerText || "").replace(/ /g, " ").replace(/\n{2,}/g, "\n").trim() : c.text;
+      if (!txt) txt = c.text; // baris kosong → pertahankan asli (jangan hapus cue)
+      return { start: c.start, end: c.end, text: txt };
+    });
+    const vtt = (typeof buildVttFromCues === "function") ? buildVttFromCues(newCues) : "";
+    if (!vtt) { if (typeof toast === "function") toast("⚠️ Gagal menyimpan subtitle", "error"); return; }
+    const lang = (sub && sub.lang) || "auto";
+    window._uploadSubtitle = { vtt: vtt, lang: lang, cues: newCues.length };
+    if (meta) meta.textContent = newCues.length + " cues · " + lang + " · diedit";
+    const mt = document.getElementById("upSubtitleMeta");
+    if (mt) mt.textContent = newCues.length + " cues · diedit";
+    if (typeof toast === "function") toast("✓ Subtitle diperbarui", "success");
   }
 
   function applySubtitle() {
@@ -54230,7 +54270,7 @@ self.onmessage = async (e) => {
     }
     if (__busy) return toast("⏳ Sudah ada proses transkripsi berjalan", "warning");
     __busy = true;
-    const modelKey = (modelSelect?.value === "base") ? "base" : "tiny";
+    const modelKey = (modelSelect?.value === "tiny") ? "tiny" : "base"; // default = base (lebih akurat); "tiny" hanya bila UI menyetel eksplisit
     const modelLabel = modelKey === "base" ? "base ~150 MB" : "tiny ~75 MB";
     if (autoBtn) {
       autoBtn.dataset.running = "1";
