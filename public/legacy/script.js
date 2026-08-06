@@ -57626,15 +57626,31 @@ async function openLibInlinePlayer(id) {
       }
     };
     videoEl.addEventListener("timeupdate", onTU);
-    try { videoEl.currentTime = 1e101; } catch {}
+    try { videoEl.currentTime = 1e7; } catch {} // besar tapi FINITE (browser clamp ke durasi asli); 1e101 dulu bisa memicu error/stall
   });
 
   // (b) VIDEO HANTU: file benar-benar hilang dari server (dihapus/tak terjangkau)
   //     → <video> gagal muat. Jangan diam-diam macet: tampil pesan jelas + tombol
   //     hapus dari daftar. KONFIRMASI user (bukan auto-delete) → aman dari salah
   //     hapus video sehat yang cuma lambat/putus jaringan sesaat.
-  videoEl.addEventListener("error", function onGhost() {
-    videoEl.removeEventListener("error", onGhost);
+  // Lepas handler ghost dari open sebelumnya (elemen #libInlineVideo dipakai-ulang
+  // tiap buka → cegah listener menumpuk yang memicu false-positive).
+  if (videoEl.__ghostHandler) { try { videoEl.removeEventListener("error", videoEl.__ghostHandler); } catch {} }
+  videoEl.__ghostHandler = function onGhost() {
+    // FIX salah-tandai "terhapus" (bug: setiap upload video divonis hilang). Video R2
+    // SEHAT selalu lolos loadedmetadata (readyState>=1) — event `error` yang muncul
+    // belakangan (reset src, seek durFix, elemen dipakai-ulang, ganti src) itu JINAK,
+    // BUKAN file hilang. Overlay "dihapus dari server" HANYA bila sumber benar-benar
+    // tak terpakai: belum pernah dapat metadata + kode error nyata + bukan SAMPLE.
+    // (Penting: tombol overlay menghapus file R2 SUNGGUHAN → salah tampil = risiko
+    // hapus video sehat.)
+    const err = videoEl.error;
+    const realMissing = videoEl.readyState < 1 /* belum HAVE_METADATA */
+      && !!err && (err.code === 4 /* SRC_NOT_SUPPORTED */ || err.code === 2 /* NETWORK */)
+      && !!videoEl.currentSrc
+      && videoEl.currentSrc.indexOf("BigBuckBunny") < 0; /* abaikan fallback sample */
+    if (!realMissing) return; // sehat/transisi/sample → jangan tampilkan ghost, tetap dengarkan
+    videoEl.removeEventListener("error", videoEl.__ghostHandler); videoEl.__ghostHandler = null;
     const scr = videoEl.closest(".lib-inline-screen");
     if (!scr || scr.querySelector(".lib-ghost-overlay")) return;
     const ov = document.createElement("div");
@@ -57671,7 +57687,8 @@ async function openLibInlinePlayer(id) {
       }
     });
     scr.appendChild(ov);
-  });
+  };
+  videoEl.addEventListener("error", videoEl.__ghostHandler);
 
   // Auto-detect video orientation from metadata
   videoEl.addEventListener("loadedmetadata", function onOrient() {
