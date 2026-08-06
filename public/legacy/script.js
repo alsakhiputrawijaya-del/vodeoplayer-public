@@ -65791,8 +65791,10 @@ function maybeOfferSaveCard() {
       e.stopPropagation();
       const id = +embedBtn.dataset.libEmbed;
       _libCloseAllCardMenus();
-      const src = `${location.origin}/#/watch/${id}?embed=1`;
-      const code = `<iframe src="${src}" width="640" height="360" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+      // FIX: dulu pakai hash-route usang (#/watch/${id}?embed=1) yang sudah tak ada
+      // di App Router → embed rusak. Samakan dgn modal embed utama: /id/<id>/embed.
+      const src = `${location.origin}/id/${id}/embed`;
+      const code = `<iframe src="${src}" width="640" height="360" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
       _libCopyToClipboard(code, `Kode embed disalin`, `Tempel di situsmu untuk menyematkan video.`, TOAST_ICONS.embed);
       return;
     }

@@ -9,22 +9,48 @@
 // Privasi: hanya visibility public|unlisted + adminStatus != draft + tidak
 // terjadwal masa depan (gerbang sama dgn watch-init 26 Jul 2026). Response
 // disanitasi (hanya field yang dibutuhkan player publik — BUKAN state blob).
+//
+// CORS (2026-08-06): endpoint ini SENGAJA dibuka lintas-origin (Access-Control-
+// Allow-Origin: *) supaya proyek/situs LAIN (mis. Dramaku/NovelAksara/lk21) bisa
+// memanggilnya lewat fetch() dari domainnya sendiri untuk menampilkan video Playly.
+// AMAN (rak owasp §1): wildcard * berbahaya HANYA bila digabung
+// Access-Control-Allow-Credentials:true (ikut kirim cookie) — di sini TIDAK: endpoint
+// tanpa login/cookie, dan data yang dikembalikan HANYA metadata video yang MEMANG
+// sudah publik (lolos gate public/unlisted) — tanpa email/PII/state privat.
 
+import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { jsonError, jsonOk } from '@/lib/api/responses';
+
+// Header CORS terbuka (data publik, TANPA credentials) — dipasang ke SEMUA respons.
+const CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Max-Age': '86400',
+};
+function withCors(res: NextResponse): NextResponse {
+  for (const [k, v] of Object.entries(CORS_HEADERS)) res.headers.set(k, v);
+  return res;
+}
+
+// Preflight (browser kirim OPTIONS sebelum GET lintas-origin dgn header non-simple).
+export function OPTIONS(): NextResponse {
+  return withCors(new NextResponse(null, { status: 204 }));
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const idRaw = (searchParams.get('id') || '').trim();
-  if (!idRaw) return jsonError('missing_id', 400);
+  if (!idRaw) return withCors(jsonError('missing_id', 400));
   // id video = timestamp numerik di JSON state; query string beri string →
   // koersi ke Number bila numerik, kalau tidak jsonb containment tak pernah cocok.
   const id: string | number = /^\d+$/.test(idRaw) ? Number(idRaw) : idRaw;
 
   const admin = createAdminClient();
-  if (!admin) return jsonError('service_unavailable', 503, {
+  if (!admin) return withCors(jsonError('service_unavailable', 503, {
     message: 'SUPABASE_SERVICE_ROLE_KEY belum di-set.',
-  });
+  }));
 
   // Cari video di state.myVideos semua user (jsonb containment on nested array).
   const { data, error } = await admin
@@ -34,23 +60,23 @@ export async function GET(req: Request) {
     .limit(1)
     .maybeSingle();
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return withCors(jsonError(error.message, 500));
 
   const state: any = data?.state;
   const v = Array.isArray(state?.myVideos)
     ? state.myVideos.find((x: any) => x && x.id === id)
     : null;
-  if (!v) return jsonError('not_found', 404);
+  if (!v) return withCors(jsonError('not_found', 404));
 
   // Gate privasi — hanya Publik/Unlisted yang published & tak terjadwal.
   const vis = String(v.visibility || 'public').toLowerCase();
   const st = String(v.adminStatus || 'published').toLowerCase();
   const inFuture = !!(v.scheduledAt && Date.parse(v.scheduledAt) > Date.now());
   if ((vis !== 'public' && vis !== 'unlisted') || st === 'draft' || inFuture) {
-    return jsonError('not_found', 404);
+    return withCors(jsonError('not_found', 404));
   }
 
-  return jsonOk({
+  return withCors(jsonOk({
     id: v.id,
     title: v.title || 'Video',
     creator: v.creator || v.uploader || 'creator',
@@ -70,5 +96,7 @@ export async function GET(req: Request) {
     // yang memang untuk ditonton (bukan data sensitif).
     subtitleVtt: v.subtitleVtt ?? null,
     subtitleLang: v.subtitleLang ?? null,
-  });
+    // Embed siap-pakai (path relatif ke origin Playly) — memudahkan proyek luar.
+    embedUrl: `/id/${v.id}/embed`,
+  }));
 }
