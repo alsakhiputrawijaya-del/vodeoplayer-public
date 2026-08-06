@@ -58011,8 +58011,10 @@ function closeLibInlinePlayer() {
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) {
-        const note = data && data.error === "no_api_key" ? "no_api_key"
-                   : data && data.error === "not_authenticated" ? "not_authenticated" : "failed";
+        const err = data && data.error;
+        const note = err === "no_api_key" ? "no_api_key"
+                   : err === "not_authenticated" ? "not_authenticated"
+                   : err === "quota_exceeded" ? "quota_exceeded" : "failed";
         return { cues: baseCues, note };                                 // fallback: tampil asli
       }
       const tcues = Array.isArray(data.cues) ? data.cues : [];
@@ -58030,6 +58032,7 @@ function closeLibInlinePlayer() {
     else if (note === "unsupported") toast(`ℹ️ Terjemahan ke ${nm} belum didukung — tampil subtitle asli`, "info");
     else if (note === "no_api_key") toast("⚠️ Terjemahan mati (DEEPL_API_KEY belum di-set) — tampil subtitle asli", "warning");
     else if (note === "not_authenticated") toast("⚠️ Login dulu untuk terjemahan — tampil subtitle asli", "warning");
+    else if (note === "quota_exceeded") toast("⚠️ Kuota terjemahan harian habis — tampil subtitle asli (coba lagi besok)", "warning");
     else if (note === "failed") toast("⚠️ Terjemahan gagal — tampil subtitle asli", "warning");
   };
 
