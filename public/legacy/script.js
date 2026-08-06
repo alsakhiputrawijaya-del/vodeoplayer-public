@@ -55599,11 +55599,17 @@ $("#startUpload")?.addEventListener("click", async () => {
             _wmOpts = { text: "@" + String(_uname || "playly").replace(/^@+/, ""), pos: "br", size: 4.2, opacity: 88 };
           }
         }
+        // Burn-in subtitle (opsional): kalau toggle "Tanam subtitle ke video" ON
+        // DAN video punya subtitle → tanam permanen ke pixel. Kalau tak ada subtitle,
+        // toggle diabaikan (moot). Track CC (subtitleVtt) tetap ikut tersimpan.
+        const _burnSub = !!document.getElementById("upSubtitleBurn")?.checked;
+        const _subVtt = window._uploadSubtitle?.vtt || null;
         const _baked = await transcodeVideo(captured.file, {
           signal: ctrl ? ctrl.signal : undefined,
           onProgress: (p) => { status.textContent = "Memproses video… " + Math.round(p * 100) + "%"; },
           watermark: _wmOpts,
           edit: captured.videoEdit || null, // bake filter warna + flip/rotate/zoom
+          subtitle: (_burnSub && _subVtt) ? _subVtt : null, // tanam subtitle permanen
         });
         if (_baked && _baked.blob) {
           const _base = (captured.file.name || "video").replace(/\.[^.]+$/, "");
@@ -58649,11 +58655,61 @@ function transcodeVideo(file, opts) {
         ctx.restore();
       };
 
+      // SUBTITLE BURN-IN (opsional): opts.subtitle = array cue [{start,end,text}]
+      // ATAU string VTT. Cue yang aktif pada video.currentTime digambar TERTANAM
+      // permanen tiap frame (jadi bagian PIXEL video → ikut ke mana pun file dibawa,
+      // beda dgn track CC yg bisa dimatikan). Gaya caption: teks tebal + garis tepi
+      // hitam tebal → terbaca di latar apa pun. Kata dibungkus otomatis ke maxW.
+      let subCues = null;
+      try {
+        const _sub = opts && opts.subtitle;
+        if (Array.isArray(_sub)) subCues = _sub;
+        else if (typeof _sub === "string" && _sub.trim() && typeof parseSubtitleVtt === "function") subCues = parseSubtitleVtt(_sub);
+        if (subCues && !subCues.length) subCues = null;
+      } catch { subCues = null; }
+      const drawSubtitleCue = () => {
+        const t = video.currentTime || 0;
+        const cue = subCues.find(c => t >= c.start && t < c.end);
+        const raw = cue && cue.text ? String(cue.text).replace(/\s*\n\s*/g, " ").trim() : "";
+        if (!raw) return;
+        const fs = Math.max(16, Math.round(w * 0.045)); // ~4.5% lebar
+        const maxW = Math.round(w * 0.86);              // batas lebar 86%
+        ctx.save();
+        ctx.font = `700 ${fs}px Inter, system-ui, -apple-system, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "alphabetic";
+        // Bungkus kata ke beberapa baris agar muat maxW.
+        const words = raw.split(/\s+/);
+        const lines = [];
+        let curLn = "";
+        for (const wd of words) {
+          const test = curLn ? curLn + " " + wd : wd;
+          if (ctx.measureText(test).width > maxW && curLn) { lines.push(curLn); curLn = wd; }
+          else curLn = test;
+        }
+        if (curLn) lines.push(curLn);
+        const lh = Math.round(fs * 1.28);
+        const bottomY = Math.round(h * 0.88);            // baris terakhir ~12% dari bawah
+        const startY = bottomY - (lines.length - 1) * lh;
+        ctx.lineJoin = "round"; ctx.miterLimit = 2;
+        ctx.lineWidth = Math.max(3, Math.round(fs * 0.16)); // garis tepi hitam tebal
+        ctx.strokeStyle = "rgba(0,0,0,0.92)";
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = Math.round(fs * 0.22);
+        lines.forEach((ln, i) => {
+          const y = startY + i * lh;
+          try { ctx.strokeText(ln, w / 2, y); } catch {}
+          try { ctx.fillText(ln, w / 2, y); } catch {}
+        });
+        ctx.restore();
+      };
+
       const loop = () => {
         if (done) return;
         // Trim: hentikan rekaman begitu mencapai trimEnd.
         if (_trimEnd && video.currentTime >= _trimEnd) { stopAndResolve(); return; }
         drawVideoFrame();
+        if (subCues) drawSubtitleCue(); // subtitle tertanam (di bawah watermark biar tak ketutup)
         if (wmk) drawWatermark();
         if (editText) drawEditText();
         if (opts && typeof opts.onProgress === "function") {
@@ -68228,6 +68284,36 @@ function getNotifList() {
 
   // Expose untuk debugging
   window.translateSubtitle = (lang, ctx = "upload") => translate(lang, ctx);
+})();
+
+// Toggle "Tanam subtitle ke video (permanen)" di panel Subtitle upload — disuntik
+// via JS (bukan markup + i18n manual). Saat ON + video punya subtitle, subtitle
+// di-BURN-IN ke pixel di transcodeVideo (lihat opts.subtitle). Default OFF (opt-in;
+// burn-in permanen tak bisa dimatikan, beda dgn track CC).
+(function injectSubtitleBurnToggle() {
+  function ensure() {
+    if (document.getElementById("upSubtitleBurn")) return true;
+    const a = document.getElementById("upSubtitleAutoBtn");
+    const b = document.getElementById("upSubtitleInput");
+    if (!a || !b) return false;
+    // Wrapper terdekat yg memuat KEDUA kartu (auto-gen + upload manual).
+    let wrap = a.parentElement;
+    while (wrap && !wrap.contains(b)) wrap = wrap.parentElement;
+    if (!wrap) return false;
+    const row = document.createElement("label");
+    row.id = "upSubtitleBurnRow";
+    row.style.cssText = "display:flex;align-items:flex-start;gap:8px;margin-top:12px;cursor:pointer;font-size:13px;color:var(--text,#eee);line-height:1.45";
+    row.innerHTML =
+      '<input type="checkbox" id="upSubtitleBurn" style="margin-top:2px;flex:0 0 auto"/>' +
+      '<span><b>Tanam subtitle ke video (permanen)</b><br>' +
+      '<span style="color:var(--muted,#9aa)">Subtitle terbakar jadi bagian gambar video — ikut saat di-download / di-share ke aplikasi lain, dan tak bisa dimatikan. Perlu buat/upload subtitle dulu.</span></span>';
+    wrap.insertAdjacentElement("afterend", row);
+    return true;
+  }
+  let tries = 0;
+  const iv = setInterval(() => { if (ensure() || ++tries > 40) clearInterval(iv); }, 250);
+  if (document.readyState !== "loading") ensure();
+  else document.addEventListener("DOMContentLoaded", ensure);
 })();
 
 // ============================================================
