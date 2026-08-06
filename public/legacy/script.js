@@ -57455,6 +57455,8 @@ async function openLibInlinePlayer(id) {
   const v = findVideo(id);
   if (!v) return;
   __libInlineVid = id;
+  window.__libInlineVid = id; // FIX: fungsi CC (startAutoSubtitle/autoEnableSubtitle)
+  // membaca window.__libInlineVid — dulu tak pernah di-set → subtitle tak tampil.
   const wrap = document.getElementById("libInlinePlayer");
   const videoEl = document.getElementById("libInlineVideo");
   if (!wrap || !videoEl) return;
@@ -57866,6 +57868,7 @@ function closeLibInlinePlayer() {
   }
   document.querySelectorAll(".lib-tool-menu").forEach(m => m.hidden = true);
   __libInlineVid = null;
+  window.__libInlineVid = null; // sinkron dgn mirror di openLibInlinePlayer
   // v717: keluar mode menonton → munculkan lagi chrome pustaka + restore judul.
   try { exitLibWatchMode(); } catch {}
 }
@@ -58615,9 +58618,14 @@ function transcodeVideo(file, opts) {
             if (p.indexOf("t") >= 0) ly = m;       // top
             if (p.indexOf("l") >= 0) lx = m;       // left
             if (p === "center" || p === "c") { lx = Math.round((w - lw) / 2); ly = Math.round((h - lh) / 2); }
-            // Scale (napas ukuran) di sekitar pusat + float offset.
+            // Scale (napas ukuran) di sekitar pusat + float offset, TAPI DIKURUNG:
+            // pusat dijaga agar watermark (termasuk saat membesar) SELALU di dalam
+            // frame + margin m → animasi tak pernah mendorongnya keluar tepi video.
+            const hw = (lw * scl) / 2, hh = (lh * scl) / 2;
+            const cx = Math.max(m + hw, Math.min(w - m - hw, lx + lw / 2 + dx));
+            const cy = Math.max(m + hh, Math.min(h - m - hh, ly + lh / 2 + dy));
             ctx.save();
-            ctx.translate(lx + lw / 2 + dx, ly + lh / 2 + dy);
+            ctx.translate(cx, cy);
             ctx.scale(scl, scl);
             try { ctx.drawImage(img, -lw / 2, -lh / 2, lw, lh); } catch {}
             ctx.restore();
@@ -58628,8 +58636,9 @@ function transcodeVideo(file, opts) {
           ctx.font = `600 ${fs}px Inter, system-ui, -apple-system, sans-serif`;
           ctx.textAlign = (p.indexOf("l") >= 0) ? "left" : (p === "center" || p === "c") ? "center" : "right";
           ctx.textBaseline = (p.indexOf("t") >= 0) ? "top" : (p === "center" || p === "c") ? "middle" : "bottom";
-          const tx = ((p.indexOf("l") >= 0) ? m : (p === "center" || p === "c") ? Math.round(w / 2) : (w - m)) + dx;
-          const ty = ((p.indexOf("t") >= 0) ? m : (p === "center" || p === "c") ? Math.round(h / 2) : (h - m)) + dy;
+          // Kurung teks watermark juga: tak lewat tepi frame + margin m.
+          const tx = Math.max(m, Math.min(w - m, ((p.indexOf("l") >= 0) ? m : (p === "center" || p === "c") ? Math.round(w / 2) : (w - m)) + dx));
+          const ty = Math.max(m, Math.min(h - m, ((p.indexOf("t") >= 0) ? m : (p === "center" || p === "c") ? Math.round(h / 2) : (h - m)) + dy));
           ctx.fillStyle = "#fff";
           ctx.shadowColor = "rgba(0,0,0,.65)"; // bayangan → terbaca di latar terang
           ctx.shadowBlur = Math.round(fs * 0.28);

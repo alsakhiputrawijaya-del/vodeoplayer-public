@@ -39986,9 +39986,14 @@ body.reduced-motion .user-dashboard-bg { opacity: .55; }
    ========================================================================= */
 .lib-inline-screen {
   width: 100%;
-  max-width: 100%;
+  /* Rapikan letterbox: cap lebar player + pusatkan. Sebelumnya 100% lebar × 460px
+     (rasio ~3.4:1) → SEMUA video kena bar hitam (landscape pun), potret jadi strip
+     mungil di lautan hitam. Dgn max-width 820px (≈460px×16/9): video landscape 16:9
+     PENUH tanpa bar; potret dapat bar hitam simetris dlm frame rapi (tetap hitam,
+     sesuai pilihan owner — bukan blur/crop). */
+  max-width: 820px;
   max-height: 460px;
-  margin: 0;
+  margin: 0 auto;
   aspect-ratio: auto;
   height: 460px;
 }
@@ -43559,10 +43564,17 @@ body.player-view-active .main { padding-bottom: calc(92px + 24px); }
   border: 0 !important;
 }
 
-/* 2. Video screen — full width, no border radius */
+/* 2. Video screen — rasio 16:9 dipusatkan, lebar dibatasi biar rapi.
+   RAPIKAN (req owner): dulu width/max-width 100% + max-height:72vh → di layar lebar
+   tinggi ke-cap 72vh TAPI lebar tetap 100% → wadah jadi lebih lebar dari 16:9 →
+   SEMUA video kena bar hitam (landscape pun), potret jadi strip mungil. Kini
+   max-width dikunci ke 128vh (= 72vh × 16/9) → wadah SELALU 16:9 tepat & muat tinggi
+   layar: landscape PENUH tanpa bar; potret dapat bar hitam SIMETRIS (tetap hitam,
+   bukan blur/crop) dalam frame ter-pusat rapi. */
 #libInlinePlayer .lib-inline-screen {
   width: 100% !important;
-  max-width: 100% !important;
+  max-width: min(100%, 128vh) !important;
+  margin: 0 auto !important;
   border-radius: 0 !important;
   background: #000 !important;
   aspect-ratio: 16 / 9 !important;
