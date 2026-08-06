@@ -68452,6 +68452,87 @@ function getNotifList() {
 })();
 
 // ============================================================
+//  API PENGEMBANG — sediakan video Playly untuk situs/proyek LAIN.
+//  Kartu di Pengaturan: buat API key (disimpan di state.apiKey → sinkron ke
+//  Supabase user_state) + petunjuk embed & API pencarian by-judul.
+// ============================================================
+(function playlyDevApi() {
+  // Key acak: "plyk_" + 24 char. Bukan rahasia tinggi (scope: cari video PUBLIK
+  // milik akun ini) — key untuk scoping + bisa diregenerasi (cabut akses lama).
+  function genKey() {
+    let rnd = "";
+    try {
+      if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+        rnd = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+          .map((b) => (b % 36).toString(36)).join("");
+      }
+    } catch {}
+    if (!rnd) rnd = (Math.random().toString(36) + Math.random().toString(36)).replace(/[^a-z0-9]/g, "");
+    return ("plyk_" + rnd).slice(0, 29);
+  }
+  window.generatePlaylyApiKey = function () {
+    if (typeof state === "undefined" || !state) return null;
+    state.apiKey = genKey();
+    try { saveState(); } catch {}
+    return state.apiKey;
+  };
+  function curKey() { return (typeof state !== "undefined" && state && state.apiKey) || ""; }
+  function refresh() {
+    const el = document.getElementById("apiDevKey");
+    const gen = document.getElementById("apiDevGen");
+    const cp = document.getElementById("apiDevCopy");
+    const k = curKey();
+    if (el) el.textContent = k || "(belum ada — klik Buat API Key)";
+    if (gen) gen.textContent = k ? "🔄 Regenerasi" : "🔑 Buat API Key";
+    if (cp) cp.disabled = !k;
+  }
+  function render() {
+    if (document.getElementById("apiDevCard")) { refresh(); return true; }
+    // Sisip di kontainer kartu Pengaturan (parent dari .card ber-heading dikenal).
+    const anchor = [...document.querySelectorAll(".card")].find(
+      (c) => /Notifikasi|Privasi|Tampilan/i.test(c.textContent || "") && c.offsetParent !== null
+    );
+    if (!anchor || !anchor.parentElement) return false;
+    const origin = location.origin;
+    const k = curKey();
+    const card = document.createElement("div");
+    card.className = "card";
+    card.id = "apiDevCard";
+    card.innerHTML =
+      '<h3>API &amp; Embed untuk Situs Lain</h3>' +
+      '<p style="color:var(--muted,#9aa);font-size:13px;line-height:1.5;margin:6px 0 12px">Sediakan videomu untuk situs/proyek lain — lewat <b>kode embed</b> (per video) atau <b>API pencarian by-judul</b> (pakai API key). Hanya video Publik/Unlisted yang bisa diakses.</p>' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">' +
+      '<code id="apiDevKey" style="flex:1;min-width:200px;background:rgba(0,0,0,.25);padding:8px 12px;border-radius:8px;font-size:13px;word-break:break-all">' + (k || "(belum ada — klik Buat API Key)") + '</code>' +
+      '<button type="button" id="apiDevGen" class="btn small">' + (k ? "🔄 Regenerasi" : "🔑 Buat API Key") + '</button>' +
+      '<button type="button" id="apiDevCopy" class="btn small"' + (k ? "" : " disabled") + '>📋 Salin</button>' +
+      '</div>' +
+      '<details style="font-size:13px;color:var(--muted,#9aa)"><summary style="cursor:pointer;color:var(--text,#eee)">Cara pakai di situs lain</summary>' +
+      '<div style="margin-top:8px;line-height:1.6">' +
+      '<b>1. Embed 1 video</b> (tempel di HTML situsmu — ID video ada di menu Bagikan):' +
+      '<code style="display:block;background:rgba(0,0,0,.25);padding:8px;border-radius:6px;margin:4px 0;white-space:pre-wrap;word-break:break-all">&lt;iframe src="' + origin + '/id/&lt;ID_VIDEO&gt;/embed" width="640" height="360" allowfullscreen&gt;&lt;/iframe&gt;</code>' +
+      '<b>2. API cari video by judul</b> (dari server/JS proyekmu):' +
+      '<code style="display:block;background:rgba(0,0,0,.25);padding:8px;border-radius:6px;margin:4px 0;white-space:pre-wrap;word-break:break-all">GET ' + origin + '/api/videos?title=NamaFilm\nHeader:  X-Playly-Key: &lt;API_KEY&gt;</code>' +
+      'Balasannya: daftar video (id, judul, embedUrl, videoUrl) yang judulnya <b>mengandung</b> kata itu — hanya video akunmu.' +
+      '</div></details>';
+    anchor.parentElement.insertBefore(card, anchor.parentElement.firstChild);
+    card.querySelector("#apiDevGen").addEventListener("click", () => {
+      if (window.generatePlaylyApiKey()) { refresh(); if (typeof toast === "function") toast("✓ API key dibuat & disimpan", "success"); }
+    });
+    card.querySelector("#apiDevCopy").addEventListener("click", () => {
+      const key = curKey(); if (!key) return;
+      if (typeof _libCopyToClipboard === "function") _libCopyToClipboard(key, "API key disalin", "Simpan & berikan ke proyekmu.", (window.TOAST_ICONS || {}).embed);
+      else { try { navigator.clipboard.writeText(key); if (typeof toast === "function") toast("API key disalin", "success"); } catch {} }
+    });
+    return true;
+  }
+  // Pastikan kartu ada saat di view Pengaturan. App navigasi pakai pushState
+  // (BUKAN hashchange) → poll ringan yang tahan semua cara navigasi + re-render.
+  setInterval(() => {
+    if (/\/settings/.test(location.hash) && !document.getElementById("apiDevCard")) render();
+  }, 700);
+})();
+
+// ============================================================
 //  FRAME PICKER V2 (per request user 2026-05-16)
 //  - Box "Pilih Frame Thumbnail" disamakan dgn Thumbnail Kustom (.dz-pro).
 //  - Slider + "Pakai Frame Ini" dipindah dari halaman awal ke modal Edit
