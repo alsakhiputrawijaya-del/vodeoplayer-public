@@ -68504,6 +68504,10 @@ function getNotifList() {
       '#apiDevCard .adv-eye{flex:0 0 auto;width:42px;min-height:38px;padding:0;display:grid;place-items:center;font-size:16px;line-height:1;border-radius:10px;background:rgba(0,0,0,.26);border:1px solid var(--border,rgba(255,255,255,.09))}' +
       '#apiDevCard .adv-eye:hover{background:rgba(0,0,0,.4)}' +
       '#apiDevCard .adv-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 4px}' +
+      // Tombol aksi (Regenerasi/Salin): beri chrome pill jelas — .btn small bawaan tampil polos (tanpa bingkai).
+      '#apiDevCard .adv-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:9px;font-size:13px;font-weight:600;line-height:1;cursor:pointer;color:var(--text);background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.12))}' +
+      '#apiDevCard .adv-btn:hover{background:rgba(255,255,255,.1)}' +
+      '#apiDevCard .adv-btn:disabled{opacity:.45;cursor:not-allowed}' +
       '#apiDevCard .adv-usage{border-top:1px solid var(--border,rgba(255,255,255,.08));margin-top:16px;padding-top:12px}' +
       '#apiDevCard .adv-utitle{font-size:12.5px;font-weight:700;color:var(--text);margin:12px 0 5px;display:flex;gap:7px;align-items:center}' +
       '#apiDevCard .adv-utitle i{width:18px;height:18px;border-radius:5px;background:var(--primary,#7a2a2a);color:#fff;font-size:11px;display:grid;place-items:center;font-weight:800;font-style:normal}' +
@@ -68534,8 +68538,8 @@ function getNotifList() {
         '<button type="button" id="apiDevReveal" class="btn small adv-eye" title="Lihat / sembunyikan key"' + (k ? "" : ' style="display:none"') + '>👁</button>' +
       '</div>' +
       '<div class="adv-actions">' +
-        '<button type="button" id="apiDevGen" class="btn small">' + (k ? "↻ Regenerasi" : "＋ Buat API Key") + '</button>' +
-        '<button type="button" id="apiDevCopy" class="btn small"' + (k ? "" : " disabled") + '>📋 Salin</button>' +
+        '<button type="button" id="apiDevGen" class="btn small adv-btn">' + (k ? "↻ Regenerasi" : "＋ Buat API Key") + '</button>' +
+        '<button type="button" id="apiDevCopy" class="btn small adv-btn"' + (k ? "" : " disabled") + '>📋 Salin</button>' +
       '</div>' +
       '<div class="adv-usage">' +
         '<div class="adv-utitle"><i>1</i>Embed satu video</div>' +
