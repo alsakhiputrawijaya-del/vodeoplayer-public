@@ -68478,6 +68478,14 @@ function getNotifList() {
   };
   function curKey() { return (typeof state !== "undefined" && state && state.apiKey) || ""; }
   function maskKey(k) { return k ? (k.slice(0, 5) + "•".repeat(Math.max(8, Math.min(18, k.length - 5)))) : ""; }
+  // Ikon SVG garis (Feather/Lucide) — samakan bahasa visual app: fill=none, stroke-width 2,
+  // ujung membulat (spt TOAST_ICONS & ikon judul kartu). Emoji dibuang: tak seragam + terisi.
+  const _svg = (inner) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
+  const IC_EYE = _svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>');
+  const IC_EYEOFF = _svg('<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>');
+  const IC_REFRESH = _svg('<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>');
+  const IC_PLUS = _svg('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>');
+  const IC_COPY = _svg('<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>');
   function refresh() {
     const el = document.getElementById("apiDevKey");
     const gen = document.getElementById("apiDevGen");
@@ -68485,9 +68493,9 @@ function getNotifList() {
     const rv = document.getElementById("apiDevReveal");
     const k = curKey();
     if (el) { el.textContent = k ? (window.__apiDevReveal ? k : maskKey(k)) : "(belum ada — klik Buat)"; el.classList.toggle("empty", !k); }
-    if (gen) gen.textContent = k ? "↻ Regenerasi" : "＋ Buat API Key";
+    if (gen) gen.innerHTML = k ? (IC_REFRESH + "<span>Regenerasi</span>") : (IC_PLUS + "<span>Buat API Key</span>");
     if (cp) cp.disabled = !k;
-    if (rv) { rv.style.display = k ? "" : "none"; rv.textContent = window.__apiDevReveal ? "🙈" : "👁"; }
+    if (rv) { rv.style.display = k ? "" : "none"; rv.innerHTML = window.__apiDevReveal ? IC_EYEOFF : IC_EYE; rv.setAttribute("aria-label", window.__apiDevReveal ? "Sembunyikan key" : "Lihat key"); }
   }
   function ensureStyle() {
     if (document.getElementById("apiDevStyle")) return;
@@ -68501,13 +68509,16 @@ function getNotifList() {
       '#apiDevCard .adv-key{flex:1;min-width:0;background:rgba(0,0,0,.26);border:1px solid var(--border,rgba(255,255,255,.09));padding:0 12px;border-radius:10px;font:600 13.5px ui-monospace,monospace;letter-spacing:.4px;color:var(--text);display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:38px}' +
       '#apiDevCard .adv-key.empty{color:var(--muted);font-weight:400;letter-spacing:0}' +
       // Tombol mata (reveal) = kotak sejajar tinggi kolom key, ikon di tengah — override padding .btn agar tak gepeng.
-      '#apiDevCard .adv-eye{flex:0 0 auto;width:42px;min-height:38px;padding:0;display:grid;place-items:center;font-size:16px;line-height:1;border-radius:10px;background:rgba(0,0,0,.26);border:1px solid var(--border,rgba(255,255,255,.09))}' +
+      '#apiDevCard .adv-eye{flex:0 0 auto;width:42px;min-height:38px;padding:0;display:grid;place-items:center;line-height:1;border-radius:10px;background:rgba(0,0,0,.26);border:1px solid var(--border,rgba(255,255,255,.09))}' +
       '#apiDevCard .adv-eye:hover{background:rgba(0,0,0,.4)}' +
+      '#apiDevCard .adv-eye svg{width:17px;height:17px;color:var(--muted)}' +
+      '#apiDevCard .adv-eye:hover svg{color:var(--text)}' +
       '#apiDevCard .adv-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 4px}' +
       // Tombol aksi (Regenerasi/Salin): beri chrome pill jelas — .btn small bawaan tampil polos (tanpa bingkai).
       '#apiDevCard .adv-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:9px;font-size:13px;font-weight:600;line-height:1;cursor:pointer;color:var(--text);background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.12))}' +
       '#apiDevCard .adv-btn:hover{background:rgba(255,255,255,.1)}' +
       '#apiDevCard .adv-btn:disabled{opacity:.45;cursor:not-allowed}' +
+      '#apiDevCard .adv-btn svg{width:15px;height:15px;flex:0 0 auto}' +
       '#apiDevCard .adv-usage{border-top:1px solid var(--border,rgba(255,255,255,.08));margin-top:16px;padding-top:12px}' +
       '#apiDevCard .adv-utitle{font-size:12.5px;font-weight:700;color:var(--text);margin:12px 0 5px;display:flex;gap:7px;align-items:center}' +
       '#apiDevCard .adv-utitle i{width:18px;height:18px;border-radius:5px;background:var(--primary,#7a2a2a);color:#fff;font-size:11px;display:grid;place-items:center;font-weight:800;font-style:normal}' +
@@ -68535,11 +68546,11 @@ function getNotifList() {
       '<div class="adv-label"><span class="adv-dot"></span>API Key kamu</div>' +
       '<div class="adv-keyrow">' +
         '<code id="apiDevKey" class="adv-key' + (k ? "" : " empty") + '">' + (k ? maskKey(k) : "(belum ada — klik Buat)") + '</code>' +
-        '<button type="button" id="apiDevReveal" class="btn small adv-eye" title="Lihat / sembunyikan key"' + (k ? "" : ' style="display:none"') + '>👁</button>' +
+        '<button type="button" id="apiDevReveal" class="btn small adv-eye" aria-label="Lihat key"' + (k ? "" : ' style="display:none"') + '>' + IC_EYE + '</button>' +
       '</div>' +
       '<div class="adv-actions">' +
-        '<button type="button" id="apiDevGen" class="btn small adv-btn">' + (k ? "↻ Regenerasi" : "＋ Buat API Key") + '</button>' +
-        '<button type="button" id="apiDevCopy" class="btn small adv-btn"' + (k ? "" : " disabled") + '>📋 Salin</button>' +
+        '<button type="button" id="apiDevGen" class="btn small adv-btn">' + (k ? IC_REFRESH + "<span>Regenerasi</span>" : IC_PLUS + "<span>Buat API Key</span>") + '</button>' +
+        '<button type="button" id="apiDevCopy" class="btn small adv-btn"' + (k ? "" : " disabled") + '>' + IC_COPY + '<span>Salin</span></button>' +
       '</div>' +
       '<div class="adv-usage">' +
         '<div class="adv-utitle"><i>1</i>Embed satu video</div>' +
