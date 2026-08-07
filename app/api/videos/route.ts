@@ -21,7 +21,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { jsonError, jsonOk } from '@/lib/api/responses';
-import { rateLimit, clientIp } from '@/lib/api/rate-limit';
+import { rateLimitAsync, clientIp } from '@/lib/api/rate-limit';
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -51,7 +51,7 @@ function isPublicVisible(v: any): boolean {
 
 export async function GET(req: Request) {
   // Rate-limit ringan per-IP (API mitra, jarang dipanggil → batas lebih ketat).
-  const rl = rateLimit(clientIp(req), 60, 60_000);
+  const rl = await rateLimitAsync(clientIp(req), 60, 60_000);
   if (!rl.ok) {
     const r = withCors(jsonError('rate_limited', 429));
     r.headers.set('Retry-After', String(rl.retryAfter));

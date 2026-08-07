@@ -21,7 +21,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { jsonError, jsonOk } from '@/lib/api/responses';
-import { rateLimit, clientIp } from '@/lib/api/rate-limit';
+import { rateLimitAsync, clientIp } from '@/lib/api/rate-limit';
 
 // Header CORS terbuka (data publik, TANPA credentials) — dipasang ke SEMUA respons.
 const CORS_HEADERS: Record<string, string> = {
@@ -42,7 +42,7 @@ export function OPTIONS(): NextResponse {
 
 export async function GET(req: Request) {
   // Rate-limit ringan per-IP (embed page memanggil 1x/load → batas longgar).
-  const rl = rateLimit(clientIp(req), 120, 60_000);
+  const rl = await rateLimitAsync(clientIp(req), 120, 60_000);
   if (!rl.ok) {
     const r = withCors(jsonError('rate_limited', 429));
     r.headers.set('Retry-After', String(rl.retryAfter));
