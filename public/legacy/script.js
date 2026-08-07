@@ -68477,14 +68477,35 @@ function getNotifList() {
     return state.apiKey;
   };
   function curKey() { return (typeof state !== "undefined" && state && state.apiKey) || ""; }
+  function maskKey(k) { return k ? (k.slice(0, 5) + "•".repeat(Math.max(8, Math.min(18, k.length - 5)))) : ""; }
   function refresh() {
     const el = document.getElementById("apiDevKey");
     const gen = document.getElementById("apiDevGen");
     const cp = document.getElementById("apiDevCopy");
+    const rv = document.getElementById("apiDevReveal");
     const k = curKey();
-    if (el) el.textContent = k || "(belum ada — klik Buat API Key)";
-    if (gen) gen.textContent = k ? "🔄 Regenerasi" : "🔑 Buat API Key";
+    if (el) { el.textContent = k ? (window.__apiDevReveal ? k : maskKey(k)) : "(belum ada — klik Buat)"; el.classList.toggle("empty", !k); }
+    if (gen) gen.textContent = k ? "↻ Regenerasi" : "＋ Buat API Key";
     if (cp) cp.disabled = !k;
+    if (rv) { rv.style.display = k ? "" : "none"; rv.textContent = window.__apiDevReveal ? "🙈" : "👁"; }
+  }
+  function ensureStyle() {
+    if (document.getElementById("apiDevStyle")) return;
+    const s = document.createElement("style");
+    s.id = "apiDevStyle";
+    s.textContent =
+      '#apiDevCard .adv-desc{color:var(--muted);font-size:13px;line-height:1.5;margin:6px 0 14px}' +
+      '#apiDevCard .adv-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:6px;display:flex;gap:7px;align-items:center}' +
+      '#apiDevCard .adv-dot{width:6px;height:6px;border-radius:50%;background:var(--ok,#4caf7d);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok,#4caf7d) 22%,transparent)}' +
+      '#apiDevCard .adv-keyrow{display:flex;gap:8px;align-items:stretch;margin-bottom:8px}' +
+      '#apiDevCard .adv-key{flex:1;min-width:0;background:rgba(0,0,0,.26);border:1px solid var(--border,rgba(255,255,255,.09));padding:0 12px;border-radius:10px;font:600 13.5px ui-monospace,monospace;letter-spacing:.4px;color:var(--text);display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:38px}' +
+      '#apiDevCard .adv-key.empty{color:var(--muted);font-weight:400;letter-spacing:0}' +
+      '#apiDevCard .adv-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 4px}' +
+      '#apiDevCard .adv-usage{border-top:1px solid var(--border,rgba(255,255,255,.08));margin-top:16px;padding-top:12px}' +
+      '#apiDevCard .adv-utitle{font-size:12.5px;font-weight:700;color:var(--text);margin:12px 0 5px;display:flex;gap:7px;align-items:center}' +
+      '#apiDevCard .adv-utitle i{width:18px;height:18px;border-radius:5px;background:var(--primary,#7a2a2a);color:#fff;font-size:11px;display:grid;place-items:center;font-weight:800;font-style:normal}' +
+      '#apiDevCard .adv-snip{display:block;background:rgba(0,0,0,.26);border:1px solid var(--border,rgba(255,255,255,.06));padding:9px 11px;border-radius:8px;font:12.5px/1.55 ui-monospace,monospace;color:var(--muted);white-space:pre-wrap;word-break:break-all}';
+    document.head.appendChild(s);
   }
   function render() {
     if (document.getElementById("apiDevCard")) { refresh(); return true; }
@@ -68493,36 +68514,43 @@ function getNotifList() {
       (c) => /Notifikasi|Privasi|Tampilan/i.test(c.textContent || "") && c.offsetParent !== null
     );
     if (!anchor || !anchor.parentElement) return false;
+    ensureStyle();
     const origin = location.origin;
     const k = curKey();
+    // Ikon native (gaya sec-icon-v582 = badge ikon kartu lain) — lambang code/embed.
+    const ICON = '<span class="sec-icon-v582" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></span>';
     const card = document.createElement("div");
     card.className = "card";
     card.id = "apiDevCard";
     card.innerHTML =
-      '<h3>API &amp; Embed untuk Situs Lain</h3>' +
-      '<p style="color:var(--muted,#9aa);font-size:13px;line-height:1.5;margin:6px 0 12px">Sediakan videomu untuk situs/proyek lain — lewat <b>kode embed</b> (per video) atau <b>API pencarian by-judul</b> (pakai API key). Hanya video Publik/Unlisted yang bisa diakses.</p>' +
-      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">' +
-      '<code id="apiDevKey" style="flex:1;min-width:200px;background:rgba(0,0,0,.25);padding:8px 12px;border-radius:8px;font-size:13px;word-break:break-all">' + (k || "(belum ada — klik Buat API Key)") + '</code>' +
-      '<button type="button" id="apiDevGen" class="btn small">' + (k ? "🔄 Regenerasi" : "🔑 Buat API Key") + '</button>' +
-      '<button type="button" id="apiDevCopy" class="btn small"' + (k ? "" : " disabled") + '>📋 Salin</button>' +
+      '<h3>' + ICON + 'API &amp; Embed</h3>' +
+      '<p class="adv-desc">Sediakan videomu untuk situs/proyek lain — lewat <b>kode embed</b> (per video) atau <b>API pencarian by-judul</b>. Hanya video Publik/Unlisted yang bisa diakses.</p>' +
+      '<div class="adv-label"><span class="adv-dot"></span>API Key kamu</div>' +
+      '<div class="adv-keyrow">' +
+        '<code id="apiDevKey" class="adv-key' + (k ? "" : " empty") + '">' + (k ? maskKey(k) : "(belum ada — klik Buat)") + '</code>' +
+        '<button type="button" id="apiDevReveal" class="btn small" title="Lihat / sembunyikan key"' + (k ? "" : ' style="display:none"') + '>👁</button>' +
       '</div>' +
-      '<details style="font-size:13px;color:var(--muted,#9aa)"><summary style="cursor:pointer;color:var(--text,#eee)">Cara pakai di situs lain</summary>' +
-      '<div style="margin-top:8px;line-height:1.6">' +
-      '<b>1. Embed 1 video</b> (tempel di HTML situsmu — ID video ada di menu Bagikan):' +
-      '<code style="display:block;background:rgba(0,0,0,.25);padding:8px;border-radius:6px;margin:4px 0;white-space:pre-wrap;word-break:break-all">&lt;iframe src="' + origin + '/id/&lt;ID_VIDEO&gt;/embed" width="640" height="360" allowfullscreen&gt;&lt;/iframe&gt;</code>' +
-      '<b>2. API cari video by judul</b> (dari server/JS proyekmu):' +
-      '<code style="display:block;background:rgba(0,0,0,.25);padding:8px;border-radius:6px;margin:4px 0;white-space:pre-wrap;word-break:break-all">GET ' + origin + '/api/videos?title=NamaFilm\nHeader:  X-Playly-Key: &lt;API_KEY&gt;</code>' +
-      'Balasannya: daftar video (id, judul, embedUrl, videoUrl) yang judulnya <b>mengandung</b> kata itu — hanya video akunmu.' +
-      '</div></details>';
+      '<div class="adv-actions">' +
+        '<button type="button" id="apiDevGen" class="btn small">' + (k ? "↻ Regenerasi" : "＋ Buat API Key") + '</button>' +
+        '<button type="button" id="apiDevCopy" class="btn small"' + (k ? "" : " disabled") + '>📋 Salin</button>' +
+      '</div>' +
+      '<div class="adv-usage">' +
+        '<div class="adv-utitle"><i>1</i>Embed satu video</div>' +
+        '<code class="adv-snip">&lt;iframe src="' + origin + '/id/&lt;ID&gt;/embed"&gt;&lt;/iframe&gt;</code>' +
+        '<div class="adv-utitle"><i>2</i>API cari video by judul</div>' +
+        '<code class="adv-snip">GET ' + origin + '/api/videos?title=NamaFilm\nHeader: X-Playly-Key: &lt;API_KEY&gt;</code>' +
+      '</div>';
     anchor.parentElement.insertBefore(card, anchor.parentElement.firstChild);
     card.querySelector("#apiDevGen").addEventListener("click", () => {
-      if (window.generatePlaylyApiKey()) { refresh(); if (typeof toast === "function") toast("✓ API key dibuat & disimpan", "success"); }
+      if (window.generatePlaylyApiKey()) { window.__apiDevReveal = true; refresh(); if (typeof toast === "function") toast("✓ API key dibuat & disimpan", "success"); }
     });
     card.querySelector("#apiDevCopy").addEventListener("click", () => {
       const key = curKey(); if (!key) return;
       if (typeof _libCopyToClipboard === "function") _libCopyToClipboard(key, "API key disalin", "Simpan & berikan ke proyekmu.", (window.TOAST_ICONS || {}).embed);
       else { try { navigator.clipboard.writeText(key); if (typeof toast === "function") toast("API key disalin", "success"); } catch {} }
     });
+    const rvBtn = card.querySelector("#apiDevReveal");
+    if (rvBtn) rvBtn.addEventListener("click", () => { window.__apiDevReveal = !window.__apiDevReveal; refresh(); });
     return true;
   }
   // Pastikan kartu ada saat di view Pengaturan. App navigasi pakai pushState
