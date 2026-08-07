@@ -68500,6 +68500,9 @@ function getNotifList() {
       '#apiDevCard .adv-keyrow{display:flex;gap:8px;align-items:stretch;margin-bottom:8px}' +
       '#apiDevCard .adv-key{flex:1;min-width:0;background:rgba(0,0,0,.26);border:1px solid var(--border,rgba(255,255,255,.09));padding:0 12px;border-radius:10px;font:600 13.5px ui-monospace,monospace;letter-spacing:.4px;color:var(--text);display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:38px}' +
       '#apiDevCard .adv-key.empty{color:var(--muted);font-weight:400;letter-spacing:0}' +
+      // Tombol mata (reveal) = kotak sejajar tinggi kolom key, ikon di tengah — override padding .btn agar tak gepeng.
+      '#apiDevCard .adv-eye{flex:0 0 auto;width:42px;min-height:38px;padding:0;display:grid;place-items:center;font-size:16px;line-height:1;border-radius:10px;background:rgba(0,0,0,.26);border:1px solid var(--border,rgba(255,255,255,.09))}' +
+      '#apiDevCard .adv-eye:hover{background:rgba(0,0,0,.4)}' +
       '#apiDevCard .adv-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 4px}' +
       '#apiDevCard .adv-usage{border-top:1px solid var(--border,rgba(255,255,255,.08));margin-top:16px;padding-top:12px}' +
       '#apiDevCard .adv-utitle{font-size:12.5px;font-weight:700;color:var(--text);margin:12px 0 5px;display:flex;gap:7px;align-items:center}' +
@@ -68528,7 +68531,7 @@ function getNotifList() {
       '<div class="adv-label"><span class="adv-dot"></span>API Key kamu</div>' +
       '<div class="adv-keyrow">' +
         '<code id="apiDevKey" class="adv-key' + (k ? "" : " empty") + '">' + (k ? maskKey(k) : "(belum ada — klik Buat)") + '</code>' +
-        '<button type="button" id="apiDevReveal" class="btn small" title="Lihat / sembunyikan key"' + (k ? "" : ' style="display:none"') + '>👁</button>' +
+        '<button type="button" id="apiDevReveal" class="btn small adv-eye" title="Lihat / sembunyikan key"' + (k ? "" : ' style="display:none"') + '>👁</button>' +
       '</div>' +
       '<div class="adv-actions">' +
         '<button type="button" id="apiDevGen" class="btn small">' + (k ? "↻ Regenerasi" : "＋ Buat API Key") + '</button>' +
