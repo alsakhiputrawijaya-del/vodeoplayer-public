@@ -463,11 +463,20 @@
           }
           renderMeta(found.meta, found.creator);
 
-          // Sumber video: prioritas `videoUrl` di metadata (kalau https), lalu cari di bucket
-          let url = null;
-          if (found.meta.videoUrl && /^https?:/.test(found.meta.videoUrl)) {
+          // Sumber video: prioritas variant resolusi tertinggi, lalu videoUrl, lalu bucket.
+          function pickHighestVariant(variants) {
+            if (!variants) return null;
+            for (const h of [1080, 720, 480, 360]) {
+              const key = `${h}p`;
+              if (variants[key]) return variants[key];
+            }
+            return null;
+          }
+          let url = pickHighestVariant(found.meta.variants);
+          if (!url && found.meta.videoUrl && /^https?:/.test(found.meta.videoUrl)) {
             url = found.meta.videoUrl;
-          } else {
+          }
+          if (!url) {
             url = await resolveBlobUrl(videoId);
           }
           if (!url) {

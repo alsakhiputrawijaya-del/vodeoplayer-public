@@ -2323,7 +2323,22 @@ async function computeIDBVideosBytes() {
 }
 
 // Resolve URL aktual untuk diputar — coba blob URL yang sudah ada dulu, lalu IDB, lalu sample.
-async function resolveVideoSource(v) {
+async function resolveVideoSource(v, quality = "auto") {
+  if (!v) return null;
+
+  // ── Prioritas 1: variant resolusi bila sudah tersedia ──
+  const variants = v.variants || {};
+  if (quality && quality !== "auto" && variants[quality]) {
+    return variants[quality];
+  }
+  if (Object.keys(variants).length) {
+    // Auto / fallback: pilih resolusi tertinggi yang tersedia.
+    for (const h of [1080, 720, 480, 360]) {
+      const key = `${h}p`;
+      if (variants[key]) return variants[key];
+    }
+  }
+
   // 1. URL eksternal (http/https) → langsung pakai
   if (v.videoUrl && /^https?:/.test(v.videoUrl)) return v.videoUrl;
 
@@ -2353,6 +2368,28 @@ async function resolveVideoSource(v) {
     }
   }
   return null;
+}
+
+// 2026-08-08: Minta server untuk membuat variant resolusi via worker ffmpeg.
+// Dipanggil setelah upload video file berhasil. Tidak await — biar UI tidak
+// terblokir; worker akan update metadata di Supabase saat selesai.
+async function requestTranscodeJob(videoId) {
+  try {
+    const r = await fetch("/api/transcode/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoId }),
+      credentials: "same-origin",
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) {
+      toast("🎞️ Multi-resolusi sedang diproses di server", "success");
+    } else {
+      console.warn("[transcode] request failed:", d.error);
+    }
+  } catch (e) {
+    console.warn("[transcode] request exception:", e);
+  }
 }
 
 // ----------------------- THEME (global, before auth) -----------------------
@@ -55805,6 +55842,12 @@ $("#startUpload")?.addEventListener("click", async () => {
     state.activities.unshift({ type: "upload", text: `You uploaded <i>${escapeHtml(title)}</i>`, time: "just now", icon: "🎬", ts: vidId });
     saveState();
 
+    // 2026-08-08: Setelah video tersimpan, minta server transcode ke multi-resolusi.
+    // Hanya untuk file upload (bukan import URL/embed) dan bila ada file di cloud/lokal.
+    if (newVid.sourceType === "file" && captured.file && cloudStatus !== "fail") {
+      requestTranscodeJob(vidId).catch((e) => console.warn("[upload] transcode request:", e));
+    }
+
     refreshAllVideoGrids();
     renderUserStats();
     renderActivityList();
@@ -57668,6 +57711,7 @@ async function openLibInlinePlayer(id) {
     src = await (typeof resolveVideoSource === "function" ? resolveVideoSource(v) : Promise.resolve(null));
   }
   videoEl.src = src || SAMPLE;
+  videoEl._currentVid = v; // untuk switch variant saat ganti kualitas
 
   // ── Ketahanan pemutar (30 Jul 2026) ──────────────────────────────────────
   // (a) PULIHKAN DURASI: video hasil MediaRecorder / stream sering tak menulis
@@ -58416,21 +58460,38 @@ function closeLibInlinePlayer() {
       if (typeof closeLibKebabPanels === "function") closeLibKebabPanels();
     }
 
-    // Quality select — untuk video MP4 statis, browser nggak punya quality
-    // switching native (harusnya HLS/DASH). Sebagai workaround visual, kita
-    // pakai CSS filter (blur + scale-down resolution simulasi) ke video element
-    // sehingga user lihat efek nyata saat ganti kualitas. Auto/1080 = no filter,
-    // 720 = subtle blur, 480 = lebih blur, 360 = paling blur.
+    // Quality select — pakai variant URL kalau sudah tersedia; fallback ke
+    // simulasi CSS filter blur/saturate untuk source tunggal.
     const qBtn = e.target.closest("[data-lib-quality]");
     if (qBtn) {
       const q = qBtn.dataset.libQuality;
+      const qKey = q === "auto" ? null : `${q}p`;
       document.querySelectorAll('[data-lib-quality]').forEach(b => b.classList.toggle("active", b === qBtn));
       const labelMap = { auto: "Auto", "1080": "1080p", "720": "720p", "480": "480p", "360": "360p" };
       const label = document.getElementById("libQualityLabel");
       if (label) label.textContent = labelMap[q] || "Auto";
-      // Apply CSS class ke video — bikin simulasi quality drop yang VISIBLE.
-      // CSS rules di styles.css scope ke .lq-{key}.
-      if (videoEl) {
+
+      const variants = videoEl?._currentVid?.variants;
+      let variantUrl = null;
+      if (variants) {
+        variantUrl = (qKey && variants[qKey]) || null;
+        if (!variantUrl) {
+          for (const h of [1080, 720, 480, 360]) {
+            const key = `${h}p`;
+            if (variants[key]) { variantUrl = variants[key]; break; }
+          }
+        }
+      }
+
+      if (videoEl && variantUrl && videoEl.currentSrc !== variantUrl) {
+        const wasPlaying = !videoEl.paused;
+        const t = videoEl.currentTime;
+        videoEl.classList.remove("lq-auto", "lq-1080", "lq-720", "lq-480", "lq-360");
+        videoEl.src = variantUrl;
+        videoEl.load();
+        videoEl.currentTime = t;
+        if (wasPlaying) videoEl.play().catch(() => {});
+      } else if (videoEl) {
         videoEl.classList.remove("lq-auto", "lq-1080", "lq-720", "lq-480", "lq-360");
         videoEl.classList.add(`lq-${q}`);
       }
@@ -59268,6 +59329,34 @@ function resetPlayerToolbar(videoEl, vid) {
 
   // Simpan reference video di element untuk dipakai handler subtitle
   videoEl._currentVid = vid;
+
+  // ── Batasi pilihan kualitas sesuai resolusi asli video ──
+  // Supaya user tidak bisa pilih 1080p kalau file aslinya cuma 720p.
+  if (!videoEl.__qualityCapBound) {
+    videoEl.__qualityCapBound = true;
+    videoEl.addEventListener("loadedmetadata", () => {
+      const h = videoEl.videoHeight || 0;
+      const order = ["360p", "480p", "720p", "1080p"];
+      const maxQ = h >= 1080 ? "1080p" : h >= 720 ? "720p" : h >= 480 ? "480p" : "360p";
+      const maxIdx = order.indexOf(maxQ);
+      let activeDisabled = false;
+      $$("[data-q]").forEach(b => {
+        const q = b.dataset.q;
+        if (q === "auto") return;
+        const disabled = order.indexOf(q) > maxIdx;
+        b.disabled = disabled;
+        b.classList.toggle("disabled", disabled);
+        b.title = disabled ? `Video asli maksimal ${maxQ}` : "";
+        if (disabled && b.classList.contains("active")) activeDisabled = true;
+      });
+      if (activeDisabled) {
+        const cur = $("#qualityLabel")?.textContent;
+        if (cur && cur !== "Auto" && order.indexOf(cur) > maxIdx) {
+          document.querySelector(`[data-q="${maxQ}"]`)?.click();
+        }
+      }
+    });
+  }
 }
 
 function setupPlayerToolbar() {
@@ -59292,7 +59381,16 @@ function setupPlayerToolbar() {
     });
   });
 
-  // ----- Quality (UI label only — single source, jadi hanya simulasi) -----
+  // ----- Quality: pakai variant bila tersedia, fallback simulasi filter -----
+  function pickVariantUrl(variants, q) {
+    if (!variants) return null;
+    if (q && q !== "auto" && variants[q]) return variants[q];
+    for (const h of [1080, 720, 480, 360]) {
+      const key = `${h}p`;
+      if (variants[key]) return variants[key];
+    }
+    return null;
+  }
   $("#qualityBtn")?.addEventListener("click", e => {
     e.stopPropagation();
     const m = $("#qualityMenu");
@@ -59302,13 +59400,33 @@ function setupPlayerToolbar() {
   $$("[data-q]").forEach(b => {
     b.addEventListener("click", () => {
       const q = b.dataset.q;
-      $("#qualityLabel").textContent = q === "auto" ? "Auto" : q;
+      const labelMap = { auto: "Auto", "1080p": "1080p HD", "720p": "720p", "480p": "480p", "360p": "360p" };
+      const filterMap = {
+        auto: "",
+        "1080p": "",
+        "720p": "blur(.35px) saturate(.96)",
+        "480p": "blur(.8px) saturate(.9) brightness(.97)",
+        "360p": "blur(1.4px) saturate(.82) brightness(.94)"
+      };
+      $("#qualityLabel").textContent = labelMap[q] || "Auto";
       $$("[data-q]").forEach(x => x.classList.toggle("active", x === b));
       $("#qualityMenu").hidden = true;
-      // Simulasi: pakai blur untuk 360p, tanpa filter untuk yang lebih tinggi
-      if (q === "360p") v.style.filter = "blur(.4px)";
-      else v.style.filter = "";
-      toast(`🎚️ Kualitas: <b>${q === "auto" ? "Auto" : q}</b>`, "success");
+
+      // Switch ke file variant kalau sudah tersedia; kalau belum, pakai simulasi filter.
+      const vidMeta = v?._currentVid;
+      const variantUrl = pickVariantUrl(vidMeta?.variants, q);
+      if (v && variantUrl && v.currentSrc !== variantUrl) {
+        const wasPlaying = !v.paused;
+        const t = v.currentTime;
+        v.src = variantUrl;
+        v.load();
+        v.currentTime = t;
+        if (wasPlaying) v.play().catch(() => {});
+        v.style.filter = "";
+      } else if (v) {
+        v.style.filter = filterMap[q] || "";
+      }
+      toast(`🎚️ Kualitas: <b>${labelMap[q] || "Auto"}</b>`, "success");
     });
   });
 
@@ -59665,7 +59783,7 @@ function setupCustomPlayer() {
     const el = $("#cdQualityVal");
     if (el) el.textContent = lbl;
   }
-  const qualityOrder = ["auto", "1080p", "720p", "360p"];
+  const qualityOrder = ["auto", "1080p", "720p", "480p", "360p"];
   let curQIdx = 0;
   $("#cdQuality")?.addEventListener("click", () => {
     curQIdx = (curQIdx + 1) % qualityOrder.length;

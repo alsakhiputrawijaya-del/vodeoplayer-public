@@ -2888,6 +2888,7 @@ body[data-theme="light"]:not([data-role="admin"]) .lkr-value {
   color: var(--text);
   font-weight: 700;
 }
+.lib-tool-menu button:disabled { opacity: .45; cursor: not-allowed; }
 
 /* CC overlay di atas video — request user 2026-05-18: saat subtitle
    jalan, kolomnya FULL (selebar video) TAPI ikon kontrol tetap jelas.
@@ -9784,6 +9785,7 @@ video::-internal-media-controls-overflow-menu-list-item {
 .ptb-menu button small { font-size: 10.5px; color: var(--muted); font-weight: 600; }
 .ptb-menu button:hover { background: var(--surface); color: var(--text); }
 .ptb-menu button.active { background: var(--primary-soft); color: var(--primary); }
+.ptb-menu button:disabled { opacity: .45; cursor: not-allowed; }
 
 .player-fallback {
   position: absolute;

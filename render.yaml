@@ -1,0 +1,41 @@
+# Render Blueprint untuk Playly Transcoder Worker
+# Deploy: https://dashboard.render.com/blueprints
+#
+# Worker ini berjalan sebagai Web Service dengan Dockerfile di workers/transcoder.
+# Setelah deploy, copy URL worker dan masukkan ke Vercel env:
+#   TRANSCODER_WEBHOOK_URL=https://<nama-service>.onrender.com/process
+#   TRANSCODER_WEBHOOK_SECRET=<sama-dengan-WEBHOOK_SECRET-di-bawah>
+
+services:
+  - type: web
+    name: playly-transcoder
+    runtime: docker
+    rootDir: workers/transcoder
+    dockerfilePath: ./Dockerfile
+    env: docker
+    plan: standard
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: POLL_INTERVAL_MS
+        value: 10000
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false
+      - key: WEBHOOK_SECRET
+        generateValue: true

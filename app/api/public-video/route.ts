@@ -90,6 +90,7 @@ export async function GET(req: Request) {
     creator: v.creator || v.uploader || 'creator',
     thumb: v.thumb || null,
     videoUrl: v.videoUrl || null,
+    variants: v.variants || {},
     duration: v.duration || null,
     viewsNum: v.viewsNum ?? v.views ?? 0,
     likes: v.likesNum ?? v.likes ?? 0,
