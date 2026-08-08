@@ -26,19 +26,16 @@
 -- ============================================================
 -- PRE-FLIGHT (read-only — jalankan sebagai authenticated user biasa/non-admin)
 -- ============================================================
--- Baris PII yang SEKARANG bocor ke user login (harus jadi 0 setelah apply):
+-- Baris PII yang SEKARANG bocor ke user login (harus jadi 0 setelah apply).
+-- (account-* sudah ditutup oleh klausa `not kv_is_per_user_key(key)`; admin-*/
+--  trash-videos SENGAJA tak diblokir — lihat catatan di bagian MIGRATION.)
 --   select key from public.kv
 --   where user_id is null
 --     and ( key like 'playly-login-attempts-%'
 --        or key like 'playly-sessions-%'
 --        or key like 'playly-user-audit-%'
 --        or key like 'playly-daily-snapshot-%'
---        or key like 'playly-video-snapshot-%'
---        or key like 'playly-account-%'
---        or key like 'playly-admin-tickets%'
---        or key like 'playly-admin-targets%'
---        or key like 'playly-admin-revoked%'
---        or key like 'playly-trash-videos%' )
+--        or key like 'playly-video-snapshot-%' )
 --   order by key;
 
 -- ============================================================
@@ -55,17 +52,29 @@ create policy "kv_per_user_select" on public.kv
     or (
       user_id is null
       and not public.kv_is_per_user_key(key)
+      -- PII per-user yatim (user_id NULL) — blokir baca lintas-user.
+      -- CATATAN penting: sessions/user-audit/daily/video-snapshot KINI di-stamp
+      -- user_id via bridge (cloud-sync.js PER_USER_PREFIXES_BRIDGE) → baris milik
+      -- sendiri lolos lewat cabang (auth.uid()=user_id) di atas; denylist ini
+      -- hanya menutup baris YATIM lama (akun terhapus / pra-stamp), jadi TIDAK
+      -- memutus baca-sendiri lintas-perangkat.
       and key not like 'playly-login-attempts-%'
       and key not like 'playly-sessions-%'
       and key not like 'playly-user-audit-%'
       and key not like 'playly-daily-snapshot-%'
       and key not like 'playly-video-snapshot-%'
-      and key not like 'playly-admin-tickets%'
-      and key not like 'playly-admin-targets%'
-      and key not like 'playly-admin-revoked%'
-      and key not like 'playly-trash-videos%'
     )
   );
+-- SENGAJA TIDAK memblokir playly-admin-tickets/targets/revoked & playly-trash-
+-- videos di sini (beda dari denylist anon 0015): key admin ini TIDAK di-stamp
+-- user_id (bukan per-user) → dibaca ADMIN lewat cabang platform (user_id NULL)
+-- saat cloud-sync. Memblokirnya di sini akan MEMATAHKAN sinkron panel admin
+-- (Support Tickets / Target Bulanan / daftar admin dicabut / Sampah video)
+-- lintas-perangkat. Batas jujur: akibatnya, baris admin ini MASIH bisa dibaca
+-- user login mana pun (bukan hanya admin) — celah privasi RINGAN yang SUDAH ADA
+-- sebelum migrasi ini (bukan regresi). Fix bersihnya = stamp user_id ke key
+-- admin ATAU pindahkan baca data admin ke server route super-admin (service_role).
+-- Dikerjakan terpisah supaya migrasi ini tak sekaligus merusak fitur admin.
 
 -- CATATAN: kv_per_user_insert/update/delete (0008) + kv_anon_* (0012/0013/0015)
 -- TIDAK diubah. Hanya jalur BACA authenticated yang diperketat, simetris 0015.
@@ -81,6 +90,9 @@ create policy "kv_per_user_select" on public.kv
 -- 2) Config publik MASIH kebaca (target: ada isi) — mis. playly-ad-config.
 -- 3) Data sendiri MASIH kebaca (playly-state-<username sendiri>).
 -- 4) Buka app: login, dashboard, /watch normal — tak ada error baru.
+-- 5) PANEL ADMIN (login admin, perangkat berbeda kalau bisa): Support Tickets,
+--    Target Bulanan, daftar admin, Sampah video — pastikan MASIH terisi dari
+--    cloud (bukti key admin tak ikut terblokir).
 
 -- ============================================================
 -- ROLLBACK (kalau ada fitur authenticated yang rusak)
