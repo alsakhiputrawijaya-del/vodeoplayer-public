@@ -25,11 +25,37 @@ import http from 'node:http';
 // -------------------- ENV / CONFIG --------------------
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID?.trim();
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID?.trim();
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY?.trim();
-const R2_BUCKET = process.env.R2_BUCKET?.trim();
-const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL || '').replace(/\/+$/, '');
+
+// Storage: Supabase Storage S3-compatible (primary) atau Cloudflare R2 (legacy).
+function inferRegion(endpoint) {
+  const m = endpoint.match(/\.s3\.([a-z0-9-]+)\./);
+  if (m) return m[1];
+  if (endpoint.includes('.r2.cloudflarestorage.com')) return 'auto';
+  return process.env.S3_REGION || 'auto';
+}
+
+function inferSupabasePublicUrl(bucket) {
+  if (!SUPABASE_URL) return null;
+  return `${SUPABASE_URL.replace(/\/+$/, '')}/storage/v1/object/public/${bucket}`;
+}
+
+const STORAGE_ENDPOINT =
+  process.env.S3_ENDPOINT?.trim() ||
+  (process.env.R2_ACCOUNT_ID?.trim()
+    ? `https://${process.env.R2_ACCOUNT_ID.trim()}.r2.cloudflarestorage.com`
+    : '');
+
+const STORAGE_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID?.trim() || process.env.R2_ACCESS_KEY_ID?.trim();
+const STORAGE_SECRET_ACCESS_KEY =
+  process.env.S3_SECRET_ACCESS_KEY?.trim() || process.env.R2_SECRET_ACCESS_KEY?.trim();
+const STORAGE_BUCKET = process.env.S3_BUCKET?.trim() || process.env.R2_BUCKET?.trim();
+const STORAGE_PUBLIC_URL = (
+  process.env.S3_PUBLIC_URL ||
+  inferSupabasePublicUrl(STORAGE_BUCKET || '') ||
+  process.env.R2_PUBLIC_URL ||
+  ''
+).replace(/\/+$/, '');
+
 const FFMPEG_PATH = process.env.FFMPEG_PATH;
 const FFPROBE_PATH = process.env.FFPROBE_PATH;
 const POLL_INTERVAL_MS = Math.max(3000, Number(process.env.POLL_INTERVAL_MS || 10000));
@@ -43,25 +69,28 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1);
 }
 
-if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET || !R2_PUBLIC_URL) {
-  console.error('[transcoder] R2 env vars belum lengkap.');
+if (!STORAGE_ENDPOINT || !STORAGE_ACCESS_KEY_ID || !STORAGE_SECRET_ACCESS_KEY || !STORAGE_BUCKET || !STORAGE_PUBLIC_URL) {
+  console.error('[transcoder] Storage (S3/R2) env vars belum lengkap.');
   process.exit(1);
 }
 
 if (FFMPEG_PATH) ffmpeg.setFfmpegPath(FFMPEG_PATH);
 if (FFPROBE_PATH) ffmpeg.setFfprobePath(FFPROBE_PATH);
 
+const isSupabaseStorage = STORAGE_ENDPOINT.includes('.supabase.co');
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
 const r2 = new S3Client({
-  region: 'auto',
-  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  region: inferRegion(STORAGE_ENDPOINT),
+  endpoint: STORAGE_ENDPOINT,
   credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY,
+    accessKeyId: STORAGE_ACCESS_KEY_ID,
+    secretAccessKey: STORAGE_SECRET_ACCESS_KEY,
   },
+  forcePathStyle: isSupabaseStorage || process.env.S3_FORCE_PATH_STYLE === 'true',
   requestChecksumCalculation: 'WHEN_REQUIRED',
   responseChecksumValidation: 'WHEN_REQUIRED',
   requestHandler: new FetchHttpHandler(),
@@ -89,7 +118,7 @@ function objectKeyForVariant(id, height, contentType) {
 }
 
 function publicUrl(key) {
-  return `${R2_PUBLIC_URL}/${key}`;
+  return `${STORAGE_PUBLIC_URL}/${key}`;
 }
 
 async function ensureDir(dir) {
@@ -105,7 +134,7 @@ async function safeRemove(filePath) {
 }
 
 async function downloadOriginal(key, destPath) {
-  const { Body } = await r2.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+  const { Body } = await r2.send(new GetObjectCommand({ Bucket: STORAGE_BUCKET, Key: key }));
   if (!Body) throw new Error('R2 object empty');
   await pipeline(Body, createWriteStream(destPath));
 }
@@ -114,7 +143,7 @@ async function uploadVariant(localPath, key, contentType) {
   const fileBuffer = await fs.readFile(localPath);
   await r2.send(
     new PutObjectCommand({
-      Bucket: R2_BUCKET,
+      Bucket: STORAGE_BUCKET,
       Key: key,
       Body: fileBuffer,
       ContentType: contentType || 'video/mp4',

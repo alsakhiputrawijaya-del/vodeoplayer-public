@@ -1,17 +1,21 @@
-// Cloudflare R2 client untuk Next.js Route Handlers — v547 (2026-05-25).
-//
-// R2 = S3-compatible object storage. Egress GRATIS (vs Supabase Storage
-// $0.09/GB after free quota 5GB/mo). Pakai @aws-sdk/client-s3 +
-// s3-request-presigner untuk presigned URLs (client → R2 direct upload,
-// bypass Vercel 4.5MB body limit).
+// S3-compatible storage client untuk Next.js Route Handlers.
+// Dukung Cloudflare R2 (legacy env R2_*) dan Supabase Storage S3-compatible
+// (primary env S3_*). Supabase Storage dipilih karena tidak butuh kartu kredit
+// untuk aktifasi dan terintegrasi langsung dengan project Supabase.
 //
 // Env vars (set di Vercel dashboard atau .env.local):
-//   R2_ACCOUNT_ID         — Cloudflare account ID (R2 dashboard kanan atas)
-//   R2_ACCESS_KEY_ID      — R2 API token Access Key ID
-//   R2_SECRET_ACCESS_KEY  — R2 API token Secret Access Key
-//   R2_BUCKET             — bucket name (e.g. "playly-videos")
-//   R2_PUBLIC_URL         — public access URL (e.g. "https://pub-xxx.r2.dev")
-//                            atau custom domain (e.g. "https://cdn.playly.id")
+//   Primary — Supabase Storage / S3-compatible lain:
+//     S3_ENDPOINT          — endpoint S3, e.g. https://ref.s3.region.supabase.co
+//     S3_ACCESS_KEY_ID     — S3 access key
+//     S3_SECRET_ACCESS_KEY — S3 secret key
+//     S3_BUCKET            — bucket name (e.g. "videos")
+//     S3_PUBLIC_URL        — public URL base, e.g.
+//                            https://ref.supabase.co/storage/v1/object/public/videos
+//     S3_REGION            — optional, auto-detected dari endpoint
+//
+//   Fallback — Cloudflare R2:
+//     R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
+//     R2_BUCKET, R2_PUBLIC_URL
 
 import { S3Client } from '@aws-sdk/client-s3';
 import { FetchHttpHandler } from '@smithy/fetch-http-handler';
@@ -22,28 +26,56 @@ export type R2Config = {
   publicUrl: string;
 };
 
-export function getR2Config(): R2Config | null {
-  // v549 (2026-05-26): trim() ALL env vars defensively. Copy-paste from
-  // Cloudflare dashboard ke Vercel env vars often introduces trailing \t
-  // / \n / spaces yang bikin URL malformed (host includes whitespace →
-  // browser refuses to fetch → "Failed to fetch" generic error).
-  const accountId = process.env.R2_ACCOUNT_ID?.trim();
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
-  const bucket = process.env.R2_BUCKET?.trim();
-  const publicUrl = process.env.R2_PUBLIC_URL?.trim();
+function inferRegion(endpoint: string): string {
+  // Supabase Storage endpoint: https://<ref>.s3.<region>.supabase.co
+  const m = endpoint.match(/\.s3\.([a-z0-9-]+)\./);
+  if (m) return m[1];
+  if (endpoint.includes('.r2.cloudflarestorage.com')) return 'auto';
+  return process.env.S3_REGION?.trim() || 'auto';
+}
 
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicUrl) {
+function inferSupabasePublicUrl(bucket: string): string | null {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!supabaseUrl) return null;
+  return `${supabaseUrl.replace(/\/+$/, '')}/storage/v1/object/public/${bucket}`;
+}
+
+export function getR2Config(): R2Config | null {
+  // v549 (2026-05-26): trim() ALL env vars defensively. Copy-paste dari
+  // dashboard sering menyertakan trailing \t / \n / spaces yang bikin URL
+  // malformed (host includes whitespace → request gagal).
+  const endpoint =
+    process.env.S3_ENDPOINT?.trim() ||
+    (process.env.R2_ACCOUNT_ID?.trim()
+      ? `https://${process.env.R2_ACCOUNT_ID.trim()}.r2.cloudflarestorage.com`
+      : '');
+
+  const accessKeyId =
+    process.env.S3_ACCESS_KEY_ID?.trim() || process.env.R2_ACCESS_KEY_ID?.trim();
+  const secretAccessKey =
+    process.env.S3_SECRET_ACCESS_KEY?.trim() || process.env.R2_SECRET_ACCESS_KEY?.trim();
+  const bucket = process.env.S3_BUCKET?.trim() || process.env.R2_BUCKET?.trim();
+
+  const publicUrl =
+    process.env.S3_PUBLIC_URL?.trim() ||
+    inferSupabasePublicUrl(bucket || '') ||
+    process.env.R2_PUBLIC_URL?.trim();
+
+  if (!endpoint || !accessKeyId || !secretAccessKey || !bucket || !publicUrl) {
     return null;
   }
 
+  const isSupabase = endpoint.includes('.supabase.co');
+
   const client = new S3Client({
-    region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    region: inferRegion(endpoint),
+    endpoint,
     credentials: {
       accessKeyId,
       secretAccessKey,
     },
+    // Supabase Storage S3 API butuh path-style addressing.
+    forcePathStyle: isSupabase || process.env.S3_FORCE_PATH_STYLE === 'true',
     // v548 hotfix (2026-05-26): AWS SDK v3.730+ default checksum behavior
     // ('WHEN_SUPPORTED') signs `x-amz-checksum-crc32` into presigned URLs.
     // Browser fetch() can't reproduce this header → signature mismatch →
