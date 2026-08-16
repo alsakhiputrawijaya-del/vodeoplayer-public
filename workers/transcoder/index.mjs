@@ -31,10 +31,17 @@ function inferRegion(endpoint) {
   const m = endpoint.match(/\.s3\.([a-z0-9-]+)\./);
   if (m) return m[1];
   if (endpoint.includes('.r2.cloudflarestorage.com')) return 'auto';
+  // Endpoint baru Supabase Storage: https://<ref>.storage.supabase.co/storage/s3
+  // Region tidak ada di URL → pakai env S3_REGION atau fallback auto.
   return process.env.S3_REGION || 'auto';
 }
 
 function inferSupabasePublicUrl(bucket) {
+  const s3Endpoint = process.env.S3_ENDPOINT?.trim();
+  if (s3Endpoint && s3Endpoint.includes('.storage.supabase.co')) {
+    const base = s3Endpoint.replace(/\/storage\/s3\/?$/i, '');
+    return `${base}/storage/v1/object/public/${bucket}`;
+  }
   if (!SUPABASE_URL) return null;
   return `${SUPABASE_URL.replace(/\/+$/, '')}/storage/v1/object/public/${bucket}`;
 }

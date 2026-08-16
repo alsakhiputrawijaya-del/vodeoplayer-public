@@ -27,14 +27,23 @@ export type R2Config = {
 };
 
 function inferRegion(endpoint: string): string {
-  // Supabase Storage endpoint: https://<ref>.s3.<region>.supabase.co
+  // Supabase Storage endpoint lama: https://<ref>.s3.<region>.supabase.co
   const m = endpoint.match(/\.s3\.([a-z0-9-]+)\./);
   if (m) return m[1];
   if (endpoint.includes('.r2.cloudflarestorage.com')) return 'auto';
+  // Endpoint baru Supabase Storage: https://<ref>.storage.supabase.co/storage/s3
+  // Region tidak ada di URL → pakai env S3_REGION atau fallback auto.
   return process.env.S3_REGION?.trim() || 'auto';
 }
 
 function inferSupabasePublicUrl(bucket: string): string | null {
+  const s3Endpoint = process.env.S3_ENDPOINT?.trim();
+  // Endpoint baru Supabase Storage: https://<ref>.storage.supabase.co/storage/s3
+  if (s3Endpoint && s3Endpoint.includes('.storage.supabase.co')) {
+    const base = s3Endpoint.replace(/\/storage\/s3\/?$/i, '');
+    return `${base}/storage/v1/object/public/${bucket}`;
+  }
+  // Endpoint lama / fallback ke project Supabase URL.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   if (!supabaseUrl) return null;
   return `${supabaseUrl.replace(/\/+$/, '')}/storage/v1/object/public/${bucket}`;
