@@ -20,6 +20,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import ffmpeg from 'fluent-ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
+import ffprobeStatic from 'ffprobe-static';
 import http from 'node:http';
 
 // -------------------- ENV / CONFIG --------------------
@@ -63,8 +65,8 @@ const STORAGE_PUBLIC_URL = (
   ''
 ).replace(/\/+$/, '');
 
-const FFMPEG_PATH = process.env.FFMPEG_PATH;
-const FFPROBE_PATH = process.env.FFPROBE_PATH;
+const FFMPEG_PATH = process.env.FFMPEG_PATH?.trim() || ffmpegStatic || null;
+const FFPROBE_PATH = process.env.FFPROBE_PATH?.trim() || ffprobeStatic || null;
 const POLL_INTERVAL_MS = Math.max(3000, Number(process.env.POLL_INTERVAL_MS || 10000));
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const PORT = Number(process.env.PORT || 3000);
