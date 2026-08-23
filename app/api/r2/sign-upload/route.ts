@@ -22,7 +22,8 @@
 
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { getR2Config, videoObjectKey, publicUrlFor } from '@/lib/r2/client';
+import { getR2Config, publicUrlFor } from '@/lib/r2/client';
+import { videoStorageKey } from '@/lib/storage/paths';
 import { verifyVideoOwnership } from '@/lib/r2/ownership';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -97,7 +98,7 @@ export async function POST(req: Request) {
   }
 
   const contentType = String(body.contentType || 'video/mp4');
-  const key = videoObjectKey(id, contentType);
+  const key = videoStorageKey(authUserId, id, contentType);
 
   // v548 (2026-05-26): minimal PutObjectCommand — no CacheControl.
   // CacheControl di signed payload bikin browser harus echo header

@@ -127,12 +127,20 @@ function sanitizeId(id) {
   return String(id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64) || 'unknown';
 }
 
-function objectKeyForOriginal(id, contentType) {
-  return `videos/${sanitizeId(id)}.${extFromContentType(contentType)}`;
+// Konvensi path WAJIB sama dengan yang dipakai browser & policy RLS:
+//   asli    : {owner_id}/{video_id}.{ext}
+//   variant : {owner_id}/{video_id}_{tinggi}p.{ext}
+// Sebelumnya worker memakai "videos/{id}.{ext}" — lolos hanya karena service
+// role menembus RLS, bukan karena path-nya benar. Akibatnya file asli yang
+// diunggah browser tak pernah ketemu oleh worker.
+// Salinan logika ini ada di lib/storage/paths.ts (paket terpisah, tak bisa
+// saling impor) — kalau bentuknya berubah, ubah di kedua tempat.
+function objectKeyForOriginal(ownerId, id, contentType) {
+  return `${ownerId}/${sanitizeId(id)}.${extFromContentType(contentType)}`;
 }
 
-function objectKeyForVariant(id, height, contentType) {
-  return `videos/${sanitizeId(id)}_${height}p.${extFromContentType(contentType)}`;
+function objectKeyForVariant(ownerId, id, height, contentType) {
+  return `${ownerId}/${sanitizeId(id)}_${height}p.${extFromContentType(contentType)}`;
 }
 
 function publicUrl(key) {
@@ -269,7 +277,7 @@ async function processJob(job) {
       contentType = video?.contentType || video?.mimeType || 'video/mp4';
     }
 
-    const key = original_key || objectKeyForOriginal(video_id, contentType);
+    const key = original_key || objectKeyForOriginal(owner_id, video_id, contentType);
     contentType = original_key
       ? `video/${path.extname(original_key).replace('.', '') || 'mp4'}`
       : contentType;
@@ -288,7 +296,7 @@ async function processJob(job) {
     const variants = {};
     for (const h of TARGETS) {
       if (h > originalHeight) continue;
-      const outKey = objectKeyForVariant(video_id, h, contentType);
+      const outKey = objectKeyForVariant(owner_id, video_id, h, contentType);
       const outPath = path.join(workDir, `${h}p-${video_id}.${extFromContentType(contentType)}`);
       tempFiles.push(outPath);
 

@@ -710,13 +710,6 @@
     return true; // default ON setelah v547
   }
 
-  function blobPath(id, mime) {
-    const ext = !mime ? "mp4"
-      : mime.includes("webm") ? "webm"
-      : mime.includes("quicktime") ? "mov"
-      : "mp4";
-    return `${id}.${ext}`;
-  }
 
   // Upload video blob — try R2 first, fallback to Supabase Storage.
   // Return { ok, url, error, via: "r2"|"supabase" }.
@@ -751,7 +744,7 @@
         console.warn("[cloud] proxy upload gagal, lanjut fallback Supabase. Reason:", pRes.error || pRes.reason);
       }
     }
-    return uploadViaSupabase(id, blob);
+    return uploadViaSupabase(id, blob, opts);
   }
 
   // 29 Jul 2026: upload file kecil via server (POST /api/r2/put-object) —
@@ -785,12 +778,17 @@
   // PUT blob ke presigned URL via XHR supaya bisa lapor progress byte-level
   // (fetch tidak expose upload progress) + bisa di-abort. Return Promise
   // { ok, status, aborted?, network? }.
-  function r2PutWithProgress(uploadUrl, blob, opts) {
+  function r2PutWithProgress(uploadUrl, blob, opts, extraHeaders) {
     return new Promise((resolve) => {
       try {
         const xhr = new XMLHttpRequest();
         xhr.open("PUT", uploadUrl, true);
         xhr.setRequestHeader("Content-Type", blob.type || "video/mp4");
+        if (extraHeaders) {
+          for (const h in extraHeaders) {
+            try { xhr.setRequestHeader(h, extraHeaders[h]); } catch (_) {}
+          }
+        }
         if (xhr.upload && opts && typeof opts.onProgress === "function") {
           xhr.upload.onprogress = (e) => {
             if (e.lengthComputable && e.total > 0) {
@@ -864,39 +862,65 @@
   }
 
   // Supabase path (legacy / fallback) — original implementation.
-  async function uploadViaSupabase(id, blob) {
-    const sb = client();
-    if (!sb) return { ok: false, error: "cloud_disabled" };
-    const sizeMB = blob.size / 1024 / 1024;
+  // Upload lewat signed URL yang diterbitkan server (app/api/storage/object).
+  //
+  // KENAPA TIDAK LANGSUNG sb.storage.upload(): klien di berkas ini dibuat dengan
+  // persistSession:false, jadi TIDAK PERNAH membawa sesi user — permintaannya
+  // berangkat sebagai anon. Bucket "videos" cuma punya policy INSERT untuk role
+  // authenticated dengan syarat path {owner_id}/{file}, jadi upload langsung
+  // SELALU ditolak RLS: diam-diam, dan video berakhir tersimpan lokal saja.
+  // Server yang menerbitkan signed URL sekaligus menentukan path-nya, jadi
+  // konvensi policy tak bisa meleset dan id video akun lain tak bisa ditimpa.
+  async function uploadViaSupabase(id, blob, opts) {
     try {
-      const path = blobPath(id, blob.type);
-      const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
-        upsert: true,
-        contentType: blob.type || "video/mp4",
-        // EGRESS OPT 2026-05-21: cacheControl 7 hari supaya browser cache
-        // video setelah first play → repeat plays serve dari memory/disk
-        // cache, NOL egress. Storage public URL otomatis include
-        // Cache-Control header sesuai value ini.
-        cacheControl: "604800",  // 7 days in seconds
+      const resp = await fetch("/api/storage/object", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          id: String(id),
+          contentType: blob.type || "video/mp4",
+          sizeBytes: blob.size || 0,
+        }),
+        signal: opts && opts.signal ? opts.signal : undefined,
       });
-      if (error) {
-        console.warn("[cloud] upload error:", error);
-        // Detect "Payload too large" / quota issues
-        const msg = (error.message || "").toLowerCase();
-        if (msg.includes("payload") || msg.includes("too large") || msg.includes("size")) {
+      let data = null;
+      try { data = await resp.json(); } catch (_) {}
+      if (!resp.ok || !data || !data.ok) {
+        return {
+          ok: false,
+          error: (data && data.error) || ("http_" + resp.status),
+          message: data && data.message,
+          via: "supabase",
+        };
+      }
+      const put = await r2PutWithProgress(data.uploadUrl, blob, opts, {
+        "x-upsert": "true",
+        "cache-control": "max-age=604800",
+      });
+      if (!put.ok) {
+        if (put.aborted) return { ok: false, error: "aborted" };
+        if (put.status === 413) {
+          const mb = (blob.size / 1048576).toFixed(1);
           return {
             ok: false,
             error: "file_too_large",
-            message: `File ${sizeMB.toFixed(1)} MB melebihi batas Supabase Storage. Naikkan limit di Supabase dashboard → Storage → bucket "videos" → File size limit, atau pilih video yang lebih kecil.`,
+            message: "File " + mb + " MB melebihi batas bucket Supabase Storage. Naikkan batasnya di dashboard (Storage > bucket \"videos\" > File size limit) atau pakai video lebih kecil.",
+            via: "supabase",
           };
         }
-        return { ok: false, error: "upload_failed", message: error.message };
+        return { ok: false, error: "upload_failed", message: "HTTP " + put.status, via: "supabase" };
       }
-      const { data } = sb.storage.from(BUCKET).getPublicUrl(path);
-      return { ok: true, url: data?.publicUrl || null, via: "supabase" };
+      try {
+        const cache = _loadFilenameCache();
+        cache[id] = data.path;
+        _saveFilenameCache(cache);
+      } catch (_) {}
+      return { ok: true, url: data.publicUrl || null, via: "supabase", key: data.path };
     } catch (e) {
-      console.warn("[cloud] upload exception:", e);
-      return { ok: false, error: "exception", message: e?.message || "Upload gagal" };
+      if (e && e.name === "AbortError") return { ok: false, error: "aborted" };
+      console.warn("[cloud] upload supabase exception:", e);
+      return { ok: false, error: "exception", message: (e && e.message) || "Upload gagal", via: "supabase" };
     }
   }
 
@@ -912,24 +936,24 @@
   function _saveFilenameCache(map) {
     try { origSet.call(window.localStorage, FILENAME_CACHE_KEY, JSON.stringify(map)); } catch {}
   }
+  // Path file di bucket = {owner_id}/{id}.{ext}, ditentukan server. Klien di
+  // berkas ini anon, jadi tidak boleh (dan tidak bisa) menyisir isi bucket
+  // sendiri — RLS SELECT-nya owner-scoped. Server yang mencarikan.
   async function findVideoFilename(id) {
-    const sb = client();
-    if (!sb) return null;
-    // Cache hit → skip Storage API call
     const cache = _loadFilenameCache();
     if (cache[id]) return cache[id];
     try {
-      const { data } = await sb.storage.from(BUCKET).list("", {
-        search: `${id}.`,
+      const resp = await fetch("/api/storage/object?id=" + encodeURIComponent(String(id)), {
+        credentials: "same-origin",
       });
-      const f = (data || []).find((x) => x.name.startsWith(`${id}.`));
-      const filename = f?.name || null;
-      if (filename) {
-        cache[id] = filename;
-        _saveFilenameCache(cache);
-      }
-      return filename;
-    } catch { return null; }
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data || !data.ok || !data.path) return null;
+      cache[id] = data.path;
+      _saveFilenameCache(cache);
+      return data.path;
+    } catch (_) {
+      return null;
+    }
   }
 
   // CR-5 fix (2026-05-21): SECURITY/COST — delete video blob dari cloud.
@@ -1001,24 +1025,22 @@
   }
 
   async function deleteViaSupabase(id) {
-    const sb = client();
-    if (!sb) return { ok: false, error: "cloud_disabled", via: "supabase" };
     try {
-      const filename = await findVideoFilename(id);
-      if (!filename) return { ok: true, skipped: "not_found", via: "supabase" };
-      const { error } = await sb.storage.from(BUCKET).remove([filename]);
-      if (error) {
-        console.warn("[cloud] delete blob failed:", error.message);
-        return { ok: false, error: error.message, via: "supabase" };
+      const resp = await fetch("/api/storage/object?id=" + encodeURIComponent(String(id)), {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data || !data.ok) {
+        return { ok: false, error: (data && data.error) || ("http_" + resp.status), via: "supabase" };
       }
-      // Invalidate filename cache so future getVideoUrl returns null
       const cache = _loadFilenameCache();
       delete cache[id];
       _saveFilenameCache(cache);
-      return { ok: true, via: "supabase" };
+      return { ok: true, via: "supabase", removed: data.removed };
     } catch (err) {
       console.warn("[cloud] delete blob exception:", err);
-      return { ok: false, error: err?.message || "exception", via: "supabase" };
+      return { ok: false, error: (err && err.message) || "exception", via: "supabase" };
     }
   }
 

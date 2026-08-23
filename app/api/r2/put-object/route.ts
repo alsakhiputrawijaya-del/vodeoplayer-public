@@ -22,7 +22,8 @@
 // Response 503: r2_unavailable / auth_unavailable / service_unavailable
 
 import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { getR2Config, videoObjectKey, publicUrlFor } from '@/lib/r2/client';
+import { getR2Config, publicUrlFor } from '@/lib/r2/client';
+import { videoStorageKey } from '@/lib/storage/paths';
 import { verifyVideoOwnership } from '@/lib/r2/ownership';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -83,7 +84,7 @@ export async function POST(req: Request) {
     });
   }
 
-  const key = videoObjectKey(id, contentType);
+  const key = videoStorageKey(authUserId, id, contentType);
   try {
     await r2.client.send(
       new PutObjectCommand({

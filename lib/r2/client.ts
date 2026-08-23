@@ -106,13 +106,6 @@ export function getR2Config(): R2Config | null {
   };
 }
 
-// Object key format: videos/<id>.<ext>
-// id: client-provided video id (timestamp or uuid)
-// ext: derived dari contentType, fallback "mp4"
-export function videoObjectKey(id: string, contentType?: string | null): string {
-  const ext = extFromContentType(contentType);
-  return `videos/${sanitizeId(id)}.${ext}`;
-}
 
 export function publicUrlFor(config: R2Config, key: string): string {
   return `${config.publicUrl}/${key}`;

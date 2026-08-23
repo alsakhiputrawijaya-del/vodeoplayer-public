@@ -15,7 +15,8 @@
 // Response 400: bad request
 
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { getR2Config, videoObjectKey } from '@/lib/r2/client';
+import { getR2Config } from '@/lib/r2/client';
+import { videoStorageKey } from '@/lib/storage/paths';
 import { verifyVideoOwnership } from '@/lib/r2/ownership';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
   }
 
   if (!key) {
-    key = videoObjectKey(vidId, body.contentType);
+    key = videoStorageKey(authUserId, vidId, body.contentType);
   }
 
   // Safety: scope key to videos/ prefix supaya endpoint ini gak bisa

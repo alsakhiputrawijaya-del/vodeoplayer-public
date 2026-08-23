@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { findVideoInState, createTranscodeJob } from '@/lib/transcode/jobs';
 import { jsonError, jsonOk } from '@/lib/api/responses';
-import { videoObjectKey } from '@/lib/r2/client';
+import { videoStorageKey } from '@/lib/storage/paths';
 
 export async function POST(req: Request) {
   const admin = createAdminClient();
@@ -66,7 +66,10 @@ export async function POST(req: Request) {
 
   // Key asli di R2 (fallback: videos/{id}.mp4).
   const contentType = found.video?.contentType || found.video?.mimeType || 'video/mp4';
-  const originalKey = videoObjectKey(String(videoId), contentType);
+  // WAJIB konvensi {owner_id}/{id}.{ext} — sama dengan yang dipakai browser saat
+  // upload. Kalau tidak, worker mengunduh alamat yang tak pernah ada dan job
+  // selalu gagal "file tidak ditemukan".
+  const originalKey = videoStorageKey(found.userId, String(videoId), contentType);
 
   const job = await createTranscodeJob(admin, videoId, authUserId, originalKey);
   if (!job) {
