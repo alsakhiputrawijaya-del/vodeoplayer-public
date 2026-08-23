@@ -85,3 +85,7 @@ docs/pelajaran-lintasai/
 # supabase/.temp/: state scratch Supabase CLI (project ref, pooler url, versi).
 hasil_cari.txt
 supabase/.temp/
+
+# Cadangan .env yang dibuat saat mengubah konfigurasi — isinya secret asli.
+.env*.sebelum-*
+**/.env.sebelum-*
