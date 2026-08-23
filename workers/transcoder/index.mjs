@@ -58,10 +58,16 @@ const STORAGE_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID?.trim() || process.en
 const STORAGE_SECRET_ACCESS_KEY =
   process.env.S3_SECRET_ACCESS_KEY?.trim() || process.env.R2_SECRET_ACCESS_KEY?.trim();
 const STORAGE_BUCKET = process.env.S3_BUCKET?.trim() || process.env.R2_BUCKET?.trim();
+// Mode R2 dikenali dari env-nya sendiri, bukan dari endpoint hasil rakitan.
+const pakaiR2Legacy = !process.env.S3_ENDPOINT?.trim() && !!process.env.R2_ACCOUNT_ID?.trim();
 const STORAGE_PUBLIC_URL = (
   process.env.S3_PUBLIC_URL ||
-  inferSupabasePublicUrl(STORAGE_BUCKET || '') ||
-  process.env.R2_PUBLIC_URL ||
+  // R2 butuh domain publiknya sendiri; Supabase bisa diturunkan dari endpoint.
+  // Tanpa pemisahan ini, deployment R2 ikut memakai URL Supabase — filenya ada,
+  // tapi tautan yang disimpan ke database menunjuk alamat yang salah.
+  (pakaiR2Legacy
+    ? (process.env.R2_PUBLIC_URL || '')
+    : (inferSupabasePublicUrl(STORAGE_BUCKET || '') || '')) ||
   ''
 ).replace(/\/+$/, '');
 
