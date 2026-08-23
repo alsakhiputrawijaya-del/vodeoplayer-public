@@ -2392,6 +2392,145 @@ async function requestTranscodeJob(videoId) {
   }
 }
 
+// ===== Unggah ke cloud: kecilkan bila melebihi batas storage =====
+
+/** Tinggi asli video di dalam blob; 0 kalau metadatanya tak terbaca. */
+function playlyProbeTinggiVideo(blob) {
+  return new Promise((resolve) => {
+    let url = null;
+    try { url = URL.createObjectURL(blob); } catch (_) { return resolve(0); }
+    const v = document.createElement("video");
+    let sudah = false;
+    const selesai = (h) => {
+      if (sudah) return;
+      sudah = true;
+      try { URL.revokeObjectURL(url); } catch (_) {}
+      resolve(h || 0);
+    };
+    v.preload = "metadata";
+    v.addEventListener("loadedmetadata", () => selesai(v.videoHeight), { once: true });
+    v.addEventListener("error", () => selesai(0), { once: true });
+    setTimeout(() => selesai(v.videoHeight), 4000);
+    v.src = url;
+  });
+}
+
+/**
+ * Unggah video ke cloud; kalau storage menolak karena kebesaran, kecilkan
+ * resolusinya lalu coba lagi — turun setangga demi setangga sampai muat.
+ *
+ * KENAPA PERLU: batas ukuran per-berkas ikut paket Supabase (paket Free = 50 MB)
+ * dan tidak bisa dinaikkan dari kode. Tanpa jalan ini, video besar TIDAK PERNAH
+ * sampai ke cloud — ia cuma ada di browser pengunggah, tak bisa ditonton orang
+ * lain, dan worker transcoder tak punya berkas untuk diproses.
+ *
+ * JUJUR SOAL HARGANYA: yang tersimpan di cloud jadi versi terkompresi, bukan
+ * master aslinya. Berkas asli tetap utuh di IndexedDB perangkat ini.
+ */
+async function playlyUploadVideoKeCloud(vidId, blob, opts) {
+  if (!window.cloudSync || !window.cloudSync.uploadVideoBlob) {
+    return { ok: false, error: "cloud_disabled" };
+  }
+  const hasil = await window.cloudSync.uploadVideoBlob(vidId, blob, opts);
+  if (hasil && hasil.ok) return hasil;
+  if (!hasil || hasil.error !== "file_too_large") return hasil;
+  if (typeof transcodeVideo !== "function") return hasil;
+
+  const batas = Number(hasil.maxBytes) || 0;
+  const srcH = (await playlyProbeTinggiVideo(blob)) || 1080;
+  // Hanya tangga yang benar-benar LEBIH KECIL dari sumbernya; kalau sumbernya
+  // sudah rendah tapi berkasnya tetap besar (bitrate tinggi), pakai separuhnya.
+  const tangga = [1080, 720, 480, 360].filter((h) => h < srcH);
+  if (!tangga.length) tangga.push(Math.max(240, Math.round(srcH / 2)));
+
+  for (const h of tangga) {
+    if (opts && opts.signal && opts.signal.aborted) return { ok: false, error: "aborted" };
+    toast(`Video melebihi batas cloud — mengecilkan ke <b>${h}p</b>…`, "info");
+    let kecil = null;
+    try {
+      kecil = await transcodeVideo(blob, { targetHeight: h });
+    } catch (e) {
+      console.warn("[upload] gagal mengecilkan:", e);
+      break;
+    }
+    if (!kecil || !kecil.blob) break;
+    if (batas && kecil.blob.size > batas) continue;   // masih kebesaran → turun setangga lagi
+    const ulang = await window.cloudSync.uploadVideoBlob(vidId, kecil.blob, opts);
+    if (ulang && ulang.ok) {
+      toast(
+        `Diunggah sebagai <b>${h}p</b> (${(kecil.blob.size / 1048576).toFixed(1)} MB). ` +
+          "Berkas aslinya tetap tersimpan di perangkat ini.",
+        "success"
+      );
+      return Object.assign({}, ulang, { dikecilkanKe: h });
+    }
+    if (!ulang || ulang.error !== "file_too_large") return ulang;
+  }
+  return hasil;
+}
+
+/**
+ * Unggah ulang video yang selama ini HANYA ada di perangkat ini.
+ *
+ * Video lama tersimpan sebagai blob di IndexedDB dan videoUrl-nya "blob:" —
+ * alamat yang cuma berlaku di browser ini. Akibatnya penonton lain tak bisa
+ * memutarnya dan worker transcoder tak punya berkas untuk dibuatkan tangga
+ * resolusi. Fungsi ini mengangkatnya ke storage, memperbarui videoUrl, lalu
+ * meminta job transcode supaya multi-resolusinya ikut dibuat.
+ */
+async function playlySinkronkanVideoKeCloud() {
+  const daftar = (typeof state !== "undefined" && state && state.myVideos) || [];
+  const perlu = daftar.filter((v) => {
+    const u = String((v && v.videoUrl) || "");
+    return v && v.id != null && (!u || u.startsWith("blob:"));
+  });
+  if (!perlu.length) {
+    toast("Semua videomu sudah ada di cloud.", "info");
+    return { total: 0, berhasil: 0 };
+  }
+
+  toast(`Menyinkronkan <b>${perlu.length}</b> video ke cloud… jangan tutup tab ini.`, "info");
+  let berhasil = 0;
+  const gagal = [];
+  for (let i = 0; i < perlu.length; i++) {
+    const v = perlu[i];
+    const nama = String(v.title || v.id).slice(0, 40);
+    try {
+      const blob = await getVideoBlob(v.id);
+      if (!blob) {
+        // Berkasnya memang tidak ada di perangkat ini (mis. diunggah dari device
+        // lain) — tak ada yang bisa diangkat, dan itu bukan error.
+        gagal.push(nama + " (berkas tak ada di perangkat ini)");
+        continue;
+      }
+      toast(`(${i + 1}/${perlu.length}) Mengunggah <b>${escapeHtml(nama)}</b>…`, "info");
+      const up = await playlyUploadVideoKeCloud(v.id, blob, {});
+      if (!up || !up.ok || !up.url) {
+        gagal.push(nama + " (" + ((up && (up.message || up.error)) || "gagal") + ")");
+        continue;
+      }
+      v.videoUrl = up.url;
+      if (typeof saveState === "function") saveState();
+      berhasil++;
+      // Minta tangga resolusi dibuat worker; gagal di sini tidak membatalkan upload.
+      if (typeof requestTranscodeJob === "function") {
+        requestTranscodeJob(v.id).catch((e) => console.warn("[sinkron] transcode:", e));
+      }
+    } catch (e) {
+      console.warn("[sinkron] " + v.id + ":", e);
+      gagal.push(nama + " (" + ((e && e.message) || "error") + ")");
+    }
+  }
+
+  if (berhasil) toast(`<b>${berhasil}</b> video naik ke cloud.`, "success");
+  if (gagal.length) {
+    toast(`<b>${gagal.length}</b> gagal: ${escapeHtml(gagal.slice(0, 3).join("; "))}` +
+      (gagal.length > 3 ? " …" : ""), "warning");
+  }
+  return { total: perlu.length, berhasil, gagal };
+}
+window.playlySinkronkanVideoKeCloud = playlySinkronkanVideoKeCloud;
+
 // ----------------------- THEME (global, before auth) -----------------------
 // Read both legacy `playly-theme` (logged-in session-bound) and `playly-guest-theme`
 // (gear dropdown on auth landing). Whichever exists wins; guest key wins on tie
@@ -4078,12 +4217,67 @@ async function refreshStorageUsage() {
       if (pctEl) pctEl.textContent = `${pct < 1 && used > 0 ? "<1" : Math.round(pct)}%`;
       if (ringEl) ringEl.setAttribute("stroke-dasharray", `${pct.toFixed(2)}, 100`);
     }
+    ensureTombolSinkronCloud();
   } catch (err) {
     console.warn("storage refresh failed:", err);
   } finally {
     __storageRefreshing = false;
   }
 }
+
+/**
+ * Tombol "Sinkronkan ke cloud" di kartu Penyimpanan.
+ *
+ * Disuntik lewat JS, bukan ditulis di markup, karena app/_legacy/index-markup.ts
+ * hasil ekstraksi otomatis dan tidak boleh diedit tangan. Pola yang sama dipakai
+ * ensureLibEditBtn. Tombol hanya muncul kalau memang ada video yang belum naik —
+ * kalau semua sudah di cloud, tak ada gunanya memenuhi layar.
+ */
+function ensureTombolSinkronCloud() {
+  const kartu = document.getElementById("storageOverviewCard");
+  if (!kartu) return;
+  const perlu = ((typeof state !== "undefined" && state && state.myVideos) || []).filter((v) => {
+    const u = String((v && v.videoUrl) || "");
+    return v && v.id != null && (!u || u.startsWith("blob:"));
+  });
+  let btn = document.getElementById("btnSinkronCloud");
+  if (!perlu.length) { if (btn) btn.remove(); return; }
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.id = "btnSinkronCloud";
+    btn.type = "button";
+    btn.className = "btn btn-secondary";
+    btn.style.cssText = "margin-top:12px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px";
+    btn.innerHTML =
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/></svg><span></span>';
+    kartu.appendChild(btn);
+  }
+  const label = btn.querySelector("span");
+  if (label) label.textContent = "Sinkronkan " + perlu.length + " video ke cloud";
+  btn.title = "Video ini baru ada di browser ini — belum bisa ditonton orang lain " +
+    "dan belum bisa dibuatkan pilihan resolusi.";
+}
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("#btnSinkronCloud");
+  if (!b || b.disabled) return;
+  e.preventDefault();
+  b.disabled = true;
+  const label = b.querySelector("span");
+  const semula = label ? label.textContent : "";
+  if (label) label.textContent = "Menyinkronkan…";
+  try {
+    await playlySinkronkanVideoKeCloud();
+  } catch (err) {
+    console.warn("[sinkron] gagal:", err);
+    toast("Sinkronisasi gagal — lihat Console untuk detailnya.", "error");
+  } finally {
+    b.disabled = false;
+    if (label) label.textContent = semula;
+    refreshStorageUsage();
+  }
+});
 
 // Re-hitung saat tab kembali aktif (data IDB / localStorage bisa berubah dari device lain)
 window.addEventListener("focus", () => { refreshStorageUsage(); });
@@ -55728,7 +55922,7 @@ $("#startUpload")?.addEventListener("click", async () => {
       status.textContent = "Mengunggah ke cloud…";
       let result;
       try {
-        result = await window.cloudSync.uploadVideoBlob(vidId, captured.file, {
+        result = await playlyUploadVideoKeCloud(vidId, captured.file, {
           onProgress: (frac) => { if (!isCancelled()) setDeterminate(frac); },
           signal: ctrl ? ctrl.signal : undefined,
         });

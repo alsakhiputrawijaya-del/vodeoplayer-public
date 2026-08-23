@@ -93,8 +93,25 @@ export async function POST(req: Request) {
   const id = String(body.id || '').trim();
   if (!id) return jsonError('missing_id', 400);
 
-  if (Number(body.sizeBytes) > MAX_BYTES) {
-    return jsonError('file_too_large', 413, { maxBytes: MAX_BYTES });
+  // Batas bucket ditanyakan ke Supabase, bukan ditebak: nilainya ikut paket dan
+  // bisa diubah kapan saja lewat dashboard. Ditolak SEBELUM signed URL terbit
+  // supaya klien tidak mengunggah puluhan MB hanya untuk ditolak di akhir, dan
+  // supaya klien tahu angkanya — itu yang dipakai untuk memutuskan mengecilkan.
+  let batasBucket = MAX_BYTES;
+  try {
+    const { data: bucket } = await ctx.admin.storage.getBucket(BUCKET);
+    if (bucket?.file_size_limit) batasBucket = Math.min(MAX_BYTES, bucket.file_size_limit);
+  } catch {
+    // Gagal membaca setelan bucket bukan alasan menolak upload — pakai batas kita.
+  }
+  const ukuran = Number(body.sizeBytes) || 0;
+  if (ukuran > batasBucket) {
+    return jsonError('file_too_large', 413, {
+      maxBytes: batasBucket,
+      message:
+        'File ' + (ukuran / 1048576).toFixed(1) + ' MB melebihi batas ' +
+        Math.floor(batasBucket / 1048576) + ' MB di storage.',
+    });
   }
 
   // ANTI-IDOR, sama seperti jalur R2: tanpa ini user login bisa meminta URL

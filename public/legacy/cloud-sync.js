@@ -891,6 +891,7 @@
           ok: false,
           error: (data && data.error) || ("http_" + resp.status),
           message: data && data.message,
+          maxBytes: data && data.maxBytes,
           via: "supabase",
         };
       }
