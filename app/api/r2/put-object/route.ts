@@ -24,7 +24,7 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getR2Config, publicUrlFor } from '@/lib/r2/client';
 import { videoStorageKey } from '@/lib/storage/paths';
-import { verifyVideoOwnership } from '@/lib/r2/ownership';
+import { claimVideoOwnership, verifyVideoOwnership } from '@/lib/r2/ownership';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { jsonError, jsonOk } from '@/lib/api/responses';
@@ -39,12 +39,14 @@ export async function POST(req: Request) {
 
   // Auth check — sama seperti sign-upload: anon tidak boleh upload.
   let authUserId: string | null = null;
+  let authUserEmail: string | null = null; // hanya untuk pengecualian admin (moderasi)
   try {
     const supabase = await createClient();
     const {
       data: { user: authUser },
     } = await supabase.auth.getUser();
     authUserId = authUser?.id || null;
+    authUserEmail = authUser?.email || null;
   } catch {
     return jsonError('auth_unavailable', 503);
   }
@@ -77,12 +79,13 @@ export async function POST(req: Request) {
       message: 'SUPABASE_SERVICE_ROLE_KEY belum di-set — verifikasi kepemilikan tidak bisa dijalankan.',
     });
   }
-  const verdict = await verifyVideoOwnership(admin, id, authUserId);
+  const verdict = await verifyVideoOwnership(admin, id, authUserId, authUserEmail);
   if (!verdict.ok) {
     return jsonError(verdict.error, verdict.status, {
       message: verdict.message || 'Id video ini sudah dipakai akun lain.',
     });
   }
+  await claimVideoOwnership(admin, id, authUserId);
 
   const key = videoStorageKey(authUserId, id, contentType);
   try {

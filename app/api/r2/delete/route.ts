@@ -36,12 +36,14 @@ export async function POST(req: Request) {
 
   // Auth check — anon nggak boleh delete.
   let authUserId: string | null = null;
+  let authUserEmail: string | null = null; // hanya untuk pengecualian admin (moderasi)
   try {
     const supabase = await createClient();
     const {
       data: { user: authUser },
     } = await supabase.auth.getUser();
     authUserId = authUser?.id || null;
+    authUserEmail = authUser?.email || null;
   } catch {
     return jsonError('auth_unavailable', 503);
   }
@@ -88,7 +90,7 @@ export async function POST(req: Request) {
       message: 'SUPABASE_SERVICE_ROLE_KEY belum di-set — verifikasi kepemilikan tidak bisa dijalankan.',
     });
   }
-  const verdict = await verifyVideoOwnership(admin, vidId, authUserId);
+  const verdict = await verifyVideoOwnership(admin, vidId, authUserId, authUserEmail);
   if (!verdict.ok) {
     return jsonError(verdict.error, verdict.status, {
       message: verdict.message || 'Video ini bukan milikmu.',

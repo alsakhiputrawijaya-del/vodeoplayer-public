@@ -23,7 +23,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { verifyVideoOwnership } from '@/lib/r2/ownership';
+import { claimVideoOwnership, verifyVideoOwnership } from '@/lib/r2/ownership';
 import { jsonError, jsonOk } from '@/lib/api/responses';
 import { VIDEO_BUCKET, videoStorageKey } from '@/lib/storage/paths';
 
@@ -37,6 +37,7 @@ const TTL_SECONDS = 300;
 type Konteks = {
   admin: NonNullable<ReturnType<typeof createAdminClient>>;
   userId: string;
+  email: string | null; // hanya untuk pengecualian admin (moderasi)
 };
 
 // Auth + service role sekaligus: ketiga handler butuh keduanya.
@@ -48,15 +49,17 @@ async function siapkan(): Promise<Konteks | Response> {
     });
   }
   let userId: string | null = null;
+  let email: string | null = null;
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
     userId = data.user?.id || null;
+    email = data.user?.email || null;
   } catch {
     return jsonError('auth_unavailable', 503);
   }
   if (!userId) return jsonError('not_authenticated', 401);
-  return { admin, userId };
+  return { admin, userId, email };
 }
 
 function idDariQuery(req: Request): string {
@@ -116,12 +119,13 @@ export async function POST(req: Request) {
 
   // ANTI-IDOR, sama seperti jalur R2: tanpa ini user login bisa meminta URL
   // upload untuk id video ORANG LAIN lalu menimpa filenya.
-  const verdict = await verifyVideoOwnership(ctx.admin, id, ctx.userId);
+  const verdict = await verifyVideoOwnership(ctx.admin, id, ctx.userId, ctx.email);
   if (!verdict.ok) {
     return jsonError(verdict.error, verdict.status, {
       message: verdict.message || 'Id video ini sudah dipakai akun lain.',
     });
   }
+  await claimVideoOwnership(ctx.admin, id, ctx.userId);
 
   // Konvensi wajib policy videos_storage_insert_own:
   //   auth.uid()::text = (storage.foldername(name))[1]
