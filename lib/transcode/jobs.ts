@@ -26,28 +26,40 @@ export async function findVideoInState(
   admin: SupabaseClient,
   videoId: string | number,
 ): Promise<{ userId: string; video: any; state: any } | null> {
-  const id = typeof videoId === 'number' ? videoId : String(videoId).trim();
-  if (!id) return null;
+  const mentah = String(videoId ?? '').trim();
+  if (!mentah) return null;
 
-  const { data, error } = await admin
-    .from('user_state')
-    .select('user_id, state')
-    .contains('state', { myVideos: [{ id }] })
-    .limit(1)
-    .maybeSingle();
+  // Pencocokan JSONB containment membedakan 1787527932499 (number) dari
+  // "1787527932499" (string): id yang tersimpan di state bertipe number, jadi
+  // pemanggil yang mengirimnya sebagai string TIDAK PERNAH ketemu — job transcode
+  // gagal dibuat diam-diam dengan 404 not_found, tanpa jejak apa pun di log.
+  // Karena itu kedua bentuk dicoba, bukan hanya bentuk yang kebetulan dikirim.
+  const kandidat: Array<string | number> = /^d+$/.test(mentah)
+    ? [Number(mentah), mentah]
+    : [mentah];
 
-  if (error || !data) {
-    console.warn('[transcode/findVideoInState] error:', error?.message);
-    return null;
+  for (const id of kandidat) {
+    const { data, error } = await admin
+      .from('user_state')
+      .select('user_id, state')
+      .contains('state', { myVideos: [{ id }] })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[transcode/findVideoInState] error:', error.message);
+      return null;
+    }
+    if (!data) continue;
+
+    const myVideos = data.state?.myVideos;
+    if (!Array.isArray(myVideos)) continue;
+
+    // Dibandingkan sebagai teks supaya tipe di state tak lagi menentukan hasil.
+    const video = myVideos.find((v: any) => v && String(v.id) === mentah);
+    if (video) return { userId: data.user_id, video, state: data.state };
   }
-
-  const myVideos = data.state?.myVideos;
-  if (!Array.isArray(myVideos)) return null;
-
-  const video = myVideos.find((v: any) => v && v.id === id);
-  if (!video) return null;
-
-  return { userId: data.user_id, video, state: data.state };
+  return null;
 }
 
 // Buat job transcode baru. Mengembalikan job atau null bila gagal.

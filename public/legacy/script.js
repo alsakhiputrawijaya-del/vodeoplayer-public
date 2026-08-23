@@ -2470,6 +2470,41 @@ async function playlyUploadVideoKeCloud(vidId, blob, opts) {
 }
 
 /**
+ * Samakan catatan variants/videoUrl di state dengan berkas yang BENAR-BENAR ada
+ * di storage, lalu terapkan hasilnya ke state lokal.
+ *
+ * KENAPA PERLU: variant yang dibangun di browser diunggah lebih dulu, baru
+ * dilaporkan ke server — kalau laporannya gagal, berkasnya ada tapi tak
+ * tercatat, dan menu Kualitas menyembunyikan resolusi yang sudah jadi.
+ * Sebaliknya entri "blob:" sisa sesi lama menunjuk alamat yang sudah mati.
+ * Storage yang jadi acuan; state cuma catatan.
+ */
+async function playlyRekonsiliasiVariant(videoId) {
+  try {
+    const resp = await fetch("/api/storage/reconcile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(videoId != null ? { videoId: String(videoId) } : {}),
+    });
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok || !data || !data.ok) return { diperbaiki: 0 };
+    const lokal = (typeof state !== "undefined" && state && state.myVideos) || [];
+    for (const r of data.rincian || []) {
+      const v = lokal.find((x) => x && String(x.id) === String(r.id));
+      if (!v) continue;
+      v.variants = r.variants || {};
+      if (r.videoUrl) v.videoUrl = r.videoUrl;
+    }
+    if ((data.rincian || []).length && typeof saveState === "function") saveState();
+    return data;
+  } catch (e) {
+    console.warn("[rekonsiliasi] gagal:", e);
+    return { diperbaiki: 0 };
+  }
+}
+
+/**
  * Unggah ulang video yang selama ini HANYA ada di perangkat ini.
  *
  * Video lama tersimpan sebagai blob di IndexedDB dan videoUrl-nya "blob:" —
@@ -2479,6 +2514,10 @@ async function playlyUploadVideoKeCloud(vidId, blob, opts) {
  * meminta job transcode supaya multi-resolusinya ikut dibuat.
  */
 async function playlySinkronkanVideoKeCloud() {
+  const rapi = await playlyRekonsiliasiVariant();
+  if (rapi && rapi.diperbaiki) {
+    toast(`<b>${rapi.diperbaiki}</b> video dirapikan catatannya (berkasnya ternyata sudah ada di cloud).`, "success");
+  }
   const daftar = (typeof state !== "undefined" && state && state.myVideos) || [];
   const perlu = daftar.filter((v) => {
     const u = String((v && v.videoUrl) || "");
