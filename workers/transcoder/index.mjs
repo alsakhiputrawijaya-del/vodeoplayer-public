@@ -66,7 +66,10 @@ const STORAGE_PUBLIC_URL = (
 ).replace(/\/+$/, '');
 
 const FFMPEG_PATH = process.env.FFMPEG_PATH?.trim() || ffmpegStatic || null;
-const FFPROBE_PATH = process.env.FFPROBE_PATH?.trim() || ffprobeStatic || null;
+// ffprobe-static mengekspor OBJEK { path }, bukan string seperti ffmpeg-static.
+// Tanpa ?.path, setFfprobePath() menerima objek dan probe durasi/resolusi gagal.
+const FFPROBE_PATH =
+  process.env.FFPROBE_PATH?.trim() || ffprobeStatic?.path || ffprobeStatic || null;
 const POLL_INTERVAL_MS = Math.max(3000, Number(process.env.POLL_INTERVAL_MS || 10000));
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const PORT = Number(process.env.PORT || 3000);
