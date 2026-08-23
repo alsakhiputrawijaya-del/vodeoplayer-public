@@ -57,7 +57,10 @@ const STORAGE_ENDPOINT =
 const STORAGE_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID?.trim() || process.env.R2_ACCESS_KEY_ID?.trim();
 const STORAGE_SECRET_ACCESS_KEY =
   process.env.S3_SECRET_ACCESS_KEY?.trim() || process.env.R2_SECRET_ACCESS_KEY?.trim();
-const STORAGE_BUCKET = process.env.S3_BUCKET?.trim() || process.env.R2_BUCKET?.trim();
+// Mode Storage API tidak menuntut S3_BUCKET, jadi nama bucket butuh nilai baku —
+// tanpa ini worker akan memanggil bucket bernama string kosong.
+const STORAGE_BUCKET =
+  process.env.S3_BUCKET?.trim() || process.env.R2_BUCKET?.trim() || 'videos';
 // Mode R2 dikenali dari env-nya sendiri, bukan dari endpoint hasil rakitan.
 const pakaiR2Legacy = !process.env.S3_ENDPOINT?.trim() && !!process.env.R2_ACCOUNT_ID?.trim();
 const STORAGE_PUBLIC_URL = (
@@ -87,21 +90,35 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1);
 }
 
-if (!STORAGE_ENDPOINT || !STORAGE_ACCESS_KEY_ID || !STORAGE_SECRET_ACCESS_KEY || !STORAGE_BUCKET || !STORAGE_PUBLIC_URL) {
-  console.error('[transcoder] Storage (S3/R2) env vars belum lengkap.');
+// Cara bicara ke storage:
+//   'api' → Storage REST API Supabase memakai service role. TIDAK butuh kunci S3
+//           sama sekali — satu kunci yang sudah wajib ada untuk membaca antrian
+//           job sekaligus melayani file. Ini menghapus satu kelas kegagalan yang
+//           mahal dicari: kunci S3 salah/kedaluwarsa baru ketahuan saat job
+//           diproses, lewat error tanda tangan yang tak menyebut penyebabnya.
+//   's3'  → protokol S3 untuk R2 / penyedia S3-compatible lain; butuh kunci S3.
+const MODE_STORAGE =
+  STORAGE_ENDPOINT.includes('.supabase.co') ||
+  (!STORAGE_ENDPOINT && !process.env.R2_ACCOUNT_ID?.trim())
+    ? 'api'
+    : 's3';
+
+if (MODE_STORAGE === 's3' &&
+    (!STORAGE_ENDPOINT || !STORAGE_ACCESS_KEY_ID || !STORAGE_SECRET_ACCESS_KEY || !STORAGE_PUBLIC_URL)) {
+  console.error('[transcoder] Storage S3/R2 env vars belum lengkap.');
   process.exit(1);
 }
 
 if (FFMPEG_PATH) ffmpeg.setFfmpegPath(FFMPEG_PATH);
 if (FFPROBE_PATH) ffmpeg.setFfprobePath(FFPROBE_PATH);
 
-const isSupabaseStorage = STORAGE_ENDPOINT.includes('.supabase.co');
+const isSupabaseStorage = MODE_STORAGE === 'api';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const r2 = new S3Client({
+const r2 = MODE_STORAGE === 's3' ? new S3Client({
   region: inferRegion(STORAGE_ENDPOINT),
   endpoint: STORAGE_ENDPOINT,
   credentials: {
@@ -112,7 +129,7 @@ const r2 = new S3Client({
   requestChecksumCalculation: 'WHEN_REQUIRED',
   responseChecksumValidation: 'WHEN_REQUIRED',
   requestHandler: new FetchHttpHandler(),
-});
+}) : null;
 
 // -------------------- HELPERS --------------------
 function extFromContentType(ct) {
@@ -144,6 +161,9 @@ function objectKeyForVariant(ownerId, id, height, contentType) {
 }
 
 function publicUrl(key) {
+  if (MODE_STORAGE === 'api') {
+    return supabase.storage.from(STORAGE_BUCKET).getPublicUrl(key).data.publicUrl;
+  }
   return `${STORAGE_PUBLIC_URL}/${key}`;
 }
 
@@ -160,13 +180,28 @@ async function safeRemove(filePath) {
 }
 
 async function downloadOriginal(key, destPath) {
+  if (MODE_STORAGE === 'api') {
+    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(key);
+    if (error) throw new Error('gagal mengunduh ' + key + ': ' + error.message);
+    if (!data) throw new Error('objek kosong: ' + key);
+    await fs.writeFile(destPath, Buffer.from(await data.arrayBuffer()));
+    return;
+  }
   const { Body } = await r2.send(new GetObjectCommand({ Bucket: STORAGE_BUCKET, Key: key }));
-  if (!Body) throw new Error('R2 object empty');
+  if (!Body) throw new Error('objek kosong: ' + key);
   await pipeline(Body, createWriteStream(destPath));
 }
 
 async function uploadVariant(localPath, key, contentType) {
   const fileBuffer = await fs.readFile(localPath);
+  if (MODE_STORAGE === 'api') {
+    const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(key, fileBuffer, {
+      contentType: contentType || 'video/mp4',
+      upsert: true,
+    });
+    if (error) throw new Error('gagal mengunggah ' + key + ': ' + error.message);
+    return;
+  }
   await r2.send(
     new PutObjectCommand({
       Bucket: STORAGE_BUCKET,
