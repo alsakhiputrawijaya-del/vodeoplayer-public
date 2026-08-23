@@ -79,3 +79,9 @@ docs/pelajaran-lintasai/
 .lintasai/.manifest-secret
 .lintasai/.install-manifest.json
 .lintasai.backup-*/
+
+# Berkas kerja sementara — bukan bagian aplikasi.
+# hasil_cari.txt: dump hasil pencarian (4.8 MB), sekali pakai.
+# supabase/.temp/: state scratch Supabase CLI (project ref, pooler url, versi).
+hasil_cari.txt
+supabase/.temp/

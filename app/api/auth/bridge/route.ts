@@ -55,6 +55,7 @@ export async function POST(req: Request) {
     password,
   });
   if (signinErr) {
+    console.warn('[bridge] signIn failed:', signinErr.message, '| email:', email);
     // Akun belum ada → signUp
     const { error: signupErr } = await supabase.auth.signUp({
       email,
@@ -62,6 +63,7 @@ export async function POST(req: Request) {
       options: { data: name ? { name } : {} },
     });
     if (signupErr) {
+      console.warn('[bridge] signUp failed:', signupErr.message, '| email:', email);
       return jsonError(signupErr.message, 401);
     }
     // signUp sukses → signin lagi supaya cookie ter-set
@@ -70,6 +72,7 @@ export async function POST(req: Request) {
       password,
     });
     if (retryErr) {
+      console.warn('[bridge] retry signIn after signup failed:', retryErr.message, '| email:', email);
       return jsonError(retryErr.message, 401);
     }
     action = 'signup';

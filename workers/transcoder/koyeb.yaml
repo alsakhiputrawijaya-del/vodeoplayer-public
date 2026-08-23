@@ -1,0 +1,18 @@
+# Koyeb deployment config for Playly Transcoder Worker
+# Docs: https://www.koyeb.com/docs/build-and-deploy/deploy-services-from-dockerfile
+
+name: playly-transcoder
+service_type: web
+regions: [sin]
+ports:
+  - port: 3000
+    protocol: http
+env:
+  - name: PORT
+    value: "3000"
+  - name: POLL_INTERVAL_MS
+    value: "10000"
+healthchecks:
+  - port: 3000
+    path: /health
+    protocol: http

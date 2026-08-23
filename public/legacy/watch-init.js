@@ -452,6 +452,87 @@
         }
       }
 
+      // 20 Agu 2026: overlay pilihan resolusi untuk watch publik.
+      function setupQualityMenu(video, variants) {
+        if (!variants || typeof variants !== 'object') return;
+        const heights = [1080, 720, 480, 360];
+        const items = [];
+        for (const h of heights) {
+          const key = `${h}p`;
+          if (variants[key]) items.push({ label: key, url: variants[key], height: h });
+        }
+        if (items.length < 2) return;
+
+        const wrap = video.parentElement;
+        if (!wrap) return;
+        if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
+
+        const overlay = document.createElement('div');
+        overlay.className = 'quality-overlay';
+        overlay.innerHTML =
+          '<button class="quality-btn" type="button" aria-haspopup="true" aria-expanded="false">' +
+          '<svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm-1 12.5h-2v-2h2v2Zm0-3.5h-2V7h2v6Zm3.5 3.5h-2v-2h2v2Zm0-3.5h-2V7h2v6Z"/></svg>' +
+          '<span class="quality-label">Kualitas</span>' +
+          '</button>' +
+          '<div class="quality-dropdown" role="menu"></div>' +
+          '</div>';
+        wrap.appendChild(overlay);
+
+        const btn = overlay.querySelector('.quality-btn');
+        const label = overlay.querySelector('.quality-label');
+        const dropdown = overlay.querySelector('.quality-dropdown');
+        let activeUrl = items[0].url;
+
+        function renderOptions() {
+          dropdown.innerHTML = '';
+          for (const it of items) {
+            const opt = document.createElement('button');
+            opt.className = 'quality-option' + (it.url === activeUrl ? ' active' : '');
+            opt.type = 'button';
+            opt.setAttribute('role', 'menuitem');
+            opt.innerHTML = '<span>' + it.label + '</span><svg class="check" viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+            opt.onclick = () => switchQuality(it);
+            dropdown.appendChild(opt);
+          }
+        }
+
+        function switchQuality(it) {
+          if (it.url === activeUrl) return;
+          activeUrl = it.url;
+          label.textContent = it.label;
+          const t = video.currentTime || 0;
+          const wasPaused = video.paused;
+          video.src = it.url;
+          video.load();
+          video.currentTime = t;
+          if (!wasPaused) {
+            const onCanPlay = () => {
+              video.play().catch(() => {});
+              video.removeEventListener('canplay', onCanPlay);
+            };
+            video.addEventListener('canplay', onCanPlay);
+          }
+          renderOptions();
+          overlay.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+
+        label.textContent = items[0].label;
+        renderOptions();
+
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const open = overlay.classList.toggle('open');
+          btn.setAttribute('aria-expanded', String(open));
+        };
+        document.addEventListener('click', (e) => {
+          if (!overlay.contains(e.target)) {
+            overlay.classList.remove('open');
+            btn.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+
       (async function load() {
         try {
           // Fetch metadata video & ad config paralel
@@ -486,6 +567,8 @@
 
           const v = $("videoEl");
           v.src = url;
+          // 20 Agu 2026: tampilkan menu pilihan kualitas (360/480/720/1080p) untuk watch publik.
+          setupQualityMenu(v, found.meta.variants || {});
           // 28 Jul 2026: terapkan hasil edit video (crop/filter/teks/audio/fade/
           // trim/speed/backsound) ke penonton publik — sebelumnya edit hanya
           // berlaku di player aplikasi (applyVideoEditCss dari video-edit-playback.js).
