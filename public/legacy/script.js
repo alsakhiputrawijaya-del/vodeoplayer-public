@@ -59311,7 +59311,7 @@ function resetPlayerToolbar(videoEl, vid) {
 
   // Quality back to Auto
   $("#qualityLabel") && ($("#qualityLabel").textContent = "Auto");
-  $$("[data-q]").forEach(b => b.classList.toggle("active", b.dataset.q === "auto"));
+  $$("#qualityMenu [data-q]").forEach(b => b.classList.toggle("active", b.dataset.q === "auto"));
   videoEl.style.filter = "";
 
   // Subtitle off — buang track lama
@@ -59339,21 +59339,28 @@ function resetPlayerToolbar(videoEl, vid) {
       const order = ["360p", "480p", "720p", "1080p"];
       const maxQ = h >= 1080 ? "1080p" : h >= 720 ? "720p" : h >= 480 ? "480p" : "360p";
       const maxIdx = order.indexOf(maxQ);
+      const variants = videoEl._currentVid?.variants || {};
       let activeDisabled = false;
-      $$("[data-q]").forEach(b => {
+      $$("#qualityMenu [data-q]").forEach(b => {
         const q = b.dataset.q;
         if (q === "auto") return;
-        const disabled = order.indexOf(q) > maxIdx;
+        const lewatSumber = order.indexOf(q) > maxIdx;   // lebih tinggi dari file asli
+        const tanpaFile = !variants[q];                  // file resolusi itu belum dibuat
+        const disabled = lewatSumber || tanpaFile;
         b.disabled = disabled;
         b.classList.toggle("disabled", disabled);
-        b.title = disabled ? `Video asli maksimal ${maxQ}` : "";
+        b.title = lewatSumber
+          ? `Video asli maksimal ${maxQ}`
+          : tanpaFile
+            ? "Versi resolusi ini belum dibuat (menunggu transcode)"
+            : "";
         if (disabled && b.classList.contains("active")) activeDisabled = true;
       });
       if (activeDisabled) {
-        const cur = $("#qualityLabel")?.textContent;
-        if (cur && cur !== "Auto" && order.indexOf(cur) > maxIdx) {
-          document.querySelector(`[data-q="${maxQ}"]`)?.click();
-        }
+        // Balik ke Auto — satu-satunya pilihan yang dijamin selalu bisa diputar.
+        // Jangan .click() tombol resolusi lain: tombol yang disabled tak memicu
+        // event klik, jadi label akan tertinggal di kualitas yang sudah mati.
+        document.querySelector('#qualityMenu [data-q="auto"]')?.click();
       }
     });
   }
@@ -59381,10 +59388,13 @@ function setupPlayerToolbar() {
     });
   });
 
-  // ----- Quality: pakai variant bila tersedia, fallback simulasi filter -----
+  // ----- Quality: HANYA file variant nyata — tanpa simulasi filter -----
   function pickVariantUrl(variants, q) {
     if (!variants) return null;
-    if (q && q !== "auto" && variants[q]) return variants[q];
+    // Kualitas eksplisit: HANYA file resolusi itu. Sebelumnya jatuh ke loop di
+    // bawah, jadi minta "480p" bisa mengembalikan file 1080p — label berbohong.
+    if (q && q !== "auto") return variants[q] || null;
+    // Auto: ambil yang tertinggi yang tersedia.
     for (const h of [1080, 720, 480, 360]) {
       const key = `${h}p`;
       if (variants[key]) return variants[key];
@@ -59397,24 +59407,29 @@ function setupPlayerToolbar() {
     m.hidden = !m.hidden;
     $("#speedMenu").hidden = true;
   });
-  $$("[data-q]").forEach(b => {
+  $$("#qualityMenu [data-q]").forEach(b => {
     b.addEventListener("click", () => {
       const q = b.dataset.q;
       const labelMap = { auto: "Auto", "1080p": "1080p HD", "720p": "720p", "480p": "480p", "360p": "360p" };
-      const filterMap = {
-        auto: "",
-        "1080p": "",
-        "720p": "blur(.35px) saturate(.96)",
-        "480p": "blur(.8px) saturate(.9) brightness(.97)",
-        "360p": "blur(1.4px) saturate(.82) brightness(.94)"
-      };
-      $("#qualityLabel").textContent = labelMap[q] || "Auto";
-      $$("[data-q]").forEach(x => x.classList.toggle("active", x === b));
-      $("#qualityMenu").hidden = true;
-
-      // Switch ke file variant kalau sudah tersedia; kalau belum, pakai simulasi filter.
       const vidMeta = v?._currentVid;
       const variantUrl = pickVariantUrl(vidMeta?.variants, q);
+
+      // Tidak ada file untuk resolusi ini → JANGAN berpura-pura. Versi lama
+      // memasang CSS blur supaya "terasa" turun resolusi, padahal file yang
+      // diputar sama persis (dan malah lebih berat karena filter render).
+      // Auto dikecualikan: Auto = "pakai yang terbaik yang ADA", jadi file asli
+      // yang sedang diputar memang jawabannya.
+      if (!variantUrl && q !== "auto") {
+        $("#qualityMenu").hidden = true;
+        toast(`⚠️ <b>${labelMap[q] || q}</b> belum tersedia — versi resolusi ini belum dibuat`, "warning");
+        return;
+      }
+
+      $("#qualityLabel").textContent = labelMap[q] || "Auto";
+      $$("#qualityMenu [data-q]").forEach(x => x.classList.toggle("active", x === b));
+      $("#qualityMenu").hidden = true;
+
+      if (v) v.style.filter = "";   // buang sisa filter palsu dari versi lama
       if (v && variantUrl && v.currentSrc !== variantUrl) {
         const wasPlaying = !v.paused;
         const t = v.currentTime;
@@ -59422,11 +59437,13 @@ function setupPlayerToolbar() {
         v.load();
         v.currentTime = t;
         if (wasPlaying) v.play().catch(() => {});
-        v.style.filter = "";
-      } else if (v) {
-        v.style.filter = filterMap[q] || "";
       }
-      toast(`🎚️ Kualitas: <b>${labelMap[q] || "Auto"}</b>`, "success");
+      const hNyata = v?.videoHeight || 0;
+      toast(
+        `🎚️ Kualitas: <b>${labelMap[q] || "Auto"}</b>` +
+          (q === "auto" && !variantUrl && hNyata ? ` · ${hNyata}p (file asli)` : ""),
+        "success"
+      );
     });
   });
 
@@ -59786,8 +59803,13 @@ function setupCustomPlayer() {
   const qualityOrder = ["auto", "1080p", "720p", "480p", "360p"];
   let curQIdx = 0;
   $("#cdQuality")?.addEventListener("click", () => {
-    curQIdx = (curQIdx + 1) % qualityOrder.length;
-    document.querySelector(`[data-q="${qualityOrder[curQIdx]}"]`)?.click();
+    // Lewati opsi yang mati (lebih tinggi dari file asli / variant belum dibuat).
+    // "auto" tak pernah mati, jadi loop ini selalu berhenti.
+    for (let n = 0; n < qualityOrder.length; n++) {
+      curQIdx = (curQIdx + 1) % qualityOrder.length;
+      const btn = document.querySelector(`#qualityMenu [data-q="${qualityOrder[curQIdx]}"]`);
+      if (btn && !btn.disabled) { btn.click(); break; }
+    }
     setTimeout(syncQVal, 10);
   });
 
