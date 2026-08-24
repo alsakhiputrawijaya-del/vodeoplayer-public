@@ -54,11 +54,33 @@
     }
     return false;
   }
+  // Cermin aturan RLS di migration 0020 (kv_is_admin_only_key). Tanpa cermin di
+  // sisi klien, browser user biasa terus mendorong kunci admin tiap siklus sync
+  // dan ditolak 403 berulang-ulang: Console penuh error yang tak bisa
+  // ditindaklanjuti user, dan error sungguhan tenggelam di antaranya.
+  function isKunciAdminSaja(key) {
+    return /^playly-(admin-|takedowns|pending-videos)/.test(String(key));
+  }
+  // Peran dibaca dari DOM, bukan variabel global script.js — cloud-sync.js bisa
+  // dimuat sebelum berkas itu, dan urutan muat bukan sandaran yang layak.
+  function penggunaAdmin() {
+    try {
+      return document.body && document.body.dataset && document.body.dataset.role === "admin";
+    } catch (_) {
+      return false;
+    }
+  }
+  // Kunci yang SUDAH ditolak server dengan 403 di sesi ini. 403 = penolakan
+  // permanen (bukan pemilik), jadi mencoba lagi hanya mengulang error yang sama.
+  const _ditolakServer = new Set();
+
   function shouldSync(key) {
     if (typeof key !== "string") return false;
     if (!key.startsWith(PREFIX)) return false;
     if (NO_SYNC_KEYS.has(key)) return false;
     if (isPrefixExcluded(key)) return false;
+    if (_ditolakServer.has(key)) return false;
+    if (isKunciAdminSaja(key) && !penggunaAdmin()) return false;
     return true;
   }
 
@@ -443,7 +465,10 @@
           // siap / network / 5xx) = transien → antre, retry via BRIDGE
           // (flushRetryQueue sudah route per-user lewat bridge).
           if (res.status === 403) {
-            console.warn("[cloud] bridge push ditolak (bukan pemilik), drop:", key);
+            // Dicatat supaya siklus berikutnya tak mengulang permintaan yang
+            // sudah pasti ditolak — dulu ini membanjiri Console.
+            _ditolakServer.add(key);
+            console.warn("[cloud] bridge push ditolak (bukan pemilik), berhenti mencoba:", key);
           } else {
             console.warn("[cloud] bridge push gagal — antre retry via bridge (bukan anon):", key, res.reason);
             enqueueRetry(key, value);
