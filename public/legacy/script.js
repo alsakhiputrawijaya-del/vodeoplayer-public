@@ -31766,6 +31766,10 @@ function injectRunningText(screen, c) {
 }
 
 function injectBanner(screen, c) {
+  // Tanpa gambar tak ada yang bisa ditampilkan: <img src=""> membuat browser
+  // menggambar ikon "gambar rusak" beserta teks alt-nya DI ATAS video — lebih
+  // buruk daripada tidak ada iklan sama sekali.
+  if (!String((c && c.imageUrl) || "").trim()) return;
   const overlay = document.createElement("div");
   const sizeCls = `ad-banner-size-${c.size || "medium"}`;
   const animCls = `ad-banner-anim-${c.animation || "fade"}`;
