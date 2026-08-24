@@ -34,7 +34,7 @@ export async function findVideoInState(
   // pemanggil yang mengirimnya sebagai string TIDAK PERNAH ketemu — job transcode
   // gagal dibuat diam-diam dengan 404 not_found, tanpa jejak apa pun di log.
   // Karena itu kedua bentuk dicoba, bukan hanya bentuk yang kebetulan dikirim.
-  const kandidat: Array<string | number> = /^d+$/.test(mentah)
+  const kandidat: Array<string | number> = /^[0-9]+$/.test(mentah)
     ? [Number(mentah), mentah]
     : [mentah];
 
